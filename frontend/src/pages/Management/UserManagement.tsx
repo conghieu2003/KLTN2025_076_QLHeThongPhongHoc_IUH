@@ -25,10 +25,12 @@ import {
   Tooltip,
   Paper,
   Stack,
-  InputAdornment
+  InputAdornment,
+  Grid,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
-  DataGrid,
   GridColDef,
   GridFilterModel,
   GridSortModel,
@@ -37,6 +39,7 @@ import {
   GridRowParams,
   useGridApiRef
 } from '@mui/x-data-grid';
+import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
 import {
   Add as AddIcon,
   Edit as EditIcon,
@@ -66,6 +69,9 @@ interface RoleOption {
 const UserManagement = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const { users, usersLoading, usersError } = useSelector((state: RootState) => state.user);
   const [filterRole, setFilterRole] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -112,7 +118,7 @@ const UserManagement = () => {
   }, [users]);
 
   // Filtered users based on search term and role
-  const filteredUsers = useMemo(() => {
+  const filteredUsers = (() => {
     let filtered = users;
 
     // Filter by role
@@ -139,7 +145,7 @@ const UserManagement = () => {
     }
 
     return filtered;
-  }, [users, filterRole, searchTerm]);
+  })();
 
   const fetchUsers = useCallback((role?: string): void => {
     const roleFilter = role === 'all' || !role ? undefined : (role as any);
@@ -274,32 +280,76 @@ const UserManagement = () => {
     }
   };
 
-
-  // DataGrid columns configuration với flex layout - Tối ưu width để fill hết table
+  // DataGrid columns configuration - responsive widths, text wrapping on mobile/tablet
   const columns: GridColDef[] = [
     {
       field: 'username',
       headerName: 'ID',
-      flex: 0.10, // 10% width
-      minWidth: 80,
-      filterable: true,
-      sortable: true
+      ...(isMobile || isTablet ? { 
+        flex: 0.6, 
+        minWidth: 70,
+        maxWidth: 100
+      } : { 
+        width: 100 
+      }),
+      filterable: !isMobile,
+      sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            lineHeight: 1.4
+          }}
+        >
+          {params?.value || 'N/A'}
+        </Typography>
+      )
     },
     {
       field: 'fullName',
       headerName: 'Họ và tên',
-      flex: 0.20, // 20% width
-      minWidth: 150,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1.5, 
+        minWidth: 140
+      } : { 
+        width: 200 
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, width: '100%' }}>
-          <PersonIcon color="action" sx={{ marginTop: '2px', flexShrink: 0 }} />
-          <Typography variant="body2" sx={{ 
-            wordBreak: 'break-word',
-            whiteSpace: 'normal',
-            lineHeight: 1.4
-          }}>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'flex-start', 
+          gap: { xs: 0.5, sm: 0.75, md: 1 }
+        }}>
+          <PersonIcon 
+            color="action" 
+            sx={{ 
+              marginTop: '2px', 
+              flexShrink: 0, 
+              fontSize: { xs: 14, sm: 16, md: 18 } 
+            }} 
+          />
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              wordBreak: 'break-word',
+              whiteSpace: 'normal',
+              lineHeight: 1.4,
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+              flex: 1,
+              minWidth: 0
+            }}
+          >
             {params?.value || 'N/A'}
           </Typography>
         </Box>
@@ -308,14 +358,21 @@ const UserManagement = () => {
     {
       field: 'code',
       headerName: 'Mã số',
-      flex: 0.10, // 10% width
-      minWidth: 80,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 80
+      } : { 
+        width: 120 
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params: any) => {
         const user = params?.row;
         
-        if (!user) return 'N/A';
+        if (!user) return <Typography variant="body2">N/A</Typography>;
         
         let code = 'N/A';
         if (user.role === 'teacher') {
@@ -326,49 +383,109 @@ const UserManagement = () => {
           code = 'ADMIN';
         }
         
-        return code;
+        return (
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+              wordBreak: 'break-word',
+              whiteSpace: 'normal',
+              lineHeight: 1.4
+            }}
+          >
+            {code}
+          </Typography>
+        );
       }
     },
     {
       field: 'role',
       headerName: 'Vai trò',
-      flex: 0.12, // 12% width
-      minWidth: 100,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 0.8, 
+        minWidth: 70
+      } : { 
+        width: 120 
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Chip 
           label={getRoleText(params?.value || '')} 
           color={getRoleColor(params?.value || '') as any}
           size="small"
+          sx={{ 
+            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.75rem' },
+            height: { xs: 20, sm: 24, md: 28 },
+            whiteSpace: 'normal',
+            '& .MuiChip-label': {
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              lineHeight: 1.2,
+              padding: { xs: '0 4px', sm: '0 6px', md: '0 8px' }
+            }
+          }}
         />
       )
     },
     {
       field: 'phone',
       headerName: 'Số điện thoại',
-      flex: 0.12, // 12% width
-      minWidth: 100,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 100
+      } : { 
+        width: 140 
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params: any) => {
         const phone = params?.row?.phone || params?.value;
-        return phone || 'N/A';
+        return (
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+              wordBreak: 'break-word',
+              whiteSpace: 'normal',
+              lineHeight: 1.4
+            }}
+          >
+            {phone || 'N/A'}
+          </Typography>
+        );
       }
     },
     {
       field: 'email',
       headerName: 'Email',
-      flex: 0.28, // 28% width - cột email chiếm nhiều không gian nhất
-      minWidth: 200,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1.8, 
+        minWidth: 150
+      } : { 
+        width: 250 
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ 
-          wordBreak: 'break-word',
-          whiteSpace: 'normal',
-          lineHeight: 1.4
-        }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            lineHeight: 1.4,
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
+          }}
+        >
           {params?.value || 'N/A'}
         </Typography>
       )
@@ -376,10 +493,17 @@ const UserManagement = () => {
     {
       field: 'status',
       headerName: 'Trạng thái',
-      flex: 0.10, // 10% width
-      minWidth: 100,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 0.9, 
+        minWidth: 80
+      } : { 
+        width: 120 
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => {
         if (!params?.row) return <Chip label="N/A" size="small" />;
         return (
@@ -388,7 +512,18 @@ const UserManagement = () => {
             color={params.row.status === 'active' || params.row.isActive ? 'success' : 'error'}
             size="small"
             onClick={() => handleEdit(params.row)}
-            sx={{ cursor: 'pointer' }}
+            sx={{ 
+              cursor: 'pointer',
+              fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.75rem' },
+              height: { xs: 20, sm: 24, md: 28 },
+              whiteSpace: 'normal',
+              '& .MuiChip-label': {
+                whiteSpace: 'normal',
+                wordBreak: 'break-word',
+                lineHeight: 1.2,
+                padding: { xs: '0 4px', sm: '0 6px', md: '0 8px' }
+              }
+            }}
           />
         );
       }
@@ -397,19 +532,26 @@ const UserManagement = () => {
       field: 'actions',
       type: 'actions',
       headerName: 'Thao tác',
-      flex: 0.08, // 8% width
-      minWidth: 100,
+      ...(isMobile || isTablet ? { 
+        flex: 0.7, 
+        minWidth: 70
+      } : { 
+        width: 120 
+      }),
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       getActions: (params: GridRowParams) => {
         if (!params?.row) return [];
         return [
           <GridActionsCellItem
-            icon={<EditIcon />}
+            icon={<EditIcon fontSize={isMobile ? "small" : "medium"} />}
             label="Chỉnh sửa"
             onClick={() => handleEdit(params.row)}
             color="primary"
           />,
           <GridActionsCellItem
-            icon={<EmailIcon />}
+            icon={<EmailIcon fontSize={isMobile ? "small" : "medium"} />}
             label="Gửi email"
             onClick={() => handleSendEmail(params.row)}
           />
@@ -418,283 +560,473 @@ const UserManagement = () => {
     }
   ];
 
-  if (usersLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ 
-      p: 3,
-      width: '100%',
-      minWidth: '1200px', // Kích thước tối thiểu
-      maxWidth: '100%',
-      overflow: 'hidden',
-      position: 'relative'
-    }}>
+    <Box
+      sx={{ 
+        p: { xs: 1, sm: 1.5, md: 3 },
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        position: 'relative',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        pb: { xs: 2, sm: 3, md: 4 }
+      }}
+    >
       {usersError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" sx={{ mb: { xs: 1.5, sm: 2 } }}>
           {usersError}
         </Alert>
       )}
 
         {/* Statistics Cards */}
-      <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(6, 1fr)', 
-          gap: 2, 
-          mb: 3,
-          width: '100%',
-          minWidth: '1200px', // Kích thước tối thiểu
-          maxWidth: '100%',
-          overflow: 'hidden',
-          flexShrink: 0 // Không cho phép co lại
-        }}>
-          <Card sx={{ 
-            height: 120, 
-            minWidth: 150,
-            maxWidth: 200,
-            flex: '0 0 auto'
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                    Tổng người dùng
-                  </Typography>
-                  <Typography variant="h5" component="div" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {userStats.total}
-                  </Typography>
-                </Box>
-                <PersonIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
+      <Grid 
+        container 
+        spacing={{ xs: 0.75, sm: 1 }} 
+        sx={{ 
+          mb: { xs: 1.25, sm: 1.5, md: 2 },
+          flexShrink: 0
+        }}
+      >
+          <Grid
+            size={{
+              xs: 4,
+              sm: 4,
+              md: 2
+            }}
+          >
+            <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                  <Grid size={{ xs: 12 }}>
+                    <PersonIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'primary.main' }} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      color="textSecondary" 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        lineHeight: 1.1
+                      }}
+                    >
+                      Tổng người dùng
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      variant="h6" 
+                      component="div" 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                        fontWeight: 'bold',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {userStats.total}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
           
-          <Card sx={{ 
-            height: 120, 
-            minWidth: 150,
-            maxWidth: 200,
-            flex: '0 0 auto'
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                    Sinh viên
-                  </Typography>
-                  <Typography variant="h5" component="div" color="secondary.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {userStats.students}
-                  </Typography>
-                </Box>
-                <SchoolIcon sx={{ fontSize: 28, color: 'secondary.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
+          <Grid
+            size={{
+              xs: 4,
+              sm: 4,
+              md: 2
+            }}
+          >
+            <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                  <Grid size={{ xs: 12 }}>
+                    <SchoolIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'secondary.main' }} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      color="textSecondary" 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        lineHeight: 1.1
+                      }}
+                    >
+                      Sinh viên
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      variant="h6" 
+                      component="div" 
+                      color="secondary.main" 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                        fontWeight: 'bold',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {userStats.students}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
           
-          <Card sx={{ 
-            height: 120, 
-            minWidth: 150,
-            maxWidth: 200,
-            flex: '0 0 auto'
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                    Giảng viên
-                  </Typography>
-                  <Typography variant="h5" component="div" color="info.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {userStats.teachers}
-                  </Typography>
-                </Box>
-                <PersonAddIcon sx={{ fontSize: 28, color: 'info.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
+          <Grid
+            size={{
+              xs: 4,
+              sm: 4,
+              md: 2
+            }}
+          >
+            <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                  <Grid size={{ xs: 12 }}>
+                    <PersonAddIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'info.main' }} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      color="textSecondary" 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        lineHeight: 1.1
+                      }}
+                    >
+                      Giảng viên
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      variant="h6" 
+                      component="div" 
+                      color="info.main" 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                        fontWeight: 'bold',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {userStats.teachers}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
           
-          <Card sx={{ 
-            height: 120, 
-            minWidth: 150,
-            maxWidth: 200,
-            flex: '0 0 auto'
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                    Hoạt động
-                  </Typography>
-                  <Typography variant="h5" component="div" color="success.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {userStats.active}
-                  </Typography>
-                </Box>
-                <TrendingUpIcon sx={{ fontSize: 28, color: 'success.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
+          <Grid
+            size={{
+              xs: 4,
+              sm: 4,
+              md: 2
+            }}
+          >
+            <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                  <Grid size={{ xs: 12 }}>
+                    <TrendingUpIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'success.main' }} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      color="textSecondary" 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        lineHeight: 1.1
+                      }}
+                    >
+                      Hoạt động
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      variant="h6" 
+                      component="div" 
+                      color="success.main" 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                        fontWeight: 'bold',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {userStats.active}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
           
-          <Card sx={{ 
-            height: 120, 
-            minWidth: 150,
-            maxWidth: 200,
-            flex: '0 0 auto'
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                    Đã khóa
-                  </Typography>
-                  <Typography variant="h5" component="div" color="error.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {userStats.inactive}
-                  </Typography>
-                </Box>
-                <PersonIcon sx={{ fontSize: 28, color: 'error.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
+          <Grid
+            size={{
+              xs: 4,
+              sm: 4,
+              md: 2
+            }}
+          >
+            <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                  <Grid size={{ xs: 12 }}>
+                    <PersonIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'error.main' }} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      color="textSecondary" 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        lineHeight: 1.1
+                      }}
+                    >
+                      Đã khóa
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      variant="h6" 
+                      component="div" 
+                      color="error.main" 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                        fontWeight: 'bold',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {userStats.inactive}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
           
-          <Card sx={{ 
-            height: 120, 
-            minWidth: 150,
-            maxWidth: 200,
-            flex: '0 0 auto'
-          }}>
-            <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                  <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                    Quản trị viên
-                  </Typography>
-                  <Typography variant="h5" component="div" color="warning.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {userStats.admins}
-                  </Typography>
-                </Box>
-                <PersonIcon sx={{ fontSize: 28, color: 'warning.main' }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Box>
+          <Grid
+            size={{
+              xs: 4,
+              sm: 4,
+              md: 2
+            }}
+          >
+            <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+              <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                  <Grid size={{ xs: 12 }}>
+                    <PersonIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'warning.main' }} />
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      color="textSecondary" 
+                      variant="body2" 
+                      sx={{ 
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        lineHeight: 1.1
+                      }}
+                    >
+                      Quản trị viên
+                    </Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography 
+                      variant="h6" 
+                      component="div" 
+                      color="warning.main" 
+                      sx={{ 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                        fontWeight: 'bold',
+                        lineHeight: 1.1
+                      }}
+                    >
+                      {userStats.admins}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         {/* Filters and Actions */}
         <Paper sx={{ 
-          p: 2, 
-          mb: 3,
+          p: { xs: 1.25, sm: 1.5, md: 2 }, 
+          mb: { xs: 1.5, sm: 2, md: 2.5 },
           borderRadius: 2,
-          boxShadow: 1
+          boxShadow: 1,
+          flexShrink: 0
         }}>
-          <Stack direction="row" spacing={3} alignItems="center" justifyContent="space-between">
-            <Stack direction="row" spacing={2} alignItems="center">
-              <FormControl sx={{ minWidth: 180, maxWidth: 200 }}>
-                <InputLabel sx={{ fontSize: '0.75rem' }}>Lọc theo vai trò</InputLabel>
-            <Select
-              value={filterRole}
-                  onChange={(e: any) => handleRoleFilterChange(e.target.value)}
-              label="Lọc theo vai trò"
-                  size="small"
-                  disabled={isFiltering}
-                  sx={{ 
-                    fontSize: '0.75rem',
-                    opacity: isFiltering ? 0.7 : 1,
-                    transition: 'opacity 0.2s ease-in-out'
-                  }}
+          <Grid container spacing={{ xs: 2, sm: 2 }} alignItems="center">
+            <Grid
+              size={{
+                xs: 12,
+                sm: 12,
+                md: 8
+              }}
             >
-              {roleOptions.map((option) => (
-                    <MenuItem key={option.id} value={option.id} sx={{ fontSize: '0.75rem' }}>
-                  {option.text}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-               <TextField
-                 size="small"
-                 placeholder="Tìm kiếm..."
-                 value={searchTerm}
-                 onChange={(e) => handleSearchChange(e.target.value)}
-                 sx={{ 
-                   minWidth: 280,
-                   maxWidth: 320,
-                   '& .MuiInputBase-root': {
-                     fontSize: '0.75rem'
-                   }
-                 }}
-                 InputProps={{
-                   startAdornment: (
-                     <InputAdornment position="start">
-                       <SearchIcon sx={{ fontSize: '1rem', color: 'text.secondary' }} />
-                     </InputAdornment>
-                   ),
-                   endAdornment: searchTerm && (
-                     <InputAdornment position="end">
-                       <IconButton
-                         size="small"
-                         onClick={() => handleSearchChange('')}
-                         sx={{ p: 0.5 }}
-                       >
-                         <ClearIcon sx={{ fontSize: '0.875rem' }} />
-                       </IconButton>
-                     </InputAdornment>
-                   ),
-                 }}
-               />
-              
-              <Tooltip title="Làm mới dữ liệu">
-                <IconButton 
-                  onClick={handleRefresh}
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                spacing={{ xs: 1.5, sm: 2 }} 
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+              >
+                <FormControl 
                   sx={{ 
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    '&:hover': { bgcolor: 'primary.dark' }
+                    minWidth: { xs: '100%', sm: 180 },
+                    maxWidth: { xs: '100%', sm: 200 }
                   }}
                 >
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-              
-            </Stack>
+                  <InputLabel sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Lọc theo vai trò</InputLabel>
+                  <Select
+                    value={filterRole}
+                    onChange={(e: any) => handleRoleFilterChange(e.target.value)}
+                    label="Lọc theo vai trò"
+                    size="small"
+                    disabled={isFiltering}
+                    sx={{ 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      opacity: isFiltering ? 0.7 : 1,
+                      transition: 'opacity 0.2s ease-in-out'
+                    }}
+                  >
+                    {roleOptions.map((option) => (
+                      <MenuItem key={option.id} value={option.id} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                        {option.text}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5 }, width: { xs: '100%', sm: 'auto' }, alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    placeholder="Tìm kiếm..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    sx={{ 
+                      flex: { xs: 1, sm: 'none' },
+                      minWidth: { xs: 0, sm: 280 },
+                      maxWidth: { xs: '100%', sm: 320 },
+                      '& .MuiInputBase-root': {
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                      }
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, color: 'text.secondary' }} />
+                        </InputAdornment>
+                      ),
+                      endAdornment: searchTerm && (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleSearchChange('')}
+                            sx={{ p: 0.5 }}
+                          >
+                            <ClearIcon sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }} />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  
+                  {isMobile && (
+                    <Tooltip title="Làm mới dữ liệu">
+                      <IconButton 
+                        onClick={handleRefresh}
+                        sx={{ 
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          '&:hover': { bgcolor: 'primary.dark' },
+                          flexShrink: 0
+                        }}
+                      >
+                        <RefreshIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+                
+                {!isMobile && (
+                  <Tooltip title="Làm mới dữ liệu">
+                    <IconButton 
+                      onClick={handleRefresh}
+                      sx={{ 
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        '&:hover': { bgcolor: 'primary.dark' }
+                      }}
+                    >
+                      <RefreshIcon fontSize="medium" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Stack>
+            </Grid>
             
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Button
-                variant="outlined"
-                startIcon={<FileDownloadIcon />}
-                onClick={handleExportData}
-                size="small"
-                sx={{ 
-                  fontSize: '0.75rem',
-                  minWidth: 120
-                }}
+            <Grid
+              size={{
+                xs: 12,
+                sm: 12,
+                md: 4
+              }}
+            >
+              <Stack 
+                direction={{ xs: 'column', sm: 'row' }} 
+                spacing={{ xs: 1, sm: 1.5 }} 
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                justifyContent={{ md: 'flex-end' }}
               >
-                Xuất dữ liệu
-              </Button>
-              
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/users/create')}
-                size="small"
-                sx={{ 
-                  fontSize: '0.75rem',
-                  minWidth: 140
-                }}
-        >
-          Thêm người dùng
-        </Button>
-            </Stack>
-          </Stack>
+                <Button
+                  variant="outlined"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={handleExportData}
+                  size={isMobile ? "small" : "medium"}
+                  fullWidth={isMobile}
+                  sx={{ 
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    minWidth: { xs: '100%', sm: 120 }
+                  }}
+                >
+                  Xuất dữ liệu
+                </Button>
+                
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate('/users/create')}
+                  size={isMobile ? "small" : "medium"}
+                  fullWidth={isMobile}
+                  sx={{ 
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    minWidth: { xs: '100%', sm: 140 }
+                  }}
+                >
+                  Thêm người dùng
+                </Button>
+              </Stack>
+            </Grid>
+          </Grid>
         </Paper>
 
-        {/* DataGrid với flex layout */}
+        {/* DataGrid với fixed header và internal scroll */}
         <Paper sx={{ 
-          height: 600, 
+          flex: 1,
+          minHeight: 0,
+          maxHeight: '100%',
           width: '100%', 
           maxWidth: '100%',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
           {isFiltering && (
             <Box
@@ -712,20 +1044,20 @@ const UserManagement = () => {
               }}
             >
               <CircularProgress size={40} />
-                  </Box>
+            </Box>
           )}
-          <DataGrid
+          <StyledDataGrid
             apiRef={dataGridRef}
             rows={filteredUsers}
             columns={columns}
             getRowId={(row) => row.id}
-            filterModel={filterModel}
-            onFilterModelChange={setFilterModel}
+            filterModel={isMobile ? { items: [] } : filterModel}
+            onFilterModelChange={isMobile ? undefined : setFilterModel}
             sortModel={sortModel}
             onSortModelChange={setSortModel}
             loading={usersLoading || isFiltering}
             slots={{
-              toolbar: GridToolbar,
+              toolbar: isMobile ? undefined : GridToolbar,
             }}
             slotProps={{
               toolbar: {
@@ -735,39 +1067,18 @@ const UserManagement = () => {
             pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
               pagination: {
-                paginationModel: { page: 0, pageSize: 25 },
+                paginationModel: { page: 0, pageSize: 5 },
               },
             }}
             disableRowSelectionOnClick
-            disableColumnFilter
-            disableColumnMenu={false}
-            disableColumnResize={false} // Cho phép resize cột
+            disableColumnFilter={isMobile}
+            disableColumnMenu={isMobile}
+            disableColumnResize={true}
             autoPageSize={false}
-            sx={{
-              height: 600,
-              width: '100%',
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: 'primary.main',
-                color: 'black',
-                '& .MuiDataGrid-columnHeaderTitle': {
-                  color: 'black',
-                  fontWeight: 'bold',
-                },
-              },
-              '& .MuiDataGrid-cell': {
-                fontSize: '0.75rem',
-                display: 'flex',
-                alignItems: 'flex-start',
-                paddingTop: '8px',
-                paddingBottom: '8px',
-              },
-              '& .MuiDataGrid-row': {
-                minHeight: '60px !important',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                },
-              },
-            }}
+            columnHeaderHeight={isMobile ? 48 : isTablet ? 52 : 56}
+            getRowHeight={() => 'auto'}
+            isMobile={isMobile}
+            isTablet={isTablet}
             density="comfortable"
             checkboxSelection={false}
             disableColumnSelector={false}

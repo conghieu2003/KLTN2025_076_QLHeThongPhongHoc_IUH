@@ -22,7 +22,10 @@ import {
   TableHead,
   TableRow,
   CircularProgress,
-  Alert
+  Alert,
+  Grid,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -147,10 +150,13 @@ const ScheduleTableHeader = memo(({ selectedDate, headerRef }: { selectedDate: D
           sx={{ 
             backgroundColor: '#e3f2fd', 
             textAlign: 'center',
-            minWidth: '120px',
-            fontSize: '0.875rem',
+            minWidth: { xs: '80px', sm: '100px', md: '120px' },
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
             fontWeight: 'bold',
-            border: '1px solid #ddd'
+            border: '1px solid #ddd',
+            position: 'sticky',
+            left: 0,
+            zIndex: 2
           }}
         >
           Ca học
@@ -162,17 +168,38 @@ const ScheduleTableHeader = memo(({ selectedDate, headerRef }: { selectedDate: D
               backgroundColor: '#1976d2', 
               color: 'white',
               textAlign: 'center',
-              minWidth: '150px',
-              fontSize: '0.875rem',
+              minWidth: { xs: '70px', sm: '100px', md: '150px' },
+              maxWidth: { xs: '80px', sm: 'none', md: 'none' },
+              padding: { xs: '4px 2px', sm: '8px', md: '12px' },
+              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
               fontWeight: 'bold',
-              border: '1px solid #ddd'
+              border: '1px solid #ddd',
+              position: 'sticky',
+              top: 0,
+              zIndex: 1
             }}
           >
             <Box>
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 'bold',
+                  fontSize: { xs: '0.65rem', sm: '0.75rem', md: '0.875rem' },
+                  lineHeight: 1.2
+                }}
+              >
                 {day.dayName}
               </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.9, mt: 0.5, display: 'block' }}>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  opacity: 0.9, 
+                  mt: { xs: 0.25, md: 0.5 }, 
+                  display: 'block',
+                  fontSize: { xs: '0.55rem', sm: '0.7rem', md: '0.75rem' },
+                  lineHeight: 1.2
+                }}
+              >
                 {day.dayNumber}
               </Typography>
             </Box>
@@ -206,8 +233,12 @@ const ScheduleTableBody = memo(({
               backgroundColor: shift.color, 
               textAlign: 'center',
               fontWeight: 'bold',
-              fontSize: '0.875rem',
-              border: '1px solid #ddd'
+              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
+              border: '1px solid #ddd',
+              position: 'sticky',
+              left: 0,
+              zIndex: 1,
+              minWidth: { xs: '80px', sm: '100px', md: '120px' }
             }}
           >
             {shift.name}
@@ -216,24 +247,56 @@ const ScheduleTableBody = memo(({
             <TableCell 
               key={dayIndex} 
               sx={{ 
-                padding: '8px', 
+                padding: { xs: '2px', sm: '6px', md: '8px' }, 
                 verticalAlign: 'top',
-                minHeight: '120px',
-                border: '1px solid #ddd'
+                minHeight: { xs: '80px', sm: '100px', md: '120px' },
+                minWidth: { xs: '70px', sm: '100px', md: '150px' },
+                maxWidth: { xs: '80px', sm: 'none', md: 'none' },
+                border: '1px solid #ddd',
+                // Prevent dragging cells on mobile
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none',
+                touchAction: 'pan-x pan-y'
               }}
             >
               {daySchedules.map((schedule: WeeklyScheduleItem) => {
                 
                 return (
                 <Card 
-                  key={schedule.id} 
+                  key={schedule.id}
+                  draggable={false}
                   sx={{ 
-                    mb: 1, 
+                    mb: { xs: 0.5, sm: 0.75, md: 1 }, 
                     backgroundColor: memoizedGetScheduleColor(schedule),
                     border: '1px solid #ddd',
                     position: 'relative',
-                    '&:last-child': { mb: 0 }
+                    '&:last-child': { mb: 0 },
+                    // Prevent dragging and text selection on mobile
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    MozUserSelect: 'none',
+                    msUserSelect: 'none',
+                    touchAction: 'pan-x pan-y',
+                    pointerEvents: 'auto',
+                    // Prevent text selection callout on iOS
+                    WebkitTouchCallout: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    // Prevent dragging
+                    cursor: 'default',
+                    '@media (max-width: 600px)': {
+                      touchAction: 'pan-x pan-y',
+                      WebkitUserDrag: 'none',
+                      KhtmlUserDrag: 'none',
+                      MozUserDrag: 'none',
+                      OUserDrag: 'none',
+                      userDrag: 'none'
+                    }
                   }}
+                  onDragStart={(e) => e.preventDefault()}
+                  onDrag={(e) => e.preventDefault()}
+                  onDragEnd={(e) => e.preventDefault()}
                 >
                   {/* Exception label - hiển thị cho cả lịch gốc và lịch đã chuyển */}
                   {schedule.requestTypeId && (
@@ -244,8 +307,8 @@ const ScheduleTableBody = memo(({
                         right: 0,
                         backgroundColor: 'rgba(0,0,0,0.7)',
                         color: 'white',
-                        fontSize: '0.6rem',
-                        padding: '2px 4px',
+                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                        padding: { xs: '1px 3px', sm: '2px 4px' },
                         borderRadius: '0 4px 0 4px',
                         fontWeight: 'bold',
                         zIndex: 1
@@ -255,47 +318,96 @@ const ScheduleTableBody = memo(({
                     </Box>
                   )}
                   
-                  <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '0.75rem' }}>
+                  <CardContent sx={{ p: { xs: 0.5, sm: 0.75, md: 1 }, '&:last-child': { pb: { xs: 0.5, sm: 0.75, md: 1 } } }}>
+                    <Typography 
+                      variant="subtitle2" 
+                      sx={{ 
+                        fontWeight: 'bold', 
+                        fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2
+                      }}
+                    >
                       {schedule.className}
                     </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        display: 'block', 
+                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                        wordBreak: 'break-word'
+                      }}
+                    >
                       {schedule.classCode} - {schedule.subjectCode}
                     </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        display: 'block', 
+                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }
+                      }}
+                    >
                       Tiết: {schedule.timeSlot}
                     </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        display: 'block', 
+                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                        wordBreak: 'break-word'
+                      }}
+                    >
                       Phòng: {schedule.roomName}
                     </Typography>
-                    <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        display: 'block', 
+                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                        wordBreak: 'break-word'
+                      }}
+                    >
                       GV: {schedule.teacherName}
                     </Typography>
                     {schedule.practiceGroup && (
-                      <Typography variant="caption" sx={{ display: 'block', fontSize: '0.7rem' }}>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          display: 'block', 
+                          fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }
+                        }}
+                      >
                         Nhóm: {schedule.practiceGroup}
                       </Typography>
                     )}
                     {schedule.exceptionReason && (
-                      <Typography variant="caption" sx={{ 
-                        display: 'block', 
-                        fontSize: '0.65rem',
-                        fontStyle: 'italic',
-                        color: 'text.secondary',
-                        mt: 0.5
-                      }}>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          display: 'block', 
+                          fontSize: { xs: '0.55rem', sm: '0.6rem', md: '0.65rem' },
+                          fontStyle: 'italic',
+                          color: 'text.secondary',
+                          mt: 0.5,
+                          wordBreak: 'break-word'
+                        }}
+                      >
                         Lý do: {schedule.exceptionReason}
                       </Typography>
                     )}
                     {schedule.isMovedSchedule && schedule.note && (
-                      <Typography variant="caption" sx={{ 
-                        display: 'block', 
-                        fontSize: '0.65rem',
-                        fontStyle: 'italic',
-                        color: 'primary.main',
-                        mt: 0.5,
-                        fontWeight: 'bold'
-                      }}>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          display: 'block', 
+                          fontSize: { xs: '0.55rem', sm: '0.6rem', md: '0.65rem' },
+                          fontStyle: 'italic',
+                          color: 'primary.main',
+                          mt: 0.5,
+                          fontWeight: 'bold',
+                          wordBreak: 'break-word'
+                        }}
+                      >
                         📍 {schedule.note}
                       </Typography>
                     )}
@@ -316,6 +428,8 @@ ScheduleTableBody.displayName = 'ScheduleTableBody';
 const WeeklySchedule = memo(() => {
   // Redux hooks
   const dispatch = useDispatch<AppDispatch>();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const {
     weeklySchedules,
     departments,
@@ -562,275 +676,355 @@ const WeeklySchedule = memo(() => {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
-      <Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <Box sx={{ 
+        p: { xs: 1, sm: 1.5, md: 3 }, 
+        backgroundColor: '#f5f5f5', 
+        minHeight: '100vh',
+        overflowX: 'hidden',
+        width: '100%',
+        maxWidth: '100vw'
+      }}>
         {/* Error Alert */}
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: { xs: 1.5, sm: 2 },
+              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+            }}
+          >
             {error}
           </Alert>
         )}
 
         {/* Filters Row - Only show for admin */}
         {isAdmin && (
-          <Paper sx={{ p: 1.5, mb: 1, boxShadow: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel sx={{ fontSize: '0.75rem' }}>Theo khoa</InputLabel>
-                <Select
-                  value={selectedDepartment}
-                  onChange={(e) => {
-                    setSelectedDepartment(e.target.value);
-                    setSelectedClass('');
-                    setSelectedTeacher('');
-                  }}
-                  label="Theo khoa"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': { 
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      height: '40px'
-                    }
-                  }}
+          <Paper sx={{ p: { xs: 1, sm: 1.5, md: 1.5 }, mb: { xs: 1, sm: 1.5, md: 1 }, boxShadow: 2 }}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+              <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <FormControl 
+                  fullWidth 
+                  size={isMobile ? "small" : "medium"}
                 >
-                  <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Tất cả khoa</MenuItem>
-                  {departments.map(dept => (
-                    <MenuItem key={dept.id} value={dept.id.toString()} sx={{ fontSize: '0.75rem' }}>
-                      {dept.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  <InputLabel sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Theo khoa</InputLabel>
+                  <Select
+                    value={selectedDepartment}
+                    onChange={(e) => {
+                      setSelectedDepartment(e.target.value);
+                      setSelectedClass('');
+                      setSelectedTeacher('');
+                    }}
+                    label="Theo khoa"
+                    sx={{ 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: '4px',
+                        height: { xs: '36px', sm: '40px' }
+                      }
+                    }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả khoa</MenuItem>
+                    {departments.map(dept => (
+                      <MenuItem key={dept.id} value={dept.id.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                        {dept.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel sx={{ fontSize: '0.75rem' }}>Theo lớp</InputLabel>
-                <Select
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  label="Theo lớp"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': { 
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      height: '40px'
-                    }
-                  }}
+              <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+                <FormControl 
+                  fullWidth 
+                  size={isMobile ? "small" : "medium"}
                 >
-                  <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Tất cả lớp</MenuItem>
-                  {filteredClassesForDropdown.map((cls) => (
-                    <MenuItem key={cls.id} value={cls.id.toString()} sx={{ fontSize: '0.75rem' }}>
-                      {cls.className || cls.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  <InputLabel sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Theo lớp</InputLabel>
+                  <Select
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    label="Theo lớp"
+                    sx={{ 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: '4px',
+                        height: { xs: '36px', sm: '40px' }
+                      }
+                    }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả lớp</MenuItem>
+                    {filteredClassesForDropdown.map((cls) => (
+                      <MenuItem key={cls.id} value={cls.id.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                        {cls.className || cls.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel sx={{ fontSize: '0.75rem' }}>Theo GV</InputLabel>
-                <Select
-                  value={selectedTeacher}
-                  onChange={(e) => setSelectedTeacher(e.target.value)}
-                  label="Theo GV"
-                  sx={{ 
-                    '& .MuiOutlinedInput-root': { 
-                      borderRadius: '4px',
-                      fontSize: '0.75rem',
-                      height: '40px'
-                    }
-                  }}
+              <Grid size={{ xs: 12, sm: 4, md: 4 }}>
+                <FormControl 
+                  fullWidth 
+                  size={isMobile ? "small" : "medium"}
                 >
-                  <MenuItem value="" sx={{ fontSize: '0.75rem' }}>Tất cả GV</MenuItem>
-                  {filteredTeachersForDropdown.map(teacher => (
-                    <MenuItem key={teacher.id} value={teacher.id.toString()} sx={{ fontSize: '0.75rem' }}>
-                      {teacher.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
+                  <InputLabel sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Theo GV</InputLabel>
+                  <Select
+                    value={selectedTeacher}
+                    onChange={(e) => setSelectedTeacher(e.target.value)}
+                    label="Theo GV"
+                    sx={{ 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: '4px',
+                        height: { xs: '36px', sm: '40px' }
+                      }
+                    }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả GV</MenuItem>
+                    {filteredTeachersForDropdown.map(teacher => (
+                      <MenuItem key={teacher.id} value={teacher.id.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                        {teacher.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
           </Paper>
         )}
 
         {/* Title and Controls Row */}
-        <Paper sx={{ p: 1.5, mb: 3, boxShadow: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Paper sx={{ p: { xs: 1, sm: 1.5, md: 1.5 }, mb: { xs: 1.5, sm: 2, md: 3 }, boxShadow: 3 }}>
+          <Grid 
+            container 
+            spacing={{ xs: 1.5, sm: 2 }} 
+            alignItems="center"
+            sx={{ flexWrap: { xs: 'wrap', md: 'nowrap' } }}
+          >
             {/* Title */}
-            <Typography variant="h6" component="h1" sx={{ 
-              color: 'primary.main', 
-              fontWeight: 'bold', 
-              fontSize: '1rem'
-            }}>
-              Lịch học, lịch thi theo tuần
-            </Typography>
+            <Grid size={{ xs: 12, md: 'auto' }} sx={{ mb: { xs: 1, md: 0 }, flexShrink: 0 }}>
+              <Typography 
+                variant="h6" 
+                component="h1" 
+                sx={{ 
+                  color: 'primary.main', 
+                  fontWeight: 'bold', 
+                  fontSize: { xs: '0.875rem', sm: '0.9375rem', md: '1rem' },
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Lịch học, lịch thi theo tuần
+              </Typography>
+            </Grid>
             
-            {/* Date and Radio buttons - Right side */}
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', ml: 'auto' }}>
-              {/* Radio buttons */}
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <RadioGroup
-                  row
-                  value={scheduleType}
-                  onChange={(e) => setScheduleType(e.target.value)}
-                >
-                  <FormControlLabel 
-                    value="all" 
-                    control={<Radio size="small" />} 
-                    label="Tất cả" 
-                    sx={{ 
-                      '& .MuiFormControlLabel-label': { 
-                        fontSize: '0.75rem',
-                        ml: 0.5
-                      }
-                    }}
-                  />
-                  <FormControlLabel 
-                    value="study" 
-                    control={<Radio size="small" />} 
-                    label="Lịch học" 
-                    sx={{ 
-                      '& .MuiFormControlLabel-label': { 
-                        fontSize: '0.75rem',
-                        ml: 0.5
-                      }
-                    }}
-                  />
-                  <FormControlLabel 
-                    value="exam" 
-                    control={<Radio size="small" />} 
-                    label="Lịch thi" 
-                    sx={{ 
-                      '& .MuiFormControlLabel-label': { 
-                        fontSize: '0.75rem',
-                        ml: 0.5
-                      }
-                    }}
-                  />
-                </RadioGroup>
-              </Box>
-              
-              {/* Date and Navigation */}
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <DatePicker
-                  label="Chọn ngày"
-                  value={selectedDate}
-                  onChange={(newValue) => {
-                    if (newValue && !weeklyScheduleLoading) {
-                      setSelectedDate(newValue);
+            {/* Radio buttons */}
+            <Grid size={{ xs: 12, md: 'auto' }} sx={{ mb: { xs: 1, md: 0 }, flexShrink: 0 }}>
+              <RadioGroup
+                row
+                value={scheduleType}
+                onChange={(e) => setScheduleType(e.target.value)}
+                sx={{ flexWrap: { xs: 'wrap', md: 'nowrap' } }}
+              >
+                <FormControlLabel 
+                  value="all" 
+                  control={<Radio size={isMobile ? "small" : "medium"} />} 
+                  label="Tất cả" 
+                  sx={{ 
+                    mr: { xs: 1, md: 0.5 },
+                    '& .MuiFormControlLabel-label': { 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.75rem' },
+                      ml: 0.5
                     }
                   }}
-                  disabled={weeklyScheduleLoading}
-                  slotProps={{ 
-                    textField: { 
-                      size: 'small',
-                      sx: { 
-                        '& .MuiOutlinedInput-root': { 
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          height: '40px'
-                        },
-                        '& .MuiInputLabel-root': {
-                          fontSize: '0.75rem'
-                        }
-                      }
-                    } 
+                />
+                <FormControlLabel 
+                  value="study" 
+                  control={<Radio size={isMobile ? "small" : "medium"} />} 
+                  label="Lịch học" 
+                  sx={{ 
+                    mr: { xs: 1, md: 0.5 },
+                    '& .MuiFormControlLabel-label': { 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.75rem' },
+                      ml: 0.5
+                    }
                   }}
                 />
+                <FormControlLabel 
+                  value="exam" 
+                  control={<Radio size={isMobile ? "small" : "medium"} />} 
+                  label="Lịch thi" 
+                  sx={{ 
+                    '& .MuiFormControlLabel-label': { 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.75rem' },
+                      ml: 0.5
+                    }
+                  }}
+                />
+              </RadioGroup>
+            </Grid>
+              
+            {/* Date and Navigation */}
+            <Grid 
+              size={{ xs: 12, md: 'auto' }} 
+              sx={{ 
+                mb: { xs: 1, md: 0 },
+                ml: { md: 'auto' },
+                flexShrink: 0
+              }}
+            >
+              <Grid 
+                container 
+                spacing={{ xs: 1, sm: 1 }} 
+                alignItems="center" 
+                sx={{ flexWrap: { xs: 'wrap', md: 'nowrap' } }}
+              >
+                <Grid size={{ xs: 12, sm: 'auto', md: 'auto' }}>
+                  <DatePicker
+                    label="Chọn ngày"
+                    value={selectedDate}
+                    onChange={(newValue) => {
+                      if (newValue && !weeklyScheduleLoading) {
+                        setSelectedDate(newValue);
+                      }
+                    }}
+                    disabled={weeklyScheduleLoading}
+                    slotProps={{ 
+                      textField: { 
+                        size: isMobile ? "small" : "medium",
+                        fullWidth: isMobile,
+                        sx: { 
+                          minWidth: { md: '160px' },
+                          '& .MuiOutlinedInput-root': { 
+                            borderRadius: '4px',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                            height: { xs: '36px', sm: '40px' }
+                          },
+                          '& .MuiInputLabel-root': {
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                          }
+                        }
+                      } 
+                    }}
+                  />
+                </Grid>
                 
-                 <Button
-                   variant="outlined"
-                   onClick={handleCurrentWeek}
-                   size="small"
-                   disabled={weeklyScheduleLoading || localLoading}
-                   sx={{ 
-                     borderRadius: '4px',
-                     fontSize: '0.75rem',
-                     textTransform: 'none',
-                     px: 1.2,
-                     py: 0.6,
-                     height: '40px',
-                     minWidth: '80px'
-                   }}
-                 >
-                   Hiện tại
-                 </Button>
+                <Grid size={{ xs: 6, sm: 'auto', md: 'auto' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handleCurrentWeek}
+                    size={isMobile ? "small" : "medium"}
+                    disabled={weeklyScheduleLoading || localLoading}
+                    fullWidth={isMobile}
+                    sx={{ 
+                      borderRadius: '4px',
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      textTransform: 'none',
+                      px: { xs: 1, sm: 1.2 },
+                      py: { xs: 0.5, sm: 0.6 },
+                      height: { xs: '36px', sm: '40px' },
+                      minWidth: { xs: 'auto', sm: '80px', md: '80px' }
+                    }}
+                  >
+                    Hiện tại
+                  </Button>
+                </Grid>
                  
-                 <Button
-                   variant="outlined"
-                   startIcon={<PrintIcon sx={{ fontSize: '0.75rem' }} />}
-                   onClick={handlePrint}
-                   size="small"
-                   sx={{ 
-                     borderRadius: '4px',
-                     fontSize: '0.75rem',
-                     textTransform: 'none',
-                     px: 1.2,
-                     py: 0.6,
-                     height: '40px',
-                     minWidth: '80px'
-                   }}
-                 >
-                   In lịch
-                 </Button>
+                <Grid size={{ xs: 6, sm: 'auto', md: 'auto' }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<PrintIcon sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />}
+                    onClick={handlePrint}
+                    size={isMobile ? "small" : "medium"}
+                    fullWidth={isMobile}
+                    sx={{ 
+                      borderRadius: '4px',
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      textTransform: 'none',
+                      px: { xs: 1, sm: 1.2 },
+                      py: { xs: 0.5, sm: 0.6 },
+                      height: { xs: '36px', sm: '40px' },
+                      minWidth: { xs: 'auto', sm: '80px', md: '80px' }
+                    }}
+                  >
+                    {isMobile ? 'In' : 'In lịch'}
+                  </Button>
+                </Grid>
                  
-                 <Button
-                   variant="outlined"
-                   onClick={handlePreviousWeek}
-                   size="small"
-                   startIcon={<ArrowBackIcon sx={{ fontSize: '0.75rem' }} />}
-                   disabled={weeklyScheduleLoading || localLoading}
-                   sx={{ 
-                     borderRadius: '4px',
-                     fontSize: '0.75rem',
-                     textTransform: 'none',
-                     px: 1.2,
-                     py: 0.6,
-                     height: '40px',
-                     minWidth: '80px'
-                   }}
-                 >
-                   Trở về
-                 </Button>
+                <Grid size={{ xs: 6, sm: 'auto', md: 'auto' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handlePreviousWeek}
+                    size={isMobile ? "small" : "medium"}
+                    startIcon={<ArrowBackIcon sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />}
+                    disabled={weeklyScheduleLoading || localLoading}
+                    fullWidth={isMobile}
+                    sx={{ 
+                      borderRadius: '4px',
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      textTransform: 'none',
+                      px: { xs: 1, sm: 1.2 },
+                      py: { xs: 0.5, sm: 0.6 },
+                      height: { xs: '36px', sm: '40px' },
+                      minWidth: { xs: 'auto', sm: '80px', md: '80px' }
+                    }}
+                  >
+                    {isMobile ? 'Trước' : 'Trở về'}
+                  </Button>
+                </Grid>
                  
-                 <Button
-                   variant="outlined"
-                   onClick={handleNextWeek}
-                   size="small"
-                   endIcon={<ArrowForwardIcon sx={{ fontSize: '0.75rem' }} />}
-                   disabled={weeklyScheduleLoading || localLoading}
-                   sx={{ 
-                     borderRadius: '4px',
-                     fontSize: '0.75rem',
-                     textTransform: 'none',
-                     px: 1.2,
-                     py: 0.6,
-                     height: '40px',
-                     minWidth: '80px'
-                   }}
-                 >
-                   Tiếp
-                 </Button>
+                <Grid size={{ xs: 6, sm: 'auto', md: 'auto' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handleNextWeek}
+                    size={isMobile ? "small" : "medium"}
+                    endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />}
+                    disabled={weeklyScheduleLoading || localLoading}
+                    fullWidth={isMobile}
+                    sx={{ 
+                      borderRadius: '4px',
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      textTransform: 'none',
+                      px: { xs: 1, sm: 1.2 },
+                      py: { xs: 0.5, sm: 0.6 },
+                      height: { xs: '36px', sm: '40px' },
+                      minWidth: { xs: 'auto', sm: '80px', md: '80px' }
+                    }}
+                  >
+                    Tiếp
+                  </Button>
+                </Grid>
                  
-                 <IconButton 
-                   color="primary"
-                   size="small"
-                   sx={{ 
-                     borderRadius: '4px',
-                     border: '1px solid #1976d2',
-                     height: '40px',
-                     width: '40px',
-                     '&:hover': {
-                       backgroundColor: 'rgba(25, 118, 210, 0.04)'
-                     }
-                   }}
-                 >
-                   <FullscreenIcon sx={{ fontSize: '0.75rem' }} />
-                 </IconButton>
-              </Box>
-            </Box>
-          </Box>
+                {!isMobile && (
+                  <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }}>
+                    <IconButton 
+                      color="primary"
+                      size="medium"
+                      sx={{ 
+                        borderRadius: '4px',
+                        border: '1px solid #1976d2',
+                        height: '40px',
+                        width: '40px',
+                        '&:hover': {
+                          backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                        }
+                      }}
+                    >
+                      <FullscreenIcon sx={{ fontSize: '0.75rem' }} />
+                    </IconButton>
+                  </Grid>
+                )}
+              </Grid>
+            </Grid>
+          </Grid>
         </Paper>
 
         {/* Schedule Grid */}
-        <Paper sx={{ boxShadow: 3, position: 'relative' }}>
+        <Paper sx={{ 
+          boxShadow: 3, 
+          position: 'relative', 
+          overflow: 'hidden',
+          width: '100%',
+          maxWidth: '100%'
+        }}>
           {/* Loading overlay cho weekly schedule */}
           {(weeklyScheduleLoading || localLoading) && (
             <Box
@@ -850,15 +1044,69 @@ const WeeklySchedule = memo(() => {
               }}
             >
               <Box sx={{ textAlign: 'center' }}>
-                <CircularProgress size={40} />
-                <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                <CircularProgress size={isMobile ? 30 : 40} />
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    mt: 1, 
+                    color: 'text.secondary',
+                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                  }}
+                >
                   Đang tải lịch học...
                 </Typography>
               </Box>
             </Box>
           )}
-          <TableContainer sx={{ overflow: 'auto', minWidth: '800px' }}>
-            <Table sx={{ minWidth: '800px' }}>
+          <TableContainer 
+            sx={{ 
+              width: '100%',
+              overflowX: 'auto',
+              overflowY: 'auto',
+              maxHeight: { xs: 'calc(100vh - 400px)', sm: 'calc(100vh - 450px)', md: 'none' },
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x pan-y',
+              '-webkit-overflow-scrolling': 'touch',
+              // Force scroll on mobile
+              '@media (max-width: 600px)': {
+                overflowX: 'scroll !important',
+                overflowY: 'auto !important',
+                WebkitOverflowScrolling: 'touch',
+                '-webkit-overflow-scrolling': 'touch',
+                touchAction: 'pan-x pan-y',
+                width: '100%',
+                display: 'block',
+                // Force scrollbar to be visible
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#888 #f1f1f1'
+              },
+              '&::-webkit-scrollbar': {
+                width: { xs: '6px', md: '12px' },
+                height: { xs: '6px', md: '12px' },
+                display: { xs: 'block !important', md: 'block' },
+                visibility: { xs: 'visible !important', md: 'visible' },
+                opacity: { xs: '1 !important', md: '1' }
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: '#f1f1f1',
+                display: { xs: 'block !important', md: 'block' }
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#888',
+                borderRadius: '4px',
+                display: { xs: 'block !important', md: 'block' },
+                '&:hover': {
+                  backgroundColor: '#555'
+                }
+              }
+            }}
+          >
+            <Table 
+              sx={{ 
+                minWidth: { xs: '580px', sm: '700px', md: '800px' },
+                width: { xs: '580px', sm: '700px', md: 'auto' }
+              }}
+            >
               <ScheduleTableHeader selectedDate={selectedDate} headerRef={headerRef} />
               <ScheduleTableBody 
                 scheduleGrid={scheduleGrid} 
@@ -870,68 +1118,234 @@ const WeeklySchedule = memo(() => {
         </Paper>
 
         {/* Legend */}
-        <Paper sx={{ p: 2, mt: 3, boxShadow: 1 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+        <Paper sx={{ p: { xs: 1.5, sm: 2, md: 2 }, mt: { xs: 2, sm: 2.5, md: 3 }, boxShadow: 1 }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              mb: { xs: 1.5, sm: 2 },
+              fontWeight: 'bold',
+              fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' }
+            }}
+          >
             Chú thích:
           </Typography>
           
           {/* Loại lịch học */}
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', color: 'primary.main' }}>
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              mb: { xs: 1, sm: 1.5 },
+              fontWeight: 'bold', 
+              color: 'primary.main',
+              fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+            }}
+          >
             Loại lịch học:
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#f8f9fa', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Lịch học lý thuyết</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#d4edda', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Lịch học thực hành</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#cce7ff', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Lịch học trực tuyến</Typography>
-            </Box>
-          </Box>
+          <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }} sx={{ mb: { xs: 1.5, sm: 2 } }}>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#f8f9fa', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Lịch học lý thuyết
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#d4edda', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Lịch học thực hành
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 4 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#cce7ff', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Lịch học trực tuyến
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
 
           {/* Trạng thái ngoại lệ */}
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold', color: 'error.main' }}>
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              mb: { xs: 1, sm: 1.5 },
+              fontWeight: 'bold', 
+              color: 'error.main',
+              fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
+            }}
+          >
             Trạng thái ngoại lệ:
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#e3f2fd', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Chờ phân phòng</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#f3e5f5', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Đã phân phòng</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#e8f5e8', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Đang hoạt động</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#f8d7da', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Đã hủy / Tạm ngưng</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#fff3cd', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Thi</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#ffeaa7', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Đổi phòng</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#d1ecf1', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Đổi lịch</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
-              <Box sx={{ width: 20, height: 20, backgroundColor: '#a8e6cf', border: '1px solid #ddd' }} />
-              <Typography variant="body2">Đổi giáo viên</Typography>
-            </Box>
-          </Box>
+          <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }}>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#e3f2fd', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Chờ phân phòng
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#f3e5f5', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đã phân phòng
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#e8f5e8', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đang hoạt động
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#f8d7da', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đã hủy / Tạm ngưng
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#fff3cd', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Thi
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#ffeaa7', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đổi phòng
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#d1ecf1', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đổi lịch
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ 
+                  width: { xs: 16, sm: 18, md: 20 }, 
+                  height: { xs: 16, sm: 18, md: 20 }, 
+                  backgroundColor: '#a8e6cf', 
+                  border: '1px solid #ddd',
+                  flexShrink: 0
+                }} />
+                <Typography 
+                  variant="body2"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đổi giáo viên
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
         </Paper>
       </Box>
     </LocalizationProvider>

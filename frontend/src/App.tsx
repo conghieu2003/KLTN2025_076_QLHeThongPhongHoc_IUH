@@ -73,7 +73,78 @@ const App = () => {
           pauseOnFocusLoss
           draggable
           pauseOnHover
+          className="custom-toast-container"
         />
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            /* Toast responsive styling for mobile */
+            @media (max-width: 600px) {
+              .Toastify__toast-container {
+                width: auto !important;
+                max-width: 280px !important;
+                min-width: 200px !important;
+                padding: 0 !important;
+                left: auto !important;
+                right: 12px !important;
+                top: 12px !important;
+              }
+              
+              .Toastify__toast {
+                font-size: 12px !important;
+                padding: 8px 10px !important;
+                min-height: 44px !important;
+                max-width: 280px !important;
+                width: auto !important;
+                margin-bottom: 8px !important;
+                border-radius: 8px !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+              }
+              
+              .Toastify__toast-body {
+                padding: 0 !important;
+                margin: 0 !important;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+              }
+              
+              .Toastify__close-button {
+                width: 18px !important;
+                height: 18px !important;
+                opacity: 0.6 !important;
+              }
+              
+              .Toastify__progress-bar {
+                height: 2px !important;
+              }
+              
+              .Toastify__toast-icon {
+                width: 18px !important;
+                height: 18px !important;
+                margin-right: 8px !important;
+              }
+            }
+            
+            @media (min-width: 601px) and (max-width: 960px) {
+              .Toastify__toast {
+                font-size: 14px !important;
+                padding: 12px 14px !important;
+                min-height: 52px !important;
+                border-radius: 10px !important;
+              }
+              
+              .Toastify__toast-body {
+                font-size: 14px !important;
+              }
+              
+              .Toastify__toast-icon {
+                width: 20px !important;
+                height: 20px !important;
+              }
+            }
+          `
+        }} />
       </BrowserRouter>
     </Provider>
   );

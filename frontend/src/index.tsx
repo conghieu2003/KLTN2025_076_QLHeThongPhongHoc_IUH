@@ -13,24 +13,67 @@ const globalStyles = `
   html, body {
     margin: 0;
     padding: 0;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-    min-width: 1200px;
+    width: 100%;
+    max-width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  
+  @media (min-width: 960px) {
+    html, body {
+      min-width: 1200px;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
   }
   
   #root {
-    width: 100vw;
-    height: 100vh;
-    min-width: 1200px;
-    overflow: hidden;
-    position: fixed;
-    top: 0;
-    left: 0;
+    width: 100%;
+    max-width: 100vw;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    position: relative;
   }
   
-  html, body {
-    overflow-x: hidden;
+  @media (min-width: 960px) {
+    #root {
+      min-width: 1200px;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+  }
+  
+  /* Prevent horizontal scroll on mobile - but allow vertical */
+  @media (max-width: 959px) {
+    html, body {
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      width: 100% !important;
+      max-width: 100vw !important;
+      position: relative !important;
+    }
+    
+    body {
+      position: relative !important;
+      width: 100%;
+      min-height: 100vh;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+    }
+    
+    #root {
+      width: 100% !important;
+      max-width: 100vw !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      position: relative !important;
+    }
+    
+    * {
+      max-width: 100vw;
+    }
   }
   
 `;

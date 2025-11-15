@@ -6,13 +6,15 @@ import {
   DialogActions,
   Button,
   TextField,
-  Box,
   Typography,
   Alert,
   CircularProgress,
   Divider,
   Chip,
-  Paper
+  Paper,
+  Grid,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Email as EmailIcon,
@@ -44,6 +46,10 @@ const EmailDialog: React.FC<EmailDialogProps> = ({
   onSendEmail,
   loading = false
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
@@ -136,10 +142,14 @@ IUH - Trường Đại học Công nghiệp TP.HCM`
     <Dialog 
       open={open} 
       onClose={handleClose}
-      maxWidth="md"
+      maxWidth={isMobile ? 'xs' : isTablet ? 'sm' : 'md'}
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
-        sx: { minHeight: '600px' }
+        sx: { 
+          minHeight: { xs: 'auto', sm: '500px', md: '600px' },
+          m: { xs: 0, sm: 2 }
+        }
       }}
     >
       <DialogTitle sx={{ 
@@ -147,106 +157,195 @@ IUH - Trường Đại học Công nghiệp TP.HCM`
         color: 'white',
         display: 'flex',
         alignItems: 'center',
-        gap: 2
+        gap: { xs: 1, sm: 2 },
+        fontSize: { xs: '1rem', sm: '1.25rem' },
+        py: { xs: 1.5, sm: 2 }
       }}>
-        <EmailIcon />
+        <EmailIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
         Gửi email thông báo
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
         {user && (
-          <Box sx={{ mb: 3 }}>
+          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
             {/* Thông tin người nhận */}
-            <Paper sx={{ p: 2, mb: 2, bgcolor: '#f8f9fa' }}>
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonIcon color="primary" />
+            <Grid size={{ xs: 12 }}>
+              <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: { xs: 1.5, sm: 2 }, bgcolor: '#f8f9fa' }}>
+              <Typography 
+                variant={isMobile ? 'subtitle1' : 'h6'} 
+                sx={{ 
+                  mb: { xs: 1.5, sm: 2 }, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: { xs: 0.75, sm: 1 },
+                  fontSize: { xs: '0.9rem', sm: '1.25rem' }
+                }}
+              >
+                <PersonIcon color="primary" sx={{ fontSize: { xs: 18, sm: 24 } }} />
                 Thông tin người nhận
               </Typography>
               
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">Họ và tên:</Typography>
-                  <Typography variant="body1" fontWeight="bold">{user.fullName}</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">Email:</Typography>
-                  <Typography variant="body1" fontWeight="bold" color="primary">
+              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography 
+                    variant="body2" 
+                    color="textSecondary"
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, mb: 0.5 }}
+                  >
+                    Họ và tên:
+                  </Typography>
+                  <Typography 
+                    variant="body1" 
+                    fontWeight="bold"
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      wordBreak: 'break-word'
+                    }}
+                  >
+                    {user.fullName}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography 
+                    variant="body2" 
+                    color="textSecondary"
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, mb: 0.5 }}
+                  >
+                    Email:
+                  </Typography>
+                  <Typography 
+                    variant="body1" 
+                    fontWeight="bold" 
+                    color="primary"
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      wordBreak: 'break-word'
+                    }}
+                  >
                     {user.email}
                   </Typography>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">Vai trò:</Typography>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography 
+                    variant="body2" 
+                    color="textSecondary"
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, mb: 0.5 }}
+                  >
+                    Vai trò:
+                  </Typography>
                   <Chip 
                     label={getRoleText(user.role)} 
                     color={getRoleColor(user.role) as any}
-                    size="small"
+                    size={isMobile ? 'small' : 'medium'}
                     icon={user.role === 'teacher' ? <SchoolIcon /> : <PersonIcon />}
+                    sx={{ 
+                      fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                      height: { xs: 24, sm: 32 }
+                    }}
                   />
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="textSecondary">Mã số:</Typography>
-                  <Typography variant="body1" fontWeight="bold">
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography 
+                    variant="body2" 
+                    color="textSecondary"
+                    sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, mb: 0.5 }}
+                  >
+                    Mã số:
+                  </Typography>
+                  <Typography 
+                    variant="body1" 
+                    fontWeight="bold"
+                    sx={{ 
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      wordBreak: 'break-word'
+                    }}
+                  >
                     {user.role === 'teacher' ? user.teacherCode : 
                      user.role === 'student' ? user.studentCode : 'ADMIN'}
                   </Typography>
-                </Box>
-              </Box>
+                </Grid>
+              </Grid>
             </Paper>
+            </Grid>
 
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
+              <Grid size={{ xs: 12 }}>
+                <Alert severity="error" sx={{ mb: { xs: 1.5, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                  {error}
+                </Alert>
+              </Grid>
             )}
 
-            <Divider sx={{ my: 2 }} />
+            <Grid size={{ xs: 12 }}>
+              <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
+            </Grid>
 
-             {/* Form gửi email */}
-             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-               <TextField
-                 fullWidth
-                 label="Tiêu đề email"
-                 value={subject}
-                 onChange={(e) => setSubject(e.target.value)}
-                 variant="outlined"
-                 required
-               />
+            {/* Form gửi email */}
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Tiêu đề email"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                variant="outlined"
+                required
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+            </Grid>
 
-               <TextField
-                 fullWidth
-                 label="Nội dung email"
-                 value={content}
-                 onChange={(e) => setContent(e.target.value)}
-                 multiline
-                 rows={8}
-                 variant="outlined"
-                 required
-                 sx={{
-                   '& .MuiInputBase-root': {
-                     fontFamily: 'monospace',
-                     fontSize: '0.9rem'
-                   }
-                 }}
-               />
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                fullWidth
+                label="Nội dung email"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                multiline
+                rows={isMobile ? 6 : isTablet ? 7 : 8}
+                variant="outlined"
+                required
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontFamily: 'monospace',
+                    fontSize: { xs: '0.8rem', sm: '0.9rem' }
+                  }
+                }}
+              />
+            </Grid>
 
-               <Alert severity="info">
-                 <Typography variant="body2">
-                   <strong>Lưu ý:</strong> Email này sẽ tự động bao gồm thông tin đăng nhập:
-                   <br />• Mã {user.role === 'teacher' ? 'giảng viên' : 'sinh viên'}
-                   <br />• Mật khẩu đăng nhập
-                   <br />• Hướng dẫn thay đổi mật khẩu
-                 </Typography>
-               </Alert>
-             </Box>
-          </Box>
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="info" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                <Typography variant="body2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                  <strong>Lưu ý:</strong> Email này sẽ tự động bao gồm thông tin đăng nhập:
+                  <br />• Mã {user.role === 'teacher' ? 'giảng viên' : 'sinh viên'}
+                  <br />• Mật khẩu đăng nhập
+                  <br />• Hướng dẫn thay đổi mật khẩu
+                </Typography>
+              </Alert>
+            </Grid>
+          </Grid>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, gap: 1 }}>
+      <DialogActions sx={{ 
+        p: { xs: 2, sm: 2.5, md: 3 }, 
+        gap: { xs: 1, sm: 1.5 },
+        flexDirection: { xs: 'column-reverse', sm: 'row' }
+      }}>
         <Button 
           onClick={handleClose}
           disabled={loading}
           variant="outlined"
+          fullWidth={isMobile}
+          size={isMobile ? 'medium' : 'large'}
+          sx={{
+            fontSize: { xs: '0.875rem', sm: '1rem' }
+          }}
         >
           Hủy
         </Button>
@@ -254,9 +353,12 @@ IUH - Trường Đại học Công nghiệp TP.HCM`
           onClick={handleSend}
           disabled={loading || !subject.trim() || !content.trim()}
           variant="contained"
-          startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
+          fullWidth={isMobile}
+          size={isMobile ? 'medium' : 'large'}
+          startIcon={loading ? <CircularProgress size={isMobile ? 16 : 20} /> : <SendIcon />}
           sx={{
             background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+            fontSize: { xs: '0.875rem', sm: '1rem' },
             '&:hover': {
               background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
               opacity: 0.9
