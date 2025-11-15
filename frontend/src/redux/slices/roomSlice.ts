@@ -39,9 +39,8 @@ export const fetchRoomsThunk = createAsyncThunk(
   'room/fetchRooms',
   async (_, { rejectWithValue }) => {
     try {
-      // Add cache-busting parameter to prevent 304 responses
-      const timestamp = new Date().getTime();
-      const response = await fetch(`http://localhost:5000/api/rooms`, {
+      const API_URL = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${API_URL}/rooms`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',
@@ -77,7 +76,8 @@ export const createRoomRequestThunk = createAsyncThunk(
     requestedTime?: string;
   }, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/rooms/requests', {
+      const API_URL = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${API_URL}/rooms/requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
