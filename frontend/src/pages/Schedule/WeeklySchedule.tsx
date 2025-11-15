@@ -330,7 +330,7 @@ const ScheduleTableBody = memo(({
                     >
                       {schedule.className}
                     </Typography>
-                    <Typography 
+                    {/* <Typography 
                       variant="caption" 
                       sx={{ 
                         display: 'block', 
@@ -339,7 +339,7 @@ const ScheduleTableBody = memo(({
                       }}
                     >
                       {schedule.classCode} - {schedule.subjectCode}
-                    </Typography>
+                    </Typography> */}
                     <Typography 
                       variant="caption" 
                       sx={{ 
@@ -1061,9 +1061,10 @@ const WeeklySchedule = memo(() => {
           <TableContainer 
             sx={{ 
               width: '100%',
-              overflowX: 'auto',
-              overflowY: 'auto',
-              maxHeight: { xs: 'calc(100vh - 400px)', sm: 'calc(100vh - 450px)', md: 'none' },
+              maxWidth: '100%',
+              overflowX: { xs: 'auto', sm: 'auto', md: 'auto' },
+              overflowY: { xs: 'auto', sm: 'auto', md: 'auto' },
+              maxHeight: { xs: 'calc(100vh - 400px)', sm: 'calc(100vh - 450px)', md: 'calc(100vh - 300px)' },
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x pan-y',
               '-webkit-overflow-scrolling': 'touch',
@@ -1079,6 +1080,14 @@ const WeeklySchedule = memo(() => {
                 // Force scrollbar to be visible
                 scrollbarWidth: 'thin',
                 scrollbarColor: '#888 #f1f1f1'
+              },
+              // Desktop specific styles
+              '@media (min-width: 960px)': {
+                overflowX: 'auto',
+                overflowY: 'auto',
+                maxHeight: 'calc(100vh - 300px)',
+                width: '100%',
+                display: 'block'
               },
               '&::-webkit-scrollbar': {
                 width: { xs: '6px', md: '12px' },
@@ -1104,7 +1113,8 @@ const WeeklySchedule = memo(() => {
             <Table 
               sx={{ 
                 minWidth: { xs: '580px', sm: '700px', md: '800px' },
-                width: { xs: '580px', sm: '700px', md: 'auto' }
+                width: { xs: '580px', sm: '700px', md: '100%' },
+                tableLayout: { xs: 'auto', md: 'auto' }
               }}
             >
               <ScheduleTableHeader selectedDate={selectedDate} headerRef={headerRef} />
