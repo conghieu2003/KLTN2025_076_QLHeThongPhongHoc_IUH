@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Account {
-  id        Int       @id(map: "PK__Account__3213E83F934E5C29") @default(autoincrement())
-  username  String    @unique(map: "UQ__Account__F3DBC572A5CA57E7") @db.NVarChar(255)
+  id        Int       @id(map: "PK__Account__3213E83FC1CE281C") @default(autoincrement())
+  username  String    @unique(map: "UQ__Account__F3DBC572709F264C") @db.NVarChar(255)
   password  String    @db.NVarChar(255)
   role      String    @db.NVarChar(50)
   isActive  Boolean?  @default(true, map: "DF__Account__isActiv__4BAC3F29")
@@ -19,10 +19,10 @@ model Account {
 }
 
 model User {
-  id                Int               @id(map: "PK__User__3213E83FBA27C71C") @default(autoincrement())
-  accountId         Int               @unique(map: "UQ__User__F267251F3B24F58A")
+  id                Int               @id(map: "PK__User__3213E83F61537D07") @default(autoincrement())
+  accountId         Int               @unique(map: "UQ__User__F267251F4DD5163C")
   fullName          String            @db.NVarChar(255)
-  email             String            @unique(map: "UQ__User__AB6E61648C7908E4") @db.NVarChar(255)
+  email             String            @unique(map: "UQ__User__AB6E6164B79370D0") @db.NVarChar(255)
   phone             String?           @db.NVarChar(20)
   address           String?           @db.NVarChar(255)
   avatar            String?           @db.NVarChar(500)
@@ -42,8 +42,8 @@ model User {
 }
 
 model PersonalProfile {
-  id                Int       @id(map: "PK__Personal__3213E83F6C8EABD6") @default(autoincrement())
-  userId            Int       @unique(map: "UQ__Personal__CB9A1CFE034F51A3")
+  id                Int       @id(map: "PK__Personal__3213E83F4B5EFD16") @default(autoincrement())
+  userId            Int       @unique(map: "UQ__Personal__CB9A1CFE3CDEDF54")
   idCardNumber      String?   @db.NVarChar(50)
   idCardIssueDate   DateTime? @db.Date
   idCardIssuePlace  String?   @db.NVarChar(255)
@@ -59,8 +59,8 @@ model PersonalProfile {
 }
 
 model FamilyInfo {
-  id                Int       @id(map: "PK__FamilyIn__3213E83FE2779F7D") @default(autoincrement())
-  userId            Int       @unique(map: "UQ__FamilyIn__CB9A1CFEEA69350D")
+  id                Int       @id(map: "PK__FamilyIn__3213E83F046331C4") @default(autoincrement())
+  userId            Int       @unique(map: "UQ__FamilyIn__CB9A1CFE680E2C54")
   fatherFullName    String?   @db.NVarChar(255)
   fatherYearOfBirth Int?
   fatherPhone       String?   @db.NVarChar(50)
@@ -73,8 +73,8 @@ model FamilyInfo {
 }
 
 model AcademicProfile {
-  id             Int       @id(map: "PK__Academic__3213E83F698F6F86") @default(autoincrement())
-  userId         Int       @unique(map: "UQ__Academic__CB9A1CFE81891917")
+  id             Int       @id(map: "PK__Academic__3213E83F9A2BA9C0") @default(autoincrement())
+  userId         Int       @unique(map: "UQ__Academic__CB9A1CFE4157B0C0")
   role           String    @db.NVarChar(20)
   campus         String?   @db.NVarChar(255)
   trainingType   String?   @db.NVarChar(255)
@@ -89,9 +89,9 @@ model AcademicProfile {
 }
 
 model Department {
-  id         Int         @id(map: "PK__Departme__3213E83FEB9F60BD") @default(autoincrement())
-  code       String      @unique(map: "UQ__Departme__357D4CF901CFAE89") @db.NVarChar(50)
-  name       String      @unique(map: "UQ__Departme__72E12F1B41FE965E") @db.NVarChar(255)
+  id         Int         @id(map: "PK__Departme__3213E83F46F9BA7C") @default(autoincrement())
+  code       String      @unique(map: "UQ__Departme__357D4CF9079E3D2B") @db.NVarChar(50)
+  name       String      @unique(map: "UQ__Departme__72E12F1BEFF86DD0") @db.NVarChar(255)
   createdAt  DateTime?   @default(now(), map: "DF__Departmen__creat__412EB0B6") @db.DateTime
   updatedAt  DateTime?   @default(now(), map: "DF__Departmen__updat__4222D4EF") @updatedAt @db.DateTime
   classes    Class[]     @relation("ClassDepartment")
@@ -102,8 +102,8 @@ model Department {
 }
 
 model Major {
-  id           Int        @id(map: "PK__Major__3213E83F03E2C60D") @default(autoincrement())
-  code         String     @unique(map: "UQ__Major__357D4CF92E4AC44C") @db.NVarChar(50)
+  id           Int        @id(map: "PK__Major__3213E83FB2CD3E34") @default(autoincrement())
+  code         String     @unique(map: "UQ__Major__357D4CF977108FBB") @db.NVarChar(50)
   name         String     @db.NVarChar(255)
   departmentId Int
   createdAt    DateTime?  @default(now(), map: "DF__Major__createdAt__45F365D3") @db.DateTime
@@ -115,9 +115,9 @@ model Major {
 }
 
 model Teacher {
-  id                         Int               @id(map: "PK__Teacher__3213E83F4041A584") @default(autoincrement())
-  userId                     Int               @unique(map: "UQ__Teacher__CB9A1CFE376FDC39")
-  teacherCode                String            @unique(map: "UQ__Teacher__3644755C5482A386") @db.NVarChar(50)
+  id                         Int               @id(map: "PK__Teacher__3213E83F5D0FCE28") @default(autoincrement())
+  userId                     Int               @unique(map: "UQ__Teacher__CB9A1CFE77DFF3C1")
+  teacherCode                String            @unique(map: "UQ__Teacher__3644755C2A20B09B") @db.NVarChar(50)
   departmentId               Int?
   majorId                    Int?
   createdAt                  DateTime?         @default(now(), map: "DF__Teacher__created__6A30C649") @db.DateTime
@@ -131,9 +131,9 @@ model Teacher {
 }
 
 model Student {
-  id            Int            @id(map: "PK__Student__3213E83FA733915F") @default(autoincrement())
-  userId        Int            @unique(map: "UQ__Student__CB9A1CFEEC04A519")
-  studentCode   String         @unique(map: "UQ__Student__48F7EF3604D444AE") @db.NVarChar(50)
+  id            Int            @id(map: "PK__Student__3213E83F5ED2C9BB") @default(autoincrement())
+  userId        Int            @unique(map: "UQ__Student__CB9A1CFE99E5CA7B")
+  studentCode   String         @unique(map: "UQ__Student__48F7EF3663E8B4AD") @db.NVarChar(50)
   departmentId  Int?
   majorId       Int?
   createdAt     DateTime?      @default(now(), map: "DF__Student__created__72C60C4A") @db.DateTime
@@ -145,8 +145,8 @@ model Student {
 }
 
 model Class {
-  id              Int             @id(map: "PK__Class__3213E83F69DBEB73") @default(autoincrement())
-  code            String          @unique(map: "UQ__Class__357D4CF935D65742") @db.NVarChar(50)
+  id              Int             @id(map: "PK__Class__3213E83F21D8130C") @default(autoincrement())
+  code            String          @unique(map: "UQ__Class__357D4CF9E7A4B75E") @db.NVarChar(50)
   className       String          @db.NVarChar(255)
   subjectName     String          @db.NVarChar(255)
   subjectCode     String          @db.NVarChar(50)
@@ -175,7 +175,7 @@ model Class {
 }
 
 model ClassStudent {
-  id               Int            @id(map: "PK__ClassStu__3213E83FE5BB993E") @default(autoincrement())
+  id               Int            @id(map: "PK__ClassStu__3213E83FB8B54719") @default(autoincrement())
   classId          Int
   studentId        Int
   groupNumber      Int?
@@ -185,13 +185,13 @@ model ClassStudent {
   class            Class          @relation(fields: [classId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK__ClassStud__class__04E4BC85")
   student          Student        @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK__ClassStud__stude__05D8E0BE")
 
-  @@unique([classId, studentId], map: "UQ__ClassStu__A1A6291CA795EBDA")
+  @@unique([classId, studentId], map: "UQ__ClassStu__A1A6291C37624451")
   @@map("ClassStudent")
 }
 
 model ClassRoom {
-  id                        Int               @id(map: "PK__ClassRoo__3213E83F648D5B59") @default(autoincrement())
-  code                      String            @unique(map: "UQ__ClassRoo__357D4CF9036EE033") @db.NVarChar(50)
+  id                        Int               @id(map: "PK__ClassRoo__3213E83F2C1910FE") @default(autoincrement())
+  code                      String            @unique(map: "UQ__ClassRoo__357D4CF96E308C8E") @db.NVarChar(50)
   name                      String            @db.NVarChar(255)
   capacity                  Int
   building                  String            @db.NVarChar(255)
@@ -213,7 +213,7 @@ model ClassRoom {
 }
 
 model TimeSlot {
-  id                        Int               @id(map: "PK__TimeSlot__3213E83F3C2C1BF5") @default(autoincrement())
+  id                        Int               @id(map: "PK__TimeSlot__3213E83F5C64133E") @default(autoincrement())
   slotName                  String            @db.NVarChar(50)
   startTime                 DateTime          @db.Time
   endTime                   DateTime          @db.Time
@@ -225,7 +225,7 @@ model TimeSlot {
 }
 
 model ClassSchedule {
-  id               Int               @id(map: "PK__ClassSch__3213E83FCE00BF2D") @default(autoincrement())
+  id               Int               @id(map: "PK__ClassSch__3213E83F1CC7E31A") @default(autoincrement())
   classId          Int
   teacherId        Int
   classRoomId      Int?
@@ -253,7 +253,7 @@ model ClassSchedule {
 }
 
 model ScheduleRequest {
-  id                  Int            @id(map: "PK__Schedule__3213E83F3A7D1EEF") @default(autoincrement())
+  id                  Int            @id(map: "PK__Schedule__3213E83F728321E2") @default(autoincrement())
   requestTypeId       Int
   classScheduleId     Int?
   classRoomId         Int?
@@ -295,13 +295,13 @@ model ScheduleRequest {
 }
 
 model AcademicStatus {
-  id           Int            @id(map: "PK__Academic__3213E83FA8EEB5F8") @default(autoincrement())
+  id           Int            @id(map: "PK__Academic__3213E83FEEBF5784") @default(autoincrement())
   name         String         @db.NVarChar(255)
   ClassStudent ClassStudent[]
 }
 
 model ClassRoomType {
-  id            Int             @id(map: "PK__ClassRoo__3213E83F05406F11") @default(autoincrement())
+  id            Int             @id(map: "PK__ClassRoo__3213E83F4255F9E8") @default(autoincrement())
   name          String          @db.NVarChar(255)
   Class         Class[]
   ClassRoom     ClassRoom[]
@@ -309,13 +309,13 @@ model ClassRoomType {
 }
 
 model RequestStatus {
-  id              Int               @id(map: "PK__RequestS__3213E83F6BB00A3D") @default(autoincrement())
+  id              Int               @id(map: "PK__RequestS__3213E83F157F4080") @default(autoincrement())
   name            String            @db.NVarChar(255)
   ScheduleRequest ScheduleRequest[]
 }
 
 model RequestType {
-  id              Int               @id(map: "PK__RequestT__3213E83F5C24B69C") @default(autoincrement())
+  id              Int               @id(map: "PK__RequestT__3213E83F2E06A13D") @default(autoincrement())
   name            String            @db.NVarChar(255)
   ClassSchedule   ClassSchedule[]
   ScheduleRequest ScheduleRequest[]
