@@ -80,6 +80,37 @@ const Login: React.FC = () => {
       }
     }
   }, [isLoading, loadingRive]);
+  
+  useEffect(() => {
+    const styleInputs = () => {
+      const inputs = document.querySelectorAll('.login-textbox input');
+      inputs.forEach((input: any) => {
+        if (input) {
+          input.style.color = '#ffffff';
+          input.style.webkitTextFillColor = '#ffffff';
+        }
+      });
+    };
+  
+    styleInputs();
+    const timer1 = setTimeout(styleInputs, 100);
+    const timer2 = setTimeout(styleInputs, 500);
+    
+    const observer = new MutationObserver(() => {
+      styleInputs();
+    });
+    
+    const containers = document.querySelectorAll('.login-textbox');
+    containers.forEach(container => {
+      observer.observe(container, { childList: true, subtree: true });
+    });
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      observer.disconnect();
+    };
+  }, []);
 
   const handleLogin = async (e?: React.FormEvent): Promise<void> => {
     if (e) e.preventDefault();
@@ -315,35 +346,34 @@ const Login: React.FC = () => {
         {/* Login Form */}
         <form onSubmit={handleLogin} style={{ width: '100%' }}>
           <div style={{ marginBottom: '20px' }}>
-            <TextBox
-              ref={usernameRef}
-              stylingMode="filled"
-              placeholder={selectedRole === 'student' ? 'Mã số sinh viên' : selectedRole === 'teacher' ? 'Mã giảng viên' : 'Tên đăng nhập'}
-              value={loginData.username}
-              onValueChanged={(e: any) => {
-                setLoginData({...loginData, username: e.value});
-                if (loginErrors.username) {
-                  setLoginErrors({...loginErrors, username: undefined});
-                }
-              }}
-              onKeyDown={(e: any) => {
-                if (e.event.key === 'Enter') {
-                  e.event.preventDefault();
-                  // Focus vào trường password nếu đang ở username
-                  if (passwordRef.current && passwordRef.current.instance) {
-                    passwordRef.current.instance.focus();
+            <div style={{ position: 'relative' }}>
+              <TextBox
+                ref={usernameRef}
+                stylingMode="filled"
+                placeholder={selectedRole === 'student' ? 'Mã số sinh viên' : selectedRole === 'teacher' ? 'Mã giảng viên' : 'Tên đăng nhập'}
+                value={loginData.username}
+                onValueChanged={(e: any) => {
+                  setLoginData({...loginData, username: e.value});
+                  if (loginErrors.username) {
+                    setLoginErrors({...loginErrors, username: undefined});
                   }
-                }
-              }}
-              width="100%"
-              isValid={!loginErrors.username}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '12px',
-                color: '#fff'
-              }}
-            />
+                }}
+                onKeyDown={(e: any) => {
+                  if (e.event.key === 'Enter') {
+                    e.event.preventDefault();
+                    if (passwordRef.current && passwordRef.current.instance) {
+                      passwordRef.current.instance.focus();
+                    }
+                  }
+                }}
+                width="100%"
+                isValid={!loginErrors.username}
+                className="login-textbox"
+                inputAttr={{
+                  style: 'color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;'
+                }}
+              />
+            </div>
             {loginErrors.username && (
               <div style={{ 
                 color: '#ff6b6b', 
@@ -357,33 +387,33 @@ const Login: React.FC = () => {
           </div>
           
           <div style={{ marginBottom: '24px' }}>
-            <TextBox
-              ref={passwordRef}
-              stylingMode="filled"
-              mode="password"
-              placeholder="Mật khẩu"
-              value={loginData.password}
-              onValueChanged={(e: any) => {
-                setLoginData({...loginData, password: e.value});
-                if (loginErrors.password) {
-                  setLoginErrors({...loginErrors, password: undefined});
-                }
-              }}
-              onKeyDown={(e: any) => {
-                if (e.event.key === 'Enter') {
-                  e.event.preventDefault();
-                  handleLogin();
-                }
-              }}
-              width="100%"
-              isValid={!loginErrors.password}
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '12px',
-                color: '#fff'
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <TextBox
+                ref={passwordRef}
+                stylingMode="filled"
+                mode="password"
+                placeholder="Mật khẩu"
+                value={loginData.password}
+                onValueChanged={(e: any) => {
+                  setLoginData({...loginData, password: e.value});
+                  if (loginErrors.password) {
+                    setLoginErrors({...loginErrors, password: undefined});
+                  }
+                }}
+                onKeyDown={(e: any) => {
+                  if (e.event.key === 'Enter') {
+                    e.event.preventDefault();
+                    handleLogin();
+                  }
+                }}
+                width="100%"
+                isValid={!loginErrors.password}
+                className="login-textbox"
+                inputAttr={{
+                  style: 'color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;'
+                }}
+              />
+            </div>
             {loginErrors.password && (
               <div style={{ 
                 color: '#ff6b6b', 
@@ -461,7 +491,7 @@ const Login: React.FC = () => {
         )}
       </div>
 
-      {/* CSS Animations */}
+      {/* CSS Animations and Styles */}
       <style dangerouslySetInnerHTML={{
         __html: `
           @keyframes float {
@@ -473,6 +503,75 @@ const Login: React.FC = () => {
               transform: translateY(-20px) rotate(180deg);
               opacity: 1;
             }
+          }
+          
+          /* DevExtreme TextBox styling for dark theme */
+          .login-textbox .dx-textbox-input,
+          .login-textbox input,
+          .login-textbox input[type="text"],
+          .login-textbox input[type="password"] {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 12px !important;
+            color: #ffffff !important;
+            padding: 12px 16px !important;
+            -webkit-text-fill-color: #ffffff !important;
+          }
+          
+          .login-textbox .dx-textbox-input::placeholder,
+          .login-textbox input::placeholder,
+          .login-textbox input[type="text"]::placeholder,
+          .login-textbox input[type="password"]::placeholder {
+            color: rgba(255, 255, 255, 0.5) !important;
+            -webkit-text-fill-color: rgba(255, 255, 255, 0.5) !important;
+            opacity: 1 !important;
+          }
+          
+          .login-textbox .dx-textbox-input:focus,
+          .login-textbox input:focus,
+          .login-textbox input[type="text"]:focus,
+          .login-textbox input[type="password"]:focus {
+            border-color: rgba(255, 255, 255, 0.4) !important;
+            background-color: rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            outline: none !important;
+          }
+          
+          .login-textbox.dx-state-invalid .dx-textbox-input,
+          .login-textbox.dx-state-invalid input {
+            border-color: #ff6b6b !important;
+          }
+          
+          .login-textbox .dx-textbox-container {
+            background-color: transparent !important;
+          }
+          
+          /* Đảm bảo màu chữ khi đang nhập */
+          .login-textbox input:-webkit-autofill,
+          .login-textbox input:-webkit-autofill:hover,
+          .login-textbox input:-webkit-autofill:focus,
+          .login-textbox input:-webkit-autofill:active {
+            -webkit-text-fill-color: #ffffff !important;
+            -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.1) inset !important;
+            transition: background-color 5000s ease-in-out 0s;
+          }
+          
+          /* Force white text color for all input elements inside login-textbox */
+          .login-textbox * {
+            color: #ffffff !important;
+          }
+          
+          .login-textbox input,
+          .login-textbox .dx-texteditor-input {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+          }
+          
+          /* Override any DevExtreme default styles */
+          .login-textbox .dx-texteditor-input-container input {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
           }
         `
       }} />
