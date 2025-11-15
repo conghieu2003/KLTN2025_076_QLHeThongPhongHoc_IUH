@@ -15,14 +15,17 @@ import {
   Container,
   Chip,
   Paper,
-  Stack
+  Stack,
+  Grid,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
-  DataGrid,
   GridColDef,
   GridToolbar,
   useGridApiRef
 } from '@mui/x-data-grid';
+import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
 import {
   Refresh as RefreshIcon,
   Visibility as ViewIcon,
@@ -206,6 +209,9 @@ interface RoomRequest {
 
 const RoomRequestList = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const [requests, setRequests] = useState<RoomRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -336,35 +342,70 @@ const RoomRequestList = () => {
     {
       field: 'id',
       headerName: 'ID',
-      flex: 0.05, // 5% width
-      minWidth: 40,
-      filterable: true,
-      sortable: true
+      ...(isMobile || isTablet ? { 
+        flex: 0.3, 
+        minWidth: 40
+      } : { 
+        flex: 0.05,
+        minWidth: 40
+      }),
+      filterable: !isMobile,
+      sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => (
+        <Typography 
+          variant="body2" 
+          sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+        >
+          {params.value}
+        </Typography>
+      )
     },
     {
       field: 'RequestType',
       headerName: 'Loại yêu cầu',
-      flex: 0.12, // 12% width
-      minWidth: 100,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 0.8, 
+        minWidth: 100
+      } : { 
+        flex: 0.12,
+        minWidth: 100
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Chip
           label={params.value?.name || 'N/A'}
           color={getRequestTypeColor(params.value?.name) as any}
           size="small"
           variant="outlined"
-          sx={{ fontSize: '0.7rem', height: 24 }}
+          sx={{ 
+            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, 
+            height: { xs: 20, sm: 22, md: 24 }
+          }}
         />
       )
     },
     {
       field: 'RequestStatus',
       headerName: 'Trạng thái',
-      flex: 0.12, // 12% width
-      minWidth: 110,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 110
+      } : { 
+        flex: 0.12,
+        minWidth: 110
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Chip
           icon={getStatusIcon(params.value?.name)}
@@ -372,27 +413,45 @@ const RoomRequestList = () => {
           color={getStatusColor(params.value?.name) as any}
           size="small"
           variant="filled"
-          sx={{ fontSize: '0.7rem', height: 24 }}
+          sx={{ 
+            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, 
+            height: { xs: 20, sm: 22, md: 24 }
+          }}
         />
       )
     },
     {
       field: 'requester',
       headerName: 'Giảng viên yêu cầu',
-      flex: 0.15, // 15% width
-      minWidth: 140,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1.5, 
+        minWidth: 140
+      } : { 
+        flex: 0.15,
+        minWidth: 140
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, width: '100%' }}>
-          <PersonIcon color="primary" sx={{ fontSize: 16, marginTop: '2px', flexShrink: 0 }} />
-          <Typography variant="body2" sx={{
-            fontWeight: 'medium',
-            fontSize: '0.75rem',
-            lineHeight: 1.4,
-            wordBreak: 'break-word',
-            whiteSpace: 'normal'
-          }}>
+          <PersonIcon color="primary" sx={{ 
+            fontSize: { xs: 12, sm: 14, md: 16 }, 
+            marginTop: '2px', 
+            flexShrink: 0 
+          }} />
+          <Typography 
+            variant="body2" 
+            sx={{
+              fontWeight: 'medium',
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+              lineHeight: 1.4,
+              wordBreak: 'break-word',
+              whiteSpace: 'normal'
+            }}
+          >
             {params.value?.fullName || 'N/A'}
           </Typography>
         </Box>
@@ -401,20 +460,35 @@ const RoomRequestList = () => {
     {
       field: 'classSchedule',
       headerName: 'Lớp học',
-      flex: 0.15, // 15% width
-      minWidth: 130,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1.5, 
+        minWidth: 130
+      } : { 
+        flex: 0.15,
+        minWidth: 130
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, width: '100%' }}>
-          <ClassIcon color="secondary" sx={{ fontSize: 16, marginTop: '2px', flexShrink: 0 }} />
-          <Typography variant="body2" sx={{
-            fontWeight: 'medium',
-            fontSize: '0.75rem',
-            lineHeight: 1.4,
-            wordBreak: 'break-word',
-            whiteSpace: 'normal'
-          }}>
+          <ClassIcon color="secondary" sx={{ 
+            fontSize: { xs: 12, sm: 14, md: 16 }, 
+            marginTop: '2px', 
+            flexShrink: 0 
+          }} />
+          <Typography 
+            variant="body2" 
+            sx={{
+              fontWeight: 'medium',
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+              lineHeight: 1.4,
+              wordBreak: 'break-word',
+              whiteSpace: 'normal'
+            }}
+          >
             {params.value?.class?.className || 'N/A'}
           </Typography>
         </Box>
@@ -423,20 +497,35 @@ const RoomRequestList = () => {
     {
       field: 'reason',
       headerName: 'Lý do yêu cầu',
-      flex: 0.18, // 18% width
-      minWidth: 150,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 2, 
+        minWidth: 150
+      } : { 
+        flex: 0.18,
+        minWidth: 150
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => {
         return (
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, width: '100%' }}>
-            <ScheduleIcon color="info" sx={{ fontSize: 16, marginTop: '2px', flexShrink: 0 }} />
-            <Typography variant="body2" sx={{
-              fontSize: '0.75rem',
-              lineHeight: 1.4,
-              wordBreak: 'break-word',
-              whiteSpace: 'normal'
-            }}>
+            <ScheduleIcon color="info" sx={{ 
+              fontSize: { xs: 12, sm: 14, md: 16 }, 
+              marginTop: '2px', 
+              flexShrink: 0 
+            }} />
+            <Typography 
+              variant="body2" 
+              sx={{
+                fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                lineHeight: 1.4,
+                wordBreak: 'break-word',
+                whiteSpace: 'normal'
+              }}
+            >
               {params.value || 'N/A'}
             </Typography>
           </Box>
@@ -446,12 +535,26 @@ const RoomRequestList = () => {
     {
       field: 'createdAt',
       headerName: 'Ngày gửi',
-      flex: 0.08, // 8% width
-      minWidth: 80,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 80
+      } : { 
+        flex: 0.08,
+        minWidth: 80
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' }, 
+            lineHeight: 1.2 
+          }}
+        >
           {new Date(params.value).toLocaleDateString('vi-VN')}
         </Typography>
       )
@@ -459,10 +562,18 @@ const RoomRequestList = () => {
     {
       field: 'actions',
       headerName: 'Xử lý',
-      flex: 0.10, // 10% width
-      minWidth: 90,
+      ...(isMobile || isTablet ? { 
+        flex: 0.8, 
+        minWidth: 90
+      } : { 
+        flex: 0.10,
+        minWidth: 90
+      }),
       sortable: false,
       filterable: false,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: true,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5}>
           <Tooltip title="Xem chi tiết và xử lý">
@@ -470,9 +581,9 @@ const RoomRequestList = () => {
               size="small"
               onClick={() => handleViewRequest(params.row.id)}
               color="primary"
-              sx={{ padding: 0.5 }}
+              sx={{ padding: { xs: 0.25, sm: 0.5 } }}
             >
-              <ViewIcon sx={{ fontSize: 16 }} />
+              <ViewIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
             </IconButton>
           </Tooltip>
           {params.row.RequestStatus?.name === 'Chờ xử lý' && (
@@ -482,9 +593,9 @@ const RoomRequestList = () => {
                   size="small"
                   onClick={() => handleApproveRequest(params.row.id)}
                   color="success"
-                  sx={{ padding: 0.5 }}
+                  sx={{ padding: { xs: 0.25, sm: 0.5 } }}
                 >
-                  <ApproveIcon sx={{ fontSize: 16 }} />
+                  <ApproveIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Từ chối yêu cầu">
@@ -492,9 +603,9 @@ const RoomRequestList = () => {
                   size="small"
                   onClick={() => handleRejectRequest(params.row.id)}
                   color="error"
-                  sx={{ padding: 0.5 }}
+                  sx={{ padding: { xs: 0.25, sm: 0.5 } }}
                 >
-                  <RejectIcon sx={{ fontSize: 16 }} />
+                  <RejectIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
                 </IconButton>
               </Tooltip>
             </>
@@ -545,20 +656,43 @@ const RoomRequestList = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Box
+      sx={{ 
+        p: { xs: 1, sm: 1.5, md: 3 },
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        position: 'relative',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        pb: { xs: 2, sm: 3, md: 4 }
+      }}
+    >
       {/* Header Card */}
-      <Card sx={{ mb: 3, boxShadow: 3 }}>
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-            <Typography variant="h4" component="h1" sx={{
-              color: 'primary.main',
-              fontWeight: 'bold',
-              fontSize: { xs: '1.5rem', md: '2rem' }
-            }}>
-              Danh sách yêu cầu xin/đổi phòng
-            </Typography>
+      <Card sx={{ mb: { xs: 1.5, sm: 2, md: 2.5 }, boxShadow: 3, flexShrink: 0 }}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+          <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+            <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flex: 1, minWidth: 0 }}>
+              <Typography 
+                variant="h4" 
+                component="h1" 
+                sx={{
+                  color: 'primary.main',
+                  fontWeight: 'bold',
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
+                  wordBreak: 'break-word',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                Danh sách yêu cầu xin/đổi phòng
+              </Typography>
+            </Grid>
 
-            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+            <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flexShrink: 0 }}>
               <Tooltip title="Làm mới dữ liệu">
                 <IconButton
                   onClick={handleRefresh}
@@ -571,157 +705,265 @@ const RoomRequestList = () => {
                     }
                   }}
                 >
-                  <RefreshIcon />
+                  <RefreshIcon fontSize={isMobile ? "small" : "medium"} />
                 </IconButton>
               </Tooltip>
-            </Box>
-          </Box>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
       {/* Statistics Cards */}
-      <Box sx={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 2,
-        mb: 3
-      }}>
-        <Card sx={{
-          height: 120,
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Tổng yêu cầu
-                </Typography>
-                <Typography variant="h5" component="div" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.total}
-                </Typography>
-              </Box>
-              <ScheduleIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+      <Grid 
+        container 
+        spacing={{ xs: 0.75, sm: 1, md: 1.5 }} 
+        sx={{ 
+          mb: { xs: 1.5, sm: 2, md: 2.5 },
+          flexShrink: 0,
+          justifyContent: 'center'
+        }}
+      >
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <ScheduleIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'primary.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Tổng yêu cầu
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {stats.total}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{
-          height: 120,
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Chờ duyệt
-                </Typography>
-                <Typography variant="h5" component="div" color="warning.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.pending}
-                </Typography>
-              </Box>
-              <PendingIcon sx={{ fontSize: 28, color: 'warning.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <PendingIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'warning.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Chờ duyệt
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="warning.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {stats.pending}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{
-          height: 120,
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Đã duyệt
-                </Typography>
-                <Typography variant="h5" component="div" color="success.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.approved}
-                </Typography>
-              </Box>
-              <ApproveIcon sx={{ fontSize: 28, color: 'success.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <ApproveIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'success.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Đã duyệt
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="success.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {stats.approved}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{
-          height: 120,
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Từ chối
-                </Typography>
-                <Typography variant="h5" component="div" color="error.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.rejected}
-                </Typography>
-              </Box>
-              <RejectIcon sx={{ fontSize: 28, color: 'error.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <RejectIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'error.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Từ chối
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="error.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {stats.rejected}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{
-          height: 120,
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Xin phòng
-                </Typography>
-                <Typography variant="h5" component="div" color="primary.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.roomRequests}
-                </Typography>
-              </Box>
-              <RoomIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <RoomIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'primary.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Xin phòng
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="primary.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {stats.roomRequests}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{
-          height: 120,
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Đổi lịch
-                </Typography>
-                <Typography variant="h5" component="div" color="secondary.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.scheduleChanges}
-                </Typography>
-              </Box>
-              <ScheduleIcon sx={{ fontSize: 28, color: 'secondary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <ScheduleIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'secondary.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Đổi lịch
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="secondary.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {stats.scheduleChanges}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* DataGrid */}
-      <Paper sx={{
-        height: 600,
-        width: '100%',
+      <Paper sx={{ 
+        flex: 1,
+        minHeight: 0,
+        maxHeight: '100%',
+        width: '100%', 
         maxWidth: '100%',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        <DataGrid
+        <StyledDataGrid
           apiRef={dataGridRef}
           rows={requests}
           columns={columns}
@@ -730,54 +972,33 @@ const RoomRequestList = () => {
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{
             pagination: {
-              paginationModel: { page: 0, pageSize: 25 },
+              paginationModel: { page: 0, pageSize: isMobile ? 10 : isTablet ? 15 : 25 },
             },
           }}
           disableRowSelectionOnClick
-          disableColumnFilter
-          disableColumnMenu={false}
-          disableColumnResize={false}
+          disableColumnFilter={isMobile}
+          disableColumnMenu={isMobile}
+          disableColumnResize={isMobile || isTablet}
           autoPageSize={false}
-          sx={{
-            height: 600,
-            width: '100%',
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: 'primary.main',
-              color: 'black',
-              '& .MuiDataGrid-columnHeaderTitle': {
-                color: 'black',
-                fontWeight: 'bold',
-              },
-            },
-            '& .MuiDataGrid-cell': {
-              fontSize: '0.75rem',
-              display: 'flex',
-              alignItems: 'flex-start',
-              paddingTop: '8px',
-              paddingBottom: '8px',
-            },
-            '& .MuiDataGrid-row': {
-              minHeight: '60px !important',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-              },
-            },
-          }}
+          columnHeaderHeight={isMobile ? 48 : isTablet ? 52 : 56}
+          getRowHeight={() => 'auto'}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          density="comfortable"
+          checkboxSelection={false}
+          disableColumnSelector={false}
+          disableDensitySelector={false}
           slots={{
-            toolbar: GridToolbar,
+            toolbar: isMobile ? undefined : GridToolbar,
           }}
           slotProps={{
             toolbar: {
               showQuickFilter: false,
             },
           }}
-          density="comfortable"
-          checkboxSelection={false}
-          disableColumnSelector={false}
-          disableDensitySelector={false}
         />
       </Paper>
-    </Container>
+    </Box>
   );
 };
 

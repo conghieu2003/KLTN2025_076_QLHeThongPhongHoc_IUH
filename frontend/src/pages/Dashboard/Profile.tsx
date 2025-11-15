@@ -12,6 +12,9 @@ import {
   CircularProgress,
   Alert,
   Stack,
+  Grid,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
@@ -21,6 +24,8 @@ import { fetchProfileData, clearError } from '../../redux/slices/profileSlice';
 const Profile: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { profileData, loading, error } = useSelector((state: RootState) => state.profile);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     dispatch(fetchProfileData());
@@ -56,7 +61,7 @@ const Profile: React.FC = () => {
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 3, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="error">{error}</Alert>
       </Container>
     );
@@ -64,7 +69,7 @@ const Profile: React.FC = () => {
 
   if (!profileData) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 3, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
         <Alert severity="warning">Không tìm thấy thông tin hồ sơ</Alert>
       </Container>
     );
@@ -73,61 +78,115 @@ const Profile: React.FC = () => {
   const { user, personalProfile, familyInfo, academicProfile, studentInfo, teacherInfo } = profileData;
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container 
+      maxWidth="lg" 
+      sx={{ 
+        mt: { xs: 2, sm: 3, md: 4 }, 
+        mb: { xs: 2, sm: 3, md: 4 },
+        px: { xs: 1, sm: 2, md: 3 }
+      }}
+    >
       {/* Header with basic info and avatar */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" alignItems="center" gap={3}>
-          <Avatar
-            src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=0D6EFD&color=fff`}
-            sx={{ width: 120, height: 120 }}
-          />
-          <Box flex={1}>
-            <Box display="flex" alignItems="center" gap={2} mb={1}>
-              <Typography variant="h4" component="h1" fontWeight="bold">
+      <Paper 
+        elevation={2} 
+        sx={{ 
+          p: { xs: 2, sm: 2.5, md: 3 }, 
+          mb: { xs: 2, sm: 2.5, md: 3 }
+        }}
+      >
+        <Grid container spacing={{ xs: 2, sm: 3 }} alignItems="center">
+          <Grid
+            size={{
+              xs: 12,
+              sm: 'auto'
+            }}
+          >
+            <Avatar
+              src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=0D6EFD&color=fff`}
+              sx={{ 
+                width: { xs: 80, sm: 100, md: 120 }, 
+                height: { xs: 80, sm: 100, md: 120 },
+                mx: { xs: 'auto', sm: 0 }
+              }}
+            />
+          </Grid>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 'grow'
+            }}
+          >
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'center', sm: 'center' }} gap={{ xs: 1, sm: 2 }} mb={1}>
+              <Typography 
+                variant={isMobile ? "h5" : "h4"} 
+                component="h1" 
+                fontWeight="bold"
+                textAlign={{ xs: 'center', sm: 'left' }}
+              >
                 {user.fullName}
               </Typography>
               <Chip 
                 label={user.role === 'student' ? 'Sinh viên' : user.role === 'teacher' ? 'Giảng viên' : 'Quản trị viên'} 
                 color="primary" 
-                size="small" 
+                size={isMobile ? "small" : "medium"}
               />
             </Box>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
+            <Typography 
+              variant={isMobile ? "body1" : "h6"} 
+              color="text.secondary" 
+              gutterBottom
+              textAlign={{ xs: 'center', sm: 'left' }}
+            >
               {user.role === 'student' ? `MSSV: ${studentInfo?.studentCode || user.studentCode}` : 
                user.role === 'teacher' ? `Mã GV: ${teacherInfo?.teacherCode || user.teacherCode}` : 
                'Quản trị viên'}
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography 
+              variant="body1" 
+              color="text.secondary"
+              textAlign={{ xs: 'center', sm: 'left' }}
+            >
               Giới tính: {getGenderText(user.gender)}
             </Typography>
-          </Box>
-        </Box>
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* Academic Information Section - Top */}
-      <Box mb={3}>
+      <Box mb={{ xs: 2, sm: 2.5, md: 3 }}>
         <Card elevation={2}>
-          <CardContent>
+          <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
             <Typography 
-              variant="h6" 
+              variant={isMobile ? "h6" : "h6"}
               component="h2" 
               fontWeight="bold" 
               mb={2}
               sx={{ 
                 fontFamily: "'Inter', 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-                fontFeatureSettings: '"liga" 1, "calt" 1'
+                fontFeatureSettings: '"liga" 1, "calt" 1',
+                fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' }
               }}
             >
               Thông tin học vấn
             </Typography>
             <Divider sx={{ mb: 2 }} />
             
-            <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
-              <Box flex={1}>
+            <Grid container spacing={{ xs: 2, sm: 2, md: 3 }}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}
+              >
                 <Stack spacing={2}>
-                  <Box display="flex" justifyContent="space-between">
-                    <Box flex={1} mr={2}>
-                      <Typography variant="body2" color="text.secondary">
+                  <Grid container spacing={2}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Trạng thái:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
@@ -135,47 +194,72 @@ const Profile: React.FC = () => {
                          user.role === 'teacher' ? 'Đang giảng dạy' : 
                          'Đang làm việc'}
                       </Typography>
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
+                    </Grid>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Lớp học:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {academicProfile?.classCode || '-'}
                       </Typography>
-                    </Box>
-                  </Box>
+                    </Grid>
+                  </Grid>
                   
-                  <Box display="flex" justifyContent="space-between">
-                    <Box flex={1} mr={2}>
-                      <Typography variant="body2" color="text.secondary">
+                  <Grid container spacing={2}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Bậc đào tạo:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {academicProfile?.degreeLevel || '-'}
                       </Typography>
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
+                    </Grid>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Khoa:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {studentInfo?.department?.name || teacherInfo?.department?.name || '-'}
                       </Typography>
-                    </Box>
-                  </Box>
+                    </Grid>
+                  </Grid>
                   
-                  <Box display="flex" justifyContent="space-between">
-                    <Box flex={1} mr={2}>
-                      <Typography variant="body2" color="text.secondary">
+                  <Grid container spacing={2}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Chuyên ngành:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {studentInfo?.major?.name || teacherInfo?.major?.name || '-'}
                       </Typography>
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
+                    </Grid>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Mã hồ sơ:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
@@ -183,254 +267,403 @@ const Profile: React.FC = () => {
                          user.role === 'teacher' ? teacherInfo?.teacherCode : 
                          user.username}
                       </Typography>
-                    </Box>
-                  </Box>
+                    </Grid>
+                  </Grid>
                 </Stack>
-              </Box>
+              </Grid>
               
-              <Box flex={1}>
+              <Grid
+                size={{
+                  xs: 12,
+                  md: 6
+                }}
+              >
                 <Stack spacing={2}>
-                  <Box display="flex" justifyContent="space-between">
-                    <Box flex={1} mr={2}>
-                      <Typography variant="body2" color="text.secondary">
+                  <Grid container spacing={2}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Ngày vào trường:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
-                        {formatDate(academicProfile?.enrollmentDate)}
+                        {formatDate(academicProfile?.enrollmentDate) || '-'}
                       </Typography>
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
+                    </Grid>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Cơ sở:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {academicProfile?.campus || '-'}
                       </Typography>
-                    </Box>
-                  </Box>
+                    </Grid>
+                  </Grid>
                   
-                  <Box display="flex" justifyContent="space-between">
-                    <Box flex={1} mr={2}>
-                      <Typography variant="body2" color="text.secondary">
+                  <Grid container spacing={2}>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Loại hình đào tạo:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {academicProfile?.trainingType || '-'}
                       </Typography>
-                    </Box>
-                    <Box flex={1}>
-                      <Typography variant="body2" color="text.secondary">
+                    </Grid>
+                    <Grid
+                      size={{
+                        xs: 12,
+                        sm: 6
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
                         Ngành:
                       </Typography>
                       <Typography variant="body1" fontWeight="medium">
                         {studentInfo?.major?.name || teacherInfo?.major?.name || '-'}
                       </Typography>
-                    </Box>
-                  </Box>
+                    </Grid>
+                  </Grid>
                   
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      Khóa học:
-                    </Typography>
-                    <Typography variant="body1" fontWeight="medium">
-                      {academicProfile?.academicYear || '-'}
-                    </Typography>
-                  </Box>
+                  <Grid container spacing={2}>
+                    <Grid
+                      size={{
+                        xs: 12
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Khóa học:
+                      </Typography>
+                      <Typography variant="body1" fontWeight="medium">
+                        {academicProfile?.academicYear || '-'}
+                      </Typography>
+                    </Grid>
+                  </Grid>
                 </Stack>
-              </Box>
-            </Box>
+              </Grid>
+            </Grid>
           </CardContent>
         </Card>
       </Box>
 
-      <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         {/* Personal Information Section */}
-        <Box flex={1}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" component="h2" fontWeight="bold" mb={2}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}
+        >
+          <Card elevation={2} sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+              <Typography 
+                variant="h6" 
+                component="h2" 
+                fontWeight="bold" 
+                mb={2}
+                sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
+              >
                 Thông tin cá nhân
               </Typography>
               <Divider sx={{ mb: 2 }} />
               
               <Stack spacing={2}>
-                <Box display="flex" justifyContent="space-between">
-                  <Box flex={1} mr={2}>
-                    <Typography variant="body2" color="text.secondary">
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Ngày sinh:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
-                      {formatDate(user.dateOfBirth)}
+                      {formatDate(user.dateOfBirth) || '-'}
                     </Typography>
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="body2" color="text.secondary">
+                  </Grid>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Số CCCD:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {personalProfile?.idCardNumber || '-'}
                     </Typography>
-                  </Box>
-                </Box>
+                  </Grid>
+                </Grid>
                 
-                <Box display="flex" justifyContent="space-between">
-                  <Box flex={1} mr={2}>
-                    <Typography variant="body2" color="text.secondary">
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Điện thoại:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {user.phone || '-'}
                     </Typography>
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="body2" color="text.secondary">
+                  </Grid>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Email:
                     </Typography>
-                    <Typography variant="body1" fontWeight="medium">
+                    <Typography variant="body1" fontWeight="medium" sx={{ wordBreak: 'break-word' }}>
                       {user.email}
                     </Typography>
-                  </Box>
-                </Box>
+                  </Grid>
+                </Grid>
                 
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Địa chỉ liên hệ:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="medium">
-                    {user.address || '-'}
-                  </Typography>
-                </Box>
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Địa chỉ liên hệ:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {user.address || '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
                 
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Nơi sinh:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="medium">
-                    {personalProfile?.placeOfBirth || '-'}
-                  </Typography>
-                </Box>
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Nơi sinh:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {personalProfile?.placeOfBirth || '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
                 
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Hộ khẩu thường trú:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="medium">
-                    {personalProfile?.permanentAddress || '-'}
-                  </Typography>
-                </Box>
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Hộ khẩu thường trú:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {personalProfile?.permanentAddress || '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
                 
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Tên ngân hàng:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="medium">
-                    {personalProfile?.bankName || '-'}
-                  </Typography>
-                </Box>
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Tên ngân hàng:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {personalProfile?.bankName || '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
                 
-                <Box display="flex" justifyContent="space-between">
-                  <Box flex={1} mr={2}>
-                    <Typography variant="body2" color="text.secondary">
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Tên chủ tài khoản:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {user.fullName}
                     </Typography>
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="body2" color="text.secondary">
+                  </Grid>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Số tài khoản:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {personalProfile?.bankAccountNumber || '-'}
                     </Typography>
-                  </Box>
-                </Box>
+                  </Grid>
+                </Grid>
               </Stack>
             </CardContent>
           </Card>
-        </Box>
+        </Grid>
 
         {/* Family Information Section */}
-        <Box flex={1}>
-          <Card elevation={2}>
-            <CardContent>
-              <Typography variant="h6" component="h2" fontWeight="bold" mb={2}>
+        <Grid
+          size={{
+            xs: 12,
+            md: 6
+          }}
+        >
+          <Card elevation={2} sx={{ height: '100%' }}>
+            <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+              <Typography 
+                variant="h6" 
+                component="h2" 
+                fontWeight="bold" 
+                mb={2}
+                sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
+              >
                 Quan hệ gia đình
               </Typography>
               <Divider sx={{ mb: 2 }} />
               
               {/* Father's Information */}
-              <Typography variant="subtitle1" fontWeight="bold" mb={1}>
+              <Typography 
+                variant="subtitle1" 
+                fontWeight="bold" 
+                mb={1}
+                sx={{ fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' } }}
+              >
                 Thông tin cha
               </Typography>
               <Stack spacing={2} mb={3}>
-                <Box display="flex" justifyContent="space-between">
-                  <Box flex={1} mr={2}>
-                    <Typography variant="body2" color="text.secondary">
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Họ tên Cha:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {familyInfo?.fatherFullName || '-'}
                     </Typography>
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="body2" color="text.secondary">
+                  </Grid>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Năm sinh:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {familyInfo?.fatherYearOfBirth || '-'}
                     </Typography>
-                  </Box>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Số điện thoại:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="medium">
-                    {familyInfo?.fatherPhone || '-'}
-                  </Typography>
-                </Box>
+                  </Grid>
+                </Grid>
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Số điện thoại:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {familyInfo?.fatherPhone || '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
               </Stack>
 
               <Divider sx={{ my: 2 }} />
 
               {/* Mother's Information */}
-              <Typography variant="subtitle1" fontWeight="bold" mb={1}>
+              <Typography 
+                variant="subtitle1" 
+                fontWeight="bold" 
+                mb={1}
+                sx={{ fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' } }}
+              >
                 Thông tin mẹ
               </Typography>
               <Stack spacing={2}>
-                <Box display="flex" justifyContent="space-between">
-                  <Box flex={1} mr={2}>
-                    <Typography variant="body2" color="text.secondary">
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Họ tên Mẹ:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {familyInfo?.motherFullName || '-'}
                     </Typography>
-                  </Box>
-                  <Box flex={1}>
-                    <Typography variant="body2" color="text.secondary">
+                  </Grid>
+                  <Grid
+                    size={{
+                      xs: 12,
+                      sm: 6
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
                       Năm sinh:
                     </Typography>
                     <Typography variant="body1" fontWeight="medium">
                       {familyInfo?.motherYearOfBirth || '-'}
                     </Typography>
-                  </Box>
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Số điện thoại:
-                  </Typography>
-                  <Typography variant="body1" fontWeight="medium">
-                    {familyInfo?.motherPhone || '-'}
-                  </Typography>
-                </Box>
+                  </Grid>
+                </Grid>
+                <Grid container spacing={2}>
+                  <Grid
+                    size={{
+                      xs: 12
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Số điện thoại:
+                    </Typography>
+                    <Typography variant="body1" fontWeight="medium">
+                      {familyInfo?.motherPhone || '-'}
+                    </Typography>
+                  </Grid>
+                </Grid>
               </Stack>
             </CardContent>
           </Card>
-        </Box>
-      </Box>
+        </Grid>
+      </Grid>
 
 
     </Container>

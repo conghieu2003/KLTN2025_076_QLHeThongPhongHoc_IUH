@@ -16,7 +16,10 @@ import {
     Paper,
     Divider,
     Stack,
-    TextField
+    TextField,
+    Grid,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import {
     Person as PersonIcon,
@@ -103,6 +106,9 @@ interface SuggestedRoom {
 const ProcessRequest: React.FC = () => {
     const { requestId } = useParams<{ requestId: string }>();
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
 
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
@@ -343,122 +349,228 @@ const ProcessRequest: React.FC = () => {
     }
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 1, sm: 1.5, md: 3 } }}>
             {/* Header */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Button
-                    startIcon={<ArrowBackIcon />}
-                    onClick={() => navigate('/rooms/requests')}
-                    sx={{ mr: 2 }}
-                >
-                    Quay lại
-                </Button>
-                <Typography variant="h4" component="h1">
-                    Xử lý yêu cầu #{requestData.id}
-                </Typography>
-            </Box>
+            <Grid container spacing={2} alignItems="center" sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Grid size={{ xs: 'auto' }}>
+                    <Button
+                        startIcon={<ArrowBackIcon />}
+                        onClick={() => navigate('/rooms/requests')}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{ 
+                            fontSize: { xs: '0.75rem', sm: '0.875rem', md: '0.875rem' }
+                        }}
+                    >
+                        Quay lại
+                    </Button>
+                </Grid>
+                <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography 
+                        variant="h4" 
+                        component="h1"
+                        sx={{
+                            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
+                            fontWeight: 'bold',
+                            wordBreak: 'break-word',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                        }}
+                    >
+                        Xử lý yêu cầu #{requestData.id}
+                    </Typography>
+                </Grid>
+            </Grid>
 
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+            <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
                 {/* Thông tin yêu cầu */}
-                <Box sx={{ flex: 1 }}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>
+                <Grid size={{ xs: 12, md: 6 }}>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                            <Typography 
+                                variant="h6" 
+                                gutterBottom
+                                sx={{
+                                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                                    mb: { xs: 1.5, sm: 2 }
+                                }}
+                            >
                                 Thông tin yêu cầu
                             </Typography>
 
-                            <Stack spacing={2}>
+                            <Stack spacing={{ xs: 1.5, sm: 2 }}>
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        color="text.secondary"
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                    >
                                         Loại yêu cầu:
                                     </Typography>
                                     <Chip
                                         label={requestData.RequestType?.name || getRequestTypeText(requestData.requestTypeId)}
                                         color="primary"
                                         size="small"
+                                        sx={{ 
+                                            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                                            height: { xs: 20, sm: 24, md: 28 }
+                                        }}
                                     />
                                 </Box>
 
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        color="text.secondary"
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                    >
                                         Người yêu cầu:
                                     </Typography>
                                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                        <PersonIcon sx={{ mr: 1, fontSize: 16 }} />
-                                        <Typography variant="body2">
+                                        <PersonIcon sx={{ 
+                                            mr: 1, 
+                                            fontSize: { xs: 14, sm: 16, md: 18 } 
+                                        }} />
+                                        <Typography 
+                                            variant="body2"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
                                             {requestData.requester?.fullName}
                                         </Typography>
                                     </Box>
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography 
+                                        variant="caption" 
+                                        color="text.secondary"
+                                        sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                                    >
                                         {requestData.requester?.email}
                                     </Typography>
                                 </Box>
 
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        color="text.secondary"
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                    >
                                         Lý do yêu cầu:
                                     </Typography>
-                                    <Paper sx={{ p: 2, mt: 0.5, bgcolor: 'grey.50' }}>
-                                        <Typography variant="body2">
+                                    <Paper sx={{ 
+                                        p: { xs: 1, sm: 1.5, md: 2 }, 
+                                        mt: 0.5, 
+                                        bgcolor: 'grey.50' 
+                                    }}>
+                                        <Typography 
+                                            variant="body2"
+                                            sx={{ 
+                                                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
+                                                wordBreak: 'break-word',
+                                                whiteSpace: 'normal'
+                                            }}
+                                        >
                                             {requestData.reason}
                                         </Typography>
                                     </Paper>
                                 </Box>
 
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        color="text.secondary"
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                    >
                                         Ngày gửi:
                                     </Typography>
-                                    <Typography variant="body2">
+                                    <Typography 
+                                        variant="body2"
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                    >
                                         {new Date(requestData.createdAt).toLocaleDateString('vi-VN')}
                                     </Typography>
                                 </Box>
                             </Stack>
                         </CardContent>
                     </Card>
-                </Box>
+                </Grid>
 
                 {/* Thông tin lớp học */}
-                <Box sx={{ flex: 1 }}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>
+                <Grid size={{ xs: 12, md: 6 }}>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                            <Typography 
+                                variant="h6" 
+                                gutterBottom
+                                sx={{
+                                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                                    mb: { xs: 1.5, sm: 2 }
+                                }}
+                            >
                                 Thông tin lớp học
                             </Typography>
 
                             {requestData.classSchedule?.class ? (
-                                <Stack spacing={2}>
+                                <Stack spacing={{ xs: 1.5, sm: 2 }}>
                                     <Box>
-                                        <Typography variant="subtitle2" color="text.secondary">
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            color="text.secondary"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
                                             Tên lớp:
                                         </Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                            <ClassIcon sx={{ mr: 1, fontSize: 16 }} />
-                                            <Typography variant="body2">
+                                            <ClassIcon sx={{ 
+                                                mr: 1, 
+                                                fontSize: { xs: 14, sm: 16, md: 18 } 
+                                            }} />
+                                            <Typography 
+                                                variant="body2"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
                                                 {requestData.classSchedule.class.className}
                                             </Typography>
                                         </Box>
-                                        <Typography variant="caption" color="text.secondary">
+                                        <Typography 
+                                            variant="caption" 
+                                            color="text.secondary"
+                                            sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                                        >
                                             {requestData.classSchedule.class.subjectName} ({requestData.classSchedule.class.subjectCode})
                                         </Typography>
                                     </Box>
 
                                     <Box>
-                                        <Typography variant="subtitle2" color="text.secondary">
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            color="text.secondary"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
                                             Sĩ số:
                                         </Typography>
-                                        <Typography variant="body2">
+                                        <Typography 
+                                            variant="body2"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
                                             {requestData.classSchedule.class.maxStudents} sinh viên
                                         </Typography>
                                     </Box>
 
                                     <Box>
-                                        <Typography variant="subtitle2" color="text.secondary">
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            color="text.secondary"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
                                             Lịch học hiện tại:
                                         </Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                            <ScheduleIcon sx={{ mr: 1, fontSize: 16 }} />
-                                            <Typography variant="body2">
+                                            <ScheduleIcon sx={{ 
+                                                mr: 1, 
+                                                fontSize: { xs: 14, sm: 16, md: 18 } 
+                                            }} />
+                                            <Typography 
+                                                variant="body2"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
                                                 {getDayName(requestData.classSchedule.dayOfWeek)} - Tiết {requestData.classSchedule.timeSlotId}
                                             </Typography>
                                         </Box>
@@ -467,16 +579,33 @@ const ProcessRequest: React.FC = () => {
                                     {/* Hiển thị lịch yêu cầu cho đổi lịch */}
                                     {requestData.RequestType?.name === 'Đổi lịch' && requestData.movedToTimeSlotId && requestData.movedToDayOfWeek && (
                                         <Box>
-                                            <Typography variant="subtitle2" color="text.secondary">
+                                            <Typography 
+                                                variant="subtitle2" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
                                                 Lịch học yêu cầu:
                                             </Typography>
                                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                                <ScheduleIcon sx={{ mr: 1, fontSize: 16, color: 'primary.main' }} />
-                                                <Typography variant="body2" color="primary.main" fontWeight="bold">
+                                                <ScheduleIcon sx={{ 
+                                                    mr: 1, 
+                                                    fontSize: { xs: 14, sm: 16, md: 18 }, 
+                                                    color: 'primary.main' 
+                                                }} />
+                                                <Typography 
+                                                    variant="body2" 
+                                                    color="primary.main" 
+                                                    fontWeight="bold"
+                                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                                >
                                                     {getDayName(requestData.movedToDayOfWeek)} - Tiết {requestData.movedToTimeSlotId}
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="caption" color="text.secondary">
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                                            >
                                                 Thứ trong tuần: {getDayName(requestData.movedToDayOfWeek)}
                                             </Typography>
                                         </Box>
@@ -484,60 +613,112 @@ const ProcessRequest: React.FC = () => {
 
                                     {requestData.classSchedule.classRoom && (
                                         <Box>
-                                            <Typography variant="subtitle2" color="text.secondary">
+                                            <Typography 
+                                                variant="subtitle2" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
                                                 Phòng hiện tại:
                                             </Typography>
                                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                                <RoomIcon sx={{ mr: 1, fontSize: 16 }} />
-                                                <Typography variant="body2">
+                                                <RoomIcon sx={{ 
+                                                    mr: 1, 
+                                                    fontSize: { xs: 14, sm: 16, md: 18 } 
+                                                }} />
+                                                <Typography 
+                                                    variant="body2"
+                                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                                >
                                                     {requestData.classSchedule.classRoom.name} ({requestData.classSchedule.classRoom.code})
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="caption" color="text.secondary">
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                                            >
                                                 Sức chứa: {requestData.classSchedule.classRoom.capacity} chỗ
                                             </Typography>
                                         </Box>
                                     )}
                                 </Stack>
                             ) : (
-                                <Alert severity="info">
+                                <Alert 
+                                    severity="info"
+                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                >
                                     Yêu cầu phòng độc lập (không liên quan đến lớp học cụ thể)
                                 </Alert>
                             )}
                         </CardContent>
                     </Card>
-                </Box>
-            </Box>
+                </Grid>
+            </Grid>
 
             {/* Chọn phòng học */}
-            <Box sx={{ mt: 3 }}>
+            <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Card>
-                    <CardContent>
-                        <Typography variant="h6" gutterBottom>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                        <Typography 
+                            variant="h6" 
+                            gutterBottom
+                            sx={{
+                                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                                mb: { xs: 1.5, sm: 2 }
+                            }}
+                        >
                             Chọn phòng học phù hợp
                         </Typography>
 
                         {requestData.RequestType?.name === 'Đổi lịch' && (
-                            <Alert severity="info" sx={{ mb: 2 }}>
-                                <Typography variant="body2">
+                            <Alert 
+                                severity="info" 
+                                sx={{ 
+                                    mb: { xs: 1.5, sm: 2 },
+                                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                                }}
+                            >
+                                <Typography 
+                                    variant="body2"
+                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                >
                                     <strong>Lưu ý:</strong> Các phòng được đề xuất đã được kiểm tra không trùng lịch với lịch học yêu cầu.
                                     Lịch yêu cầu: {getDayName(requestData.movedToDayOfWeek || 7)} - Tiết {requestData.movedToTimeSlotId}
                                 </Typography>
                             </Alert>
                         )}
 
-                        <FormControl fullWidth sx={{ mb: 2 }}>
-                            <InputLabel>Phòng học đề xuất</InputLabel>
+                        <FormControl 
+                            fullWidth 
+                            size={isMobile ? "small" : "medium"}
+                            sx={{ mb: { xs: 1.5, sm: 2 } }}
+                        >
+                            <InputLabel 
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                            >
+                                Phòng học đề xuất
+                            </InputLabel>
                             <Select
                                 value={selectedRoomId}
                                 onChange={(e) => setSelectedRoomId(e.target.value as number)}
                                 label="Phòng học đề xuất"
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                             >
                                 {suggestedRooms.map((room) => (
-                                    <MenuItem key={room.id} value={room.id}>
+                                    <MenuItem 
+                                        key={room.id} 
+                                        value={room.id}
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                                    >
                                         <Box sx={{ width: '100%' }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <Typography variant="body1">
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                                <Typography 
+                                                    variant="body1"
+                                                    sx={{ 
+                                                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
+                                                        wordBreak: 'break-word'
+                                                    }}
+                                                >
                                                     {room.name} ({room.code})
                                                 </Typography>
                                                 {room.isFreedByException && (
@@ -546,14 +727,24 @@ const ProcessRequest: React.FC = () => {
                                                         size="small"
                                                         color="success"
                                                         sx={{ 
-                                                            fontSize: '0.7rem', 
-                                                            height: '20px',
+                                                            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, 
+                                                            height: { xs: 18, sm: 20, md: 20 },
                                                             fontWeight: 'bold'
                                                         }}
                                                     />
                                                 )}
                                             </Box>
-                                            <Typography variant="caption" color="text.secondary">
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{ 
+                                                    fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                                                    wordBreak: 'break-word',
+                                                    whiteSpace: 'normal',
+                                                    display: 'block',
+                                                    mt: 0.5
+                                                }}
+                                            >
                                                 {room.building} - Tầng {room.floor} | Sức chứa: {room.capacity} |
                                                 Loại: {room.ClassRoomType?.name}
                                             </Typography>
@@ -564,7 +755,8 @@ const ProcessRequest: React.FC = () => {
                                                         display: 'block',
                                                         color: 'success.main',
                                                         fontStyle: 'italic',
-                                                        mt: 0.5
+                                                        mt: 0.5,
+                                                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }
                                                     }}
                                                 >
                                                     Lớp {room.exceptionInfo.className} {room.exceptionInfo.exceptionType === 'cancelled' ? 'nghỉ' : 'thi'}
@@ -577,40 +769,66 @@ const ProcessRequest: React.FC = () => {
                         </FormControl>
 
                         {suggestedRooms.length === 0 && (
-                            <Alert severity="warning">
+                            <Alert 
+                                severity="warning"
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                            >
                                 Không tìm thấy phòng học phù hợp. Vui lòng kiểm tra lại yêu cầu.
                             </Alert>
                         )}
 
-                        <Divider sx={{ my: 2 }} />
+                        <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
 
                         <TextField
                             fullWidth
                             multiline
-                            rows={3}
+                            rows={isMobile ? 2 : 3}
                             value={adminNote}
                             onChange={(e) => setAdminNote(e.target.value)}
                             label="Ghi chú của admin"
                             placeholder="Nhập ghi chú về việc xử lý yêu cầu..."
-                            sx={{ mb: 2 }}
+                            size={isMobile ? "small" : "medium"}
+                            InputLabelProps={{
+                                sx: { fontSize: { xs: '0.7rem', sm: '0.75rem' } }
+                            }}
+                            sx={{ 
+                                mb: { xs: 1.5, sm: 2 },
+                                '& .MuiInputBase-root': {
+                                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                                }
+                            }}
                         />
 
-                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                            <Button
-                                variant="outlined"
-                                onClick={() => navigate('/rooms/requests')}
-                            >
-                                Hủy
-                            </Button>
-                            <Button
-                                variant="contained"
-                                startIcon={<SaveIcon />}
-                                onClick={handleProcessRequest}
-                                disabled={!selectedRoomId || processing}
-                            >
-                                {processing ? 'Đang xử lý...' : 'Xử lý yêu cầu'}
-                            </Button>
-                        </Box>
+                        <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }} justifyContent="flex-end">
+                            <Grid size={{ xs: 6, sm: 'auto' }}>
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => navigate('/rooms/requests')}
+                                    fullWidth={isMobile}
+                                    size={isMobile ? "medium" : "large"}
+                                    sx={{ 
+                                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                                    }}
+                                >
+                                    Hủy
+                                </Button>
+                            </Grid>
+                            <Grid size={{ xs: 6, sm: 'auto' }}>
+                                <Button
+                                    variant="contained"
+                                    startIcon={<SaveIcon />}
+                                    onClick={handleProcessRequest}
+                                    disabled={!selectedRoomId || processing}
+                                    fullWidth={isMobile}
+                                    size={isMobile ? "medium" : "large"}
+                                    sx={{ 
+                                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                                    }}
+                                >
+                                    {processing ? 'Đang xử lý...' : 'Xử lý yêu cầu'}
+                                </Button>
+                            </Grid>
+                        </Grid>
                     </CardContent>
                 </Card>
             </Box>

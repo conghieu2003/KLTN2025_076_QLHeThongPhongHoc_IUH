@@ -14,14 +14,17 @@ import {
   CardContent,
   Container,
   Chip,
-  Paper
+  Paper,
+  Grid,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
-  DataGrid,
   GridColDef,
   GridToolbar,
   useGridApiRef
 } from '@mui/x-data-grid';
+import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
 import {
   Refresh as RefreshIcon,
   MeetingRoom as RoomIcon,
@@ -43,15 +46,15 @@ const RoomList = () => {
   const error = useSelector(selectRoomsError);
   const [refreshKey, setRefreshKey] = useState(0);
   const dataGridRef = useGridApiRef();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
 
   useEffect(() => {
-    console.log('🔄 Đang dispatch fetchRoomsThunk...');
     dispatch(fetchRoomsThunk() as any);
   }, [dispatch, refreshKey]);
 
   const handleRefresh = (): void => {
-    console.log('🔄 Đang refresh danh sách phòng...');
-    // Clear rooms state trước khi fetch lại
     dispatch(clearRooms());
     setRefreshKey(prev => prev + 1);
   };
@@ -135,14 +138,29 @@ const RoomList = () => {
     {
       field: 'roomNumber',
       headerName: 'Số phòng',
-      flex: 0.15, // 15% width
-      minWidth: 100,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 0.6, 
+        minWidth: 100
+      } : { 
+        flex: 0.15,
+        minWidth: 100
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <RoomIcon color="primary" />
-          <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+          <RoomIcon color="primary" sx={{ fontSize: { xs: 14, sm: 16, md: 18 } }} />
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontWeight: 'bold', 
+              color: 'primary.main',
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
+            }}
+          >
             {params.value}
           </Typography>
         </Box>
@@ -151,28 +169,82 @@ const RoomList = () => {
     {
       field: 'building',
       headerName: 'Tòa nhà',
-      flex: 0.12, // 12% width
-      minWidth: 80,
-      filterable: true,
-      sortable: true
+      ...(isMobile || isTablet ? { 
+        flex: 0.5, 
+        minWidth: 80
+      } : { 
+        flex: 0.12,
+        minWidth: 80
+      }),
+      filterable: !isMobile,
+      sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+            wordBreak: 'break-word',
+            whiteSpace: 'normal'
+          }}
+        >
+          {params.value}
+        </Typography>
+      )
     },
     {
       field: 'floor',
       headerName: 'Tầng',
-      flex: 0.08, // 8% width
-      minWidth: 60,
-      filterable: true,
-      sortable: true
+      ...(isMobile || isTablet ? { 
+        flex: 0.4, 
+        minWidth: 60
+      } : { 
+        flex: 0.08,
+        minWidth: 60
+      }),
+      filterable: !isMobile,
+      sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
+          }}
+        >
+          {params.value}
+        </Typography>
+      )
     },
     {
       field: 'capacity',
       headerName: 'Sức chứa',
-      flex: 0.12, // 12% width
-      minWidth: 90,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 0.6, 
+        minWidth: 90
+      } : { 
+        flex: 0.12,
+        minWidth: 90
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            fontWeight: 'medium',
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+            wordBreak: 'break-word',
+            whiteSpace: 'normal'
+          }}
+        >
           {params.value} người
         </Typography>
       )
@@ -180,10 +252,18 @@ const RoomList = () => {
     {
       field: 'type',
       headerName: 'Loại phòng',
-      flex: 0.18, // 18% width
-      minWidth: 120,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 120
+      } : { 
+        flex: 0.18,
+        minWidth: 120
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Chip
           icon={getTypeIcon(params.value)}
@@ -191,23 +271,46 @@ const RoomList = () => {
           color={getTypeColor(params.value) as any}
           size="small"
           variant="outlined"
+          sx={{ 
+            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.75rem' },
+            height: { xs: 20, sm: 24, md: 28 },
+            whiteSpace: 'normal',
+            '& .MuiChip-label': {
+              whiteSpace: 'normal',
+              wordBreak: 'break-word',
+              lineHeight: 1.2,
+              padding: { xs: '0 4px', sm: '0 6px', md: '0 8px' }
+            }
+          }}
         />
       )
     },
     {
       field: 'description',
       headerName: 'Mô tả',
-      flex: 0.35, // 35% width - cột mô tả chiếm nhiều không gian nhất
-      minWidth: 200,
-      filterable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1.8, 
+        minWidth: 150
+      } : { 
+        flex: 0.35,
+        minWidth: 200
+      }),
+      filterable: !isMobile,
       sortable: true,
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Typography variant="body2" sx={{ 
-          wordBreak: 'break-word',
-          whiteSpace: 'normal',
-          lineHeight: 1.4,
-          maxWidth: '100%'
-        }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            wordBreak: 'break-word',
+            whiteSpace: 'normal',
+            lineHeight: 1.4,
+            maxWidth: '100%',
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
+          }}
+        >
           {params.value || 'Không có mô tả'}
         </Typography>
       )
@@ -255,20 +358,39 @@ const RoomList = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Box
+      sx={{ 
+        p: { xs: 1, sm: 1.5, md: 3 },
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        position: 'relative',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        pb: { xs: 2, sm: 3, md: 4 }
+      }}
+    >
       {/* Header Card */}
-      <Card sx={{ mb: 3, boxShadow: 3 }}>
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-            <Typography variant="h4" component="h1" sx={{ 
-              color: 'primary.main', 
-              fontWeight: 'bold',
-              fontSize: { xs: '1.5rem', md: '2rem' }
-            }}>
-              Quản lý phòng học
-            </Typography>
+      <Card sx={{ mb: { xs: 1.5, sm: 2, md: 2.5 }, boxShadow: 3, flexShrink: 0 }}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+          <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+            <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="h4" component="h1" sx={{ 
+                color: 'primary.main', 
+                fontWeight: 'bold',
+                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                Quản lý phòng học
+              </Typography>
+            </Grid>
             
-            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+            <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flexShrink: 0 }}>
               <Tooltip title="Làm mới dữ liệu">
                 <IconButton 
                   onClick={handleRefresh}
@@ -281,136 +403,227 @@ const RoomList = () => {
                     }
                   }}
                 >
-                  <RefreshIcon />
+                  <RefreshIcon fontSize={isMobile ? "small" : "medium"} />
                 </IconButton>
               </Tooltip>
-            </Box>
-          </Box>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
       {/* Statistics Cards */}
-      <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: 2, 
-        mb: 3 
-      }}>
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Tổng phòng
-                </Typography>
-                <Typography variant="h5" component="div" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {roomStats.total}
-                </Typography>
-              </Box>
-              <RoomIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+      <Grid 
+        container 
+        spacing={{ xs: 0.75, sm: 1, md: 1.5 }} 
+        sx={{ 
+          mb: { xs: 1.5, sm: 2, md: 2.5 },
+          flexShrink: 0,
+          justifyContent: 'center'
+        }}
+      >
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <RoomIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'primary.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Tổng phòng
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {roomStats.total}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Lý thuyết
-                </Typography>
-                <Typography variant="h5" component="div" color="primary.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {roomStats.theory}
-                </Typography>
-              </Box>
-              <TheoryIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <TheoryIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'primary.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Lý thuyết
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="primary.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {roomStats.theory}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Thực hành
-                </Typography>
-                <Typography variant="h5" component="div" color="secondary.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {roomStats.lab + roomStats.practice}
-                </Typography>
-              </Box>
-              <LabIcon sx={{ fontSize: 28, color: 'secondary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <LabIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'secondary.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Thực hành
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="secondary.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {roomStats.lab + roomStats.practice}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Hội thảo
-                </Typography>
-                <Typography variant="h5" component="div" color="warning.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {roomStats.seminar}
-                </Typography>
-              </Box>
-              <SeminarIcon sx={{ fontSize: 28, color: 'warning.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <SeminarIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'warning.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Hội thảo
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="warning.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {roomStats.seminar}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Trực tuyến
-                </Typography>
-                <Typography variant="h5" component="div" color="success.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {roomStats.online}
-                </Typography>
-              </Box>
-              <OnlineIcon sx={{ fontSize: 28, color: 'success.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
+        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
+          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                <Grid size={{ xs: 12 }}>
+                  <OnlineIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'success.main' }} />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    color="textSecondary" 
+                    variant="body2" 
+                    sx={{ 
+                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                      lineHeight: 1.1
+                    }}
+                  >
+                    Trực tuyến
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12 }}>
+                  <Typography 
+                    variant="h6" 
+                    component="div" 
+                    color="success.main" 
+                    sx={{ 
+                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                      fontWeight: 'bold',
+                      lineHeight: 1.1
+                    }}
+                  >
+                    {roomStats.online}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* DataGrid */}
       <Paper sx={{ 
-        height: 600, 
+        flex: 1,
+        minHeight: 0,
+        maxHeight: '100%',
         width: '100%', 
         maxWidth: '100%',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        <DataGrid
+        <StyledDataGrid
           apiRef={dataGridRef}
           rows={rooms}
           columns={columns}
@@ -419,65 +632,33 @@ const RoomList = () => {
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{
             pagination: {
-              paginationModel: { page: 0, pageSize: 25 },
+              paginationModel: { page: 0, pageSize: 5 },
             },
           }}
           disableRowSelectionOnClick
-          disableColumnFilter
-          disableColumnMenu={false}
-          disableColumnResize={false} // Cho phép resize cột
+          disableColumnFilter={isMobile}
+          disableColumnMenu={isMobile}
+          disableColumnResize={isMobile || isTablet}
           autoPageSize={false}
-          sx={{
-            height: 600,
-            width: '100%',
-            '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: 'primary.main',
-              color: 'black',
-              '& .MuiDataGrid-columnHeaderTitle': {
-                color: 'black',
-                fontWeight: 'bold',
-              },
-            },
-            '& .MuiDataGrid-cell': {
-              fontSize: '0.75rem',
-              display: 'flex',
-              alignItems: 'flex-start',
-              paddingTop: '8px',
-              paddingBottom: '8px',
-            },
-            '& .MuiDataGrid-row': {
-              minHeight: '60px !important',
-              '&:hover': {
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-              },
-            },
-            '& .MuiDataGrid-columnHeader': {
-              '&:focus': {
-                outline: 'none',
-              },
-            },
-            '& .MuiDataGrid-cell:focus': {
-              outline: 'none',
-            },
-            '& .MuiDataGrid-row:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.04)',
-            },
-          }}
+          columnHeaderHeight={isMobile ? 48 : isTablet ? 52 : 56}
+          getRowHeight={() => 'auto'}
+          isMobile={isMobile}
+          isTablet={isTablet}
+          density="comfortable"
+          checkboxSelection={false}
+          disableColumnSelector={false}
+          disableDensitySelector={false}
           slots={{
-            toolbar: GridToolbar,
+            toolbar: isMobile ? undefined : GridToolbar,
           }}
           slotProps={{
             toolbar: {
               showQuickFilter: false,
             },
           }}
-          density="comfortable"
-          checkboxSelection={false}
-          disableColumnSelector={false}
-          disableDensitySelector={false}
         />
       </Paper>
-    </Container>
+    </Box>
   );
 };
 

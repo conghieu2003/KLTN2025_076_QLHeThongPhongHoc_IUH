@@ -14,10 +14,11 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Container,
   TextField,
   IconButton,
-  Tooltip
+  Tooltip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -27,7 +28,8 @@ import {
   People as PeopleIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { GridColDef, useGridApiRef } from '@mui/x-data-grid';
+import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -87,6 +89,11 @@ interface FilterState {
 }
 
 const AvailableRooms: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const dataGridRef = useGridApiRef();
+  
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -485,28 +492,57 @@ const AvailableRooms: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Box
+      sx={{ 
+        p: { xs: 1, sm: 1.5, md: 3 },
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        position: 'relative',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        pb: { xs: 2, sm: 3, md: 4 }
+      }}
+    >
       {/* Header */}
-      <Card sx={{ mb: 3, boxShadow: 3 }}>
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Typography variant="h4" component="h1" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                Danh sách phòng học
-            </Typography>
-            <Tooltip title="Làm mới dữ liệu">
-              <IconButton 
-                onClick={loadMasterData}
-                color="primary"
+      <Card sx={{ mb: { xs: 1.5, sm: 2, md: 2.5 }, boxShadow: 3, flexShrink: 0 }}>
+        <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+          <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+            <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flex: 1, minWidth: 0 }}>
+              <Typography 
+                variant="h4" 
+                component="h1" 
                 sx={{ 
-                  bgcolor: 'primary.main',
-                  color: 'white',
-                  '&:hover': { bgcolor: 'primary.dark' }
+                  color: 'primary.main', 
+                  fontWeight: 'bold',
+                  fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
+                  wordBreak: 'break-word',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}
               >
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-          </Box>
+                Danh sách phòng học
+              </Typography>
+            </Grid>
+            <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flexShrink: 0 }}>
+              <Tooltip title="Làm mới dữ liệu">
+                <IconButton 
+                  onClick={loadMasterData}
+                  color="primary"
+                  sx={{ 
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    '&:hover': { bgcolor: 'primary.dark' }
+                  }}
+                >
+                  <RefreshIcon fontSize={isMobile ? "small" : "medium"} />
+                </IconButton>
+              </Tooltip>
+            </Grid>
+          </Grid>
         </CardContent>
       </Card>
 
@@ -517,28 +553,29 @@ const AvailableRooms: React.FC = () => {
             Bộ lọc tìm kiếm
           </Typography>
 
-          <Grid container spacing={2}>
-            {/* Department Filter */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              <FormControl fullWidth>
-                <InputLabel shrink>Khoa</InputLabel>
+          <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+            {/* Row 1: Department and Room Type (Mobile: 2 columns, Desktop: same) */}
+            <Grid size={{ xs: 6, md: 6, lg: 4 }}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel shrink sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, whiteSpace: 'normal', lineHeight: 1.2 }}>Khoa</InputLabel>
                 <Select
                   value={filters.departmentId}
                   onChange={(e) => setFilters({ ...filters, departmentId: e.target.value })}
                   label="Khoa"
                   displayEmpty
                   notched
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                   renderValue={(selected) => {
                     if (!selected) {
-                      return <em style={{ color: '#666' }}>Tất cả</em>;
+                      return <Box component="em" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>Tất cả</Box>;
                     }
                     const dept = departments.find(d => d.id.toString() === selected.toString());
                     return dept ? dept.name : selected;
                   }}
                 >
-                  <MenuItem value="">Tất cả</MenuItem>
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
                   {departments.map((dept) => (
-                    <MenuItem key={dept.id} value={dept.id}>
+                    <MenuItem key={dept.id} value={dept.id} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                       {dept.name}
                     </MenuItem>
                   ))}
@@ -546,27 +583,27 @@ const AvailableRooms: React.FC = () => {
               </FormControl>
             </Grid>
 
-            {/* Room Type Filter */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              <FormControl fullWidth>
-                <InputLabel shrink>Loại phòng</InputLabel>
+            <Grid size={{ xs: 6, md: 6, lg: 4 }}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel shrink sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, whiteSpace: 'normal', lineHeight: 1.2 }}>Loại phòng</InputLabel>
                 <Select
                   value={filters.classRoomTypeId}
                   onChange={(e) => setFilters({ ...filters, classRoomTypeId: e.target.value })}
                   label="Loại phòng"
                   displayEmpty
                   notched
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                   renderValue={(selected) => {
                     if (!selected) {
-                      return <em style={{ color: '#666' }}>Tất cả</em>;
+                      return <Box component="em" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>Tất cả</Box>;
                     }
                     const type = roomTypes.find(t => t.id.toString() === selected.toString());
                     return type ? type.name : selected;
                   }}
                 >
-                  <MenuItem value="">Tất cả</MenuItem>
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
                   {roomTypes.map((type) => (
-                    <MenuItem key={type.id} value={type.id}>
+                    <MenuItem key={type.id} value={type.id} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                       {type.name}
                     </MenuItem>
                   ))}
@@ -574,8 +611,8 @@ const AvailableRooms: React.FC = () => {
               </FormControl>
             </Grid>
 
-            {/* Date Filter */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+            {/* Row 2: Date and Minimum Capacity (Mobile: 2 columns, Desktop: same) */}
+            <Grid size={{ xs: 6, md: 6, lg: 4 }}>
               <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
                 <DatePicker
                   label="Chọn ngày cụ thể"
@@ -605,89 +642,27 @@ const AvailableRooms: React.FC = () => {
                     textField: {
                       fullWidth: true,
                       placeholder: "Chọn ngày...",
+                      size: isMobile ? "small" : "medium",
+                      InputLabelProps: {
+                        shrink: true,
+                        sx: { 
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                          whiteSpace: 'normal',
+                          lineHeight: 1.2
+                        }
+                      },
+                      sx: {
+                        '& .MuiInputBase-root': {
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                        }
+                      }
                     },
                   }}
                 />
               </LocalizationProvider>
             </Grid>
 
-            {/* Day of Week Filter (Auto-filled from date or manual) */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              {filters.selectedDate ? (
-                <TextField
-                  fullWidth
-                  label="Thứ trong tuần"
-                  value={filters.dayOfWeek ? getDayName(filters.dayOfWeek) : ''}
-                  disabled
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                  sx={{
-                    '& .MuiInputBase-input.Mui-disabled': {
-                      WebkitTextFillColor: '#1976d2',
-                      fontWeight: 'bold'
-                    }
-                  }}
-                />
-              ) : (
-                <FormControl fullWidth>
-                  <InputLabel shrink>Thứ trong tuần</InputLabel>
-                  <Select
-                    value={filters.dayOfWeek}
-                    onChange={(e) => setFilters({ ...filters, dayOfWeek: e.target.value })}
-                    label="Thứ trong tuần"
-                    displayEmpty
-                    notched
-                    renderValue={(selected) => {
-                      if (!selected) {
-                        return <em style={{ color: '#666' }}>Tất cả</em>;
-                      }
-                      return getDayName(selected);
-                    }}
-                  >
-                    <MenuItem value="">Tất cả</MenuItem>
-                    <MenuItem value="2">Thứ 2</MenuItem>
-                    <MenuItem value="3">Thứ 3</MenuItem>
-                    <MenuItem value="4">Thứ 4</MenuItem>
-                    <MenuItem value="5">Thứ 5</MenuItem>
-                    <MenuItem value="6">Thứ 6</MenuItem>
-                    <MenuItem value="7">Thứ 7</MenuItem>
-                    <MenuItem value="1">Chủ nhật</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            </Grid>
-
-            {/* Time Slot Filter */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              <FormControl fullWidth>
-                <InputLabel shrink>Tiết học</InputLabel>
-                <Select
-                  value={filters.timeSlotId}
-                  onChange={(e) => setFilters({ ...filters, timeSlotId: e.target.value })}
-                  label="Tiết học"
-                  displayEmpty
-                  notched
-                  renderValue={(selected) => {
-                    if (!selected) {
-                      return <em style={{ color: '#666' }}>Tất cả</em>;
-                    }
-                    const slot = timeSlots.find(s => s.id.toString() === selected.toString());
-                    return slot ? `${slot.slotName} (${slot.startTime} - ${slot.endTime}) - ${getShiftName(slot.shift)}` : selected;
-                  }}
-                >
-                  <MenuItem value="">Tất cả</MenuItem>
-                  {timeSlots.map((slot) => (
-                    <MenuItem key={slot.id} value={slot.id}>
-                      {slot.slotName} ({slot.startTime} - {slot.endTime}) - {getShiftName(slot.shift)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Minimum Capacity Filter */}
-            <Grid size={{ xs: 12, md: 6, lg: 4 }}>
+            <Grid size={{ xs: 6, md: 6, lg: 4 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -695,39 +670,157 @@ const AvailableRooms: React.FC = () => {
                 value={filters.minCapacity}
                 onChange={(e) => setFilters({ ...filters, minCapacity: e.target.value })}
                 InputProps={{ inputProps: { min: 0 } }}
+                size={isMobile ? "small" : "medium"}
+                InputLabelProps={{
+                  shrink: true,
+                  sx: { 
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2
+                  }
+                }}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                  }
+                }}
               />
+            </Grid>
+
+            {/* Row 3: Day of Week and Time Slot (Mobile: 2 columns, Desktop: same) */}
+            <Grid size={{ xs: 6, md: 6, lg: 4 }}>
+              {filters.selectedDate ? (
+                <TextField
+                  fullWidth
+                  label="Thứ trong tuần"
+                  value={filters.dayOfWeek ? getDayName(filters.dayOfWeek) : ''}
+                  disabled
+                  size={isMobile ? "small" : "medium"}
+                  InputLabelProps={{
+                    shrink: true,
+                    sx: { 
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                      whiteSpace: 'normal',
+                      lineHeight: 1.2
+                    }
+                  }}
+                  sx={{
+                    fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                    },
+                    '& .MuiInputBase-input.Mui-disabled': {
+                      WebkitTextFillColor: '#1976d2',
+                      fontWeight: 'bold'
+                    }
+                  }}
+                />
+              ) : (
+                <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                  <InputLabel shrink sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, whiteSpace: 'normal', lineHeight: 1.2 }}>Thứ trong tuần</InputLabel>
+                  <Select
+                    value={filters.dayOfWeek}
+                    onChange={(e) => setFilters({ ...filters, dayOfWeek: e.target.value })}
+                    label="Thứ trong tuần"
+                    displayEmpty
+                    notched
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <Box component="em" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>Tất cả</Box>;
+                      }
+                      return getDayName(selected);
+                    }}
+                  >
+                    <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
+                    <MenuItem value="2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Thứ 2</MenuItem>
+                    <MenuItem value="3" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Thứ 3</MenuItem>
+                    <MenuItem value="4" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Thứ 4</MenuItem>
+                    <MenuItem value="5" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Thứ 5</MenuItem>
+                    <MenuItem value="6" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Thứ 6</MenuItem>
+                    <MenuItem value="7" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Thứ 7</MenuItem>
+                    <MenuItem value="1" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Chủ nhật</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
+            </Grid>
+
+            <Grid size={{ xs: 6, md: 6, lg: 4 }}>
+              <FormControl fullWidth size={isMobile ? "small" : "medium"}>
+                <InputLabel shrink sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, whiteSpace: 'normal', lineHeight: 1.2 }}>Tiết học</InputLabel>
+                <Select
+                  value={filters.timeSlotId}
+                  onChange={(e) => setFilters({ ...filters, timeSlotId: e.target.value })}
+                  label="Tiết học"
+                  displayEmpty
+                  notched
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                  renderValue={(selected) => {
+                    if (!selected) {
+                      return <Box component="em" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>Tất cả</Box>;
+                    }
+                    const slot = timeSlots.find(s => s.id.toString() === selected.toString());
+                    return slot ? `${slot.slotName} (${slot.startTime} - ${slot.endTime}) - ${getShiftName(slot.shift)}` : selected;
+                  }}
+                >
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
+                  {timeSlots.map((slot) => (
+                    <MenuItem key={slot.id} value={slot.id} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                      {slot.slotName} ({slot.startTime} - {slot.endTime}) - {getShiftName(slot.shift)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
 
             {/* Action Buttons */}
             <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-              <Box sx={{ display: 'flex', gap: 2, height: '100%', alignItems: 'flex-end' }}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<SearchIcon />}
-                  onClick={handleSearch}
-                  disabled={searching}
-                  sx={{ height: '56px' }}
-                >
-                  {searching ? 'Đang tìm...' : 'Tìm kiếm'}
-                </Button>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleReset}
-                  sx={{ height: '56px' }}
-                >
-                  Đặt lại
-                </Button>
-              </Box>
+              <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }}>
+                <Grid size={{ xs: 6 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<SearchIcon />}
+                    onClick={handleSearch}
+                    disabled={searching}
+                    size={isMobile ? "medium" : "large"}
+                    sx={{ 
+                      height: { xs: '44px', sm: '48px', md: '56px' },
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                    }}
+                  >
+                    {searching ? 'Đang tìm...' : 'Tìm kiếm'}
+                  </Button>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    onClick={handleReset}
+                    size={isMobile ? "medium" : "large"}
+                    sx={{ 
+                      height: { xs: '44px', sm: '48px', md: '56px' },
+                      fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                    }}
+                  >
+                    Đặt lại
+                  </Button>
+                </Grid>
+              </Grid>
             </Grid>
           </Grid>
 
           {/* Filter Summary */}
-          <Alert severity="info" sx={{ mt: 2 }}>
+          <Alert 
+            severity="info" 
+            sx={{ 
+              mt: { xs: 1.5, sm: 2 },
+              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+            }}
+          >
             {filters.dayOfWeek && filters.timeSlotId ? (
               <>
-                <strong>✓ Đang kiểm tra:</strong>{' '}
+                <strong>Đang kiểm tra:</strong>{' '}
                 {filters.selectedDate && (
                   <>
                     Ngày <strong>{new Date(filters.selectedDate).toLocaleDateString('vi-VN')}</strong> ({getDayName(filters.dayOfWeek)})
@@ -743,7 +836,7 @@ const AvailableRooms: React.FC = () => {
               </>
             ) : (
               <>
-                <strong>⚠️ Lưu ý:</strong> Vui lòng chọn <strong>Ngày/Thứ</strong> và <strong>Tiết học</strong> để xem tình trạng phòng
+                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Ngày/Thứ</strong> và <strong>Tiết học</strong> để xem tình trạng phòng
               </>
             )}
           </Alert>
@@ -752,98 +845,103 @@ const AvailableRooms: React.FC = () => {
 
       {/* Results Section */}
       {hasSearched && (
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-              <Typography variant="h6">
-                Kết quả tìm kiếm: {availableRooms.length} phòng
-              </Typography>
+        <Card sx={{ flex: 1, minHeight: 0, maxHeight: '100%', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+          <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: { xs: 1.5, sm: 2 }, flexShrink: 0 }}>
+              <Grid size={{ xs: 12, sm: 'auto' }}>
+                <Typography 
+                  variant="h6"
+                  sx={{ 
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }
+                  }}
+                >
+                  Kết quả tìm kiếm: {availableRooms.length} phòng
+                </Typography>
+              </Grid>
               {availableRooms.length > 0 && (
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Chip 
-                    label={`${availableRooms.filter(r => r.occupancyStatus === 'Còn trống').length} Còn trống`}
-                    color="success"
-                    icon={<CheckCircleIcon />}
-                  />
-                  <Chip 
-                    label={`${availableRooms.filter(r => r.occupancyStatus === 'Đã có lớp').length} Đã có lớp`}
-                    color="error"
-                  />
-                </Box>
+                <Grid size={{ xs: 12, sm: 'auto' }}>
+                  <Grid container spacing={1}>
+                    <Grid size={{ xs: 'auto' }}>
+                      <Chip 
+                        label={`${availableRooms.filter(r => r.occupancyStatus === 'Còn trống').length} Còn trống`}
+                        color="success"
+                        icon={<CheckCircleIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 } }} />}
+                        size="small"
+                        sx={{ 
+                          fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                          height: { xs: 24, sm: 28, md: 32 }
+                        }}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 'auto' }}>
+                      <Chip 
+                        label={`${availableRooms.filter(r => r.occupancyStatus === 'Đã có lớp').length} Đã có lớp`}
+                        color="error"
+                        size="small"
+                        sx={{ 
+                          fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                          height: { xs: 24, sm: 28, md: 32 }
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
+                </Grid>
               )}
-            </Box>
+            </Grid>
 
             {availableRooms.length === 0 ? (
-              <Alert severity="warning">
+              <Alert 
+                severity="warning"
+                sx={{ 
+                  fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                }}
+              >
                 Không tìm thấy phòng nào phù hợp với các tiêu chí đã chọn. 
                 Vui lòng thử điều chỉnh bộ lọc.
               </Alert>
             ) : (
-              <Paper sx={{ height: 600, width: '100%' }}>
-                <DataGrid
+              <Paper sx={{ 
+                flex: 1,
+                minHeight: 0,
+                maxHeight: '100%',
+                width: '100%',
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <StyledDataGrid
+                  apiRef={dataGridRef}
                   rows={availableRooms}
                   columns={columns}
                   getRowId={(row) => row.id}
+                  loading={searching}
                   pageSizeOptions={[10, 25, 50, 100]}
                   initialState={{
                     pagination: {
-                      paginationModel: { page: 0, pageSize: 25 }
-                    }
+                      paginationModel: { page: 0, pageSize: 5 },
+                    },
                   }}
                   disableRowSelectionOnClick
-                  disableColumnFilter={false}
-                  disableColumnMenu={false}
-                  sx={{
-                    height: 600,
-                    width: '100%',
-                    '& .MuiDataGrid-columnHeaders': {
-                      backgroundColor: '#1976d2',
-                      color: '#ffffff',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      minHeight: '56px !important',
-                      maxHeight: '56px !important'
-                    },
-                    '& .MuiDataGrid-columnHeaderTitle': {
-                      fontWeight: 'bold',
-                      color: '#ffffff',
-                      fontSize: '14px'
-                    },
-                    '& .MuiDataGrid-columnHeader': {
-                      backgroundColor: '#1976d2',
-                      color: '#ffffff',
-                      '&:focus': {
-                        outline: 'none'
-                      },
-                      '&:focus-within': {
-                        outline: 'none'
-                      }
-                    },
-                    '& .MuiDataGrid-iconButtonContainer': {
-                      color: '#ffffff'
-                    },
-                    '& .MuiDataGrid-sortIcon': {
-                      color: '#ffffff'
-                    },
-                    '& .MuiDataGrid-menuIconButton': {
-                      color: '#ffffff'
-                    },
-                    '& .MuiDataGrid-row:hover': {
-                      backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                    },
-                    '& .MuiDataGrid-cell': {
-                      fontSize: '13px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }
-                  }}
+                  disableColumnFilter={isMobile}
+                  disableColumnMenu={isMobile}
+                  disableColumnResize={isMobile || isTablet}
+                  autoPageSize={false}
+                  columnHeaderHeight={isMobile ? 48 : isTablet ? 52 : 56}
+                  getRowHeight={() => 'auto'}
+                  isMobile={isMobile}
+                  isTablet={isTablet}
+                  density="comfortable"
+                  checkboxSelection={false}
+                  disableColumnSelector={false}
+                  disableDensitySelector={false}
                 />
               </Paper>
             )}
           </CardContent>
         </Card>
       )}
-    </Container>
+    </Box>
   );
 };
 
