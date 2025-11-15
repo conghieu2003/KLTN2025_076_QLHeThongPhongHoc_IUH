@@ -3,11 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@devexpress/dx-react-core": "^4.0.11",
-    "@devexpress/dx-react-grid": "^4.0.11",
-    "@devexpress/dx-react-grid-material-ui": "^4.0.11",
-    "@devexpress/dx-react-scheduler": "^4.0.11",
-    "@devexpress/dx-react-scheduler-material-ui": "^4.0.11",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fortawesome/fontawesome-free": "^6.5.1",
