@@ -5,6 +5,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -84,19 +85,20 @@ export const authService = {
         };
       }
 
-      // Nếu không có phản hồi từ server
-      if (error.code === 'ECONNABORTED') {
+      // Xử lý timeout
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         return {
           success: false,
-          message: 'Kết nối đến server quá thời gian chờ',
+          message: 'Server đang khởi động, vui lòng thử lại sau vài giây...',
           errorCode: 'TIMEOUT_ERROR'
         };
       }
 
-      if (!error.response) {
+      // Xử lý network error
+      if (error.code === 'ERR_NETWORK' || !error.response) {
         return {
           success: false,
-          message: 'Không thể kết nối đến server',
+          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.',
           errorCode: 'CONNECTION_ERROR'
         };
       }
