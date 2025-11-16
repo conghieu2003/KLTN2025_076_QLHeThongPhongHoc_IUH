@@ -12,7 +12,7 @@ import {
   AvailableSchedule,
   CreateScheduleExceptionData
 } from '../../redux/slices/scheduleExceptionSlice';
-import { scheduleExceptionService } from '../../services/api';
+import { scheduleExceptionService, roomService } from '../../services/api';
 import {
   Box,
   Paper,
@@ -58,6 +58,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
+import { formatDateForAPI, parseDateFromAPI, TransDateTime, formatTimeFromAPI } from '../../utils/transDateTime';
 
 // Types for API data
 interface Department {
@@ -167,6 +168,11 @@ const ScheduleManagement = () => {
   const [requestTypes, setRequestTypes] = useState<RequestType[]>([]);
   const [apiLoading, setApiLoading] = useState(false);
 
+  // State để lưu danh sách phòng available cho ngoại lệ
+  const [availableRoomsForException, setAvailableRoomsForException] = useState<any[]>([]);
+  const [occupiedRoomIds, setOccupiedRoomIds] = useState<number[]>([]);
+  const [checkingRooms, setCheckingRooms] = useState(false);
+
   // Form state for creating/editing exception
   const [formData, setFormData] = useState<CreateScheduleExceptionData>({
     classScheduleId: 0,
@@ -219,6 +225,70 @@ const ScheduleManagement = () => {
     loadData();
   }, [dispatch]);
 
+  // Kiểm tra phòng available khi chọn ngày/tiết mới cho exception moved/exam
+  useEffect(() => {
+    const checkAvailableRooms = async () => {
+      // Chỉ check khi đang tạo exception moved/exam và đã có đủ thông tin
+      if ((formData.exceptionType === 'moved' || formData.exceptionType === 'exam') 
+          && formData.newDate 
+          && formData.newTimeSlotId) {
+        
+        setCheckingRooms(true);
+        try {
+          // Tính dayOfWeek từ newDate (1=CN, 2=T2, ..., 7=T7)
+          const newDateObj = parseDateFromAPI(formData.newDate) || new Date(formData.newDate);
+          const dayOfWeek = newDateObj.getDay() === 0 ? 1 : newDateObj.getDay() + 1;
+          
+          const formattedDate = formatDateForAPI(newDateObj) || formData.newDate;
+          
+          const response = await roomService.getAvailableRoomsForException(
+            formData.newTimeSlotId,
+            dayOfWeek,
+            formattedDate
+          );
+
+          if (response.success && response.data) {
+            const data = response.data;
+            
+            // Lấy danh sách phòng occupied (convert về number để so sánh)
+            const occupiedIds = (data.occupiedRooms || []).map((r: any) => parseInt(String(r.id)));
+            
+            // Lấy danh sách tất cả phòng available (normal + freed)
+            // Filter lại để loại bỏ phòng bị occupied
+            const allAvailableRooms = [
+              ...(data.normalRooms || []),
+              ...(data.freedRooms || [])
+            ];
+            
+            // Chỉ giữ lại phòng không bị occupied (so sánh với số để đảm bảo type matching)
+            const availableRooms = allAvailableRooms.filter((room: any) => {
+              const roomIdNum = parseInt(String(room.id));
+              return !occupiedIds.includes(roomIdNum);
+            });
+            
+            setAvailableRoomsForException(availableRooms);
+            setOccupiedRoomIds(occupiedIds);
+          } else {
+            setAvailableRoomsForException([]);
+            setOccupiedRoomIds([]);
+          }
+        } catch (error) {
+          console.error('Error checking available rooms:', error);
+          setAvailableRoomsForException([]);
+          setOccupiedRoomIds([]);
+        } finally {
+          setCheckingRooms(false);
+        }
+      } else {
+        // Reset khi không phải moved/exam hoặc chưa đủ thông tin
+        setAvailableRoomsForException([]);
+        setOccupiedRoomIds([]);
+      }
+    };
+
+    checkAvailableRooms();
+  }, [formData.exceptionType, formData.newDate, formData.newTimeSlotId]);
+
   // Filter available schedules
   const filteredSchedules = useMemo(() => {
     let filtered = availableSchedules;
@@ -247,7 +317,11 @@ const ScheduleManagement = () => {
     }
 
     if (selectedDate) {
-      filtered = filtered.filter(exp => dayjs(exp.exceptionDate).isSame(selectedDate, 'day'));
+      filtered = filtered.filter(exp => {
+        const expDate = parseDateFromAPI(exp.exceptionDate);
+        if (!expDate) return false;
+        return dayjs(expDate).isSame(selectedDate, 'day');
+      });
     }
 
     return filtered;
@@ -256,13 +330,17 @@ const ScheduleManagement = () => {
   const handleOpenExceptionDialog = (schedule?: AvailableSchedule, exception?: ScheduleException) => {
     if (exception) {
       setEditingException(exception);
+      // Sử dụng formatDateForAPI để đảm bảo timezone chính xác
+      const exceptionDate = formatDateForAPI(exception.exceptionDate) || dayjs().format('YYYY-MM-DD');
+      const newDate = exception.newDate ? formatDateForAPI(exception.newDate) : undefined;
+      
       setFormData({
         classScheduleId: exception.classScheduleId,
-        exceptionDate: exception.exceptionDate,
+        exceptionDate: exceptionDate,
         exceptionType: exception.exceptionType,
         newTimeSlotId: exception.newTimeSlotId,
         newClassRoomId: exception.newClassRoomId,
-        newDate: exception.newDate,
+        newDate: newDate,
         substituteTeacherId: exception.substituteTeacherId,
         reason: exception.reason,
         note: exception.note || ''
@@ -271,9 +349,10 @@ const ScheduleManagement = () => {
       setEditingException(null);
       
       // Tự động điền schedule ID, ngày mặc định là hôm nay
+      const today = TransDateTime(new Date());
       setFormData({
         classScheduleId: schedule.id,
-        exceptionDate: dayjs().format('YYYY-MM-DD'),
+        exceptionDate: formatDateForAPI(today) || dayjs().format('YYYY-MM-DD'),
         exceptionType: 'cancelled',
         reason: '',
         note: ''
@@ -281,9 +360,10 @@ const ScheduleManagement = () => {
     } else {
       // Mở dialog tạo mới không có schedule được chọn trước
       setEditingException(null);
+      const today = TransDateTime(new Date());
       setFormData({
         classScheduleId: 0,
-        exceptionDate: dayjs().format('YYYY-MM-DD'),
+        exceptionDate: formatDateForAPI(today) || dayjs().format('YYYY-MM-DD'),
         exceptionType: 'cancelled',
         reason: '',
         note: ''
@@ -295,9 +375,10 @@ const ScheduleManagement = () => {
   const handleCloseExceptionDialog = () => {
     setExceptionDialogOpen(false);
     setEditingException(null);
+    const today = TransDateTime(new Date());
     setFormData({
       classScheduleId: 0,
-      exceptionDate: dayjs().format('YYYY-MM-DD'),
+      exceptionDate: formatDateForAPI(today) || dayjs().format('YYYY-MM-DD'),
       exceptionType: 'cancelled',
       reason: '',
       note: ''
@@ -330,6 +411,14 @@ const ScheduleManagement = () => {
         toast.error('Vui lòng điền đầy đủ thông tin chuyển lịch (ngày mới, tiết mới, phòng mới)');
         return;
       }
+      
+      // Kiểm tra phòng đã chọn có bị occupied không
+      // Vì dropdown chỉ hiển thị phòng available, nên chỉ cần kiểm tra occupied
+      // occupiedRoomIds đã được convert về number ở useEffect
+      if (occupiedRoomIds.length > 0 && occupiedRoomIds.includes(formData.newClassRoomId)) {
+        toast.error('Phòng đã chọn đã có lớp ngoại lệ! Vui lòng chọn phòng khác.');
+        return;
+      }
     }
 
     if (formData.exceptionType === 'substitute' && !formData.substituteTeacherId) {
@@ -340,9 +429,16 @@ const ScheduleManagement = () => {
     try {
       // Chuyển đổi exceptionType thành requestTypeId
       const requestTypeId = getRequestTypeIdFromExceptionType(formData.exceptionType);
+      
+      // Đảm bảo exceptionDate và newDate được format đúng với timezone
+      const exceptionDate = formData.exceptionDate ? formatDateForAPI(formData.exceptionDate) || formData.exceptionDate : formData.exceptionDate;
+      const newDate = formData.newDate ? (formatDateForAPI(formData.newDate) || formData.newDate) : formData.newDate;
+      
       const dataToSend = {
         ...formData,
-        requestTypeId: requestTypeId
+        requestTypeId: requestTypeId,
+        exceptionDate: exceptionDate,
+        ...(newDate && { newDate: newDate })
       };
 
       if (editingException) {
@@ -737,7 +833,7 @@ const ScheduleManagement = () => {
                               fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
                             }}
                           >
-                            <strong>Giờ học:</strong> {schedule.startTime} - {schedule.endTime}
+                            <strong>Giờ học:</strong> {formatTimeFromAPI(schedule.startTime)} - {formatTimeFromAPI(schedule.endTime)}
                           </Typography>
                           <Typography 
                             variant="body2" 
@@ -850,10 +946,15 @@ const ScheduleManagement = () => {
 
                           <Box sx={{ mb: 2 }}>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                              <strong>Ngày ngoại lệ:</strong> {dayjs(exception.exceptionDate).format('DD/MM/YYYY')}
+                              <strong>Ngày ngoại lệ:</strong> {
+                                (() => {
+                                  const expDate = parseDateFromAPI(exception.exceptionDate);
+                                  return expDate ? dayjs(expDate).format('DD/MM/YYYY') : dayjs(exception.exceptionDate).format('DD/MM/YYYY');
+                                })()
+                              }
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                              <strong>Lịch gốc:</strong> {exception.slotName} ({exception.startTime}-{exception.endTime})
+                              <strong>Lịch gốc:</strong> {exception.slotName} ({formatTimeFromAPI(exception.startTime)}-{formatTimeFromAPI(exception.endTime)})
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                               <strong>Phòng gốc:</strong> {exception.roomName} ({exception.roomCode})
@@ -870,12 +971,17 @@ const ScheduleManagement = () => {
                                 </Typography>
                                 {exception.newDate && (
                                   <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                                    <strong>Ngày mới:</strong> {dayjs(exception.newDate).format('DD/MM/YYYY')}
+                                    <strong>Ngày mới:</strong> {
+                                      (() => {
+                                        const newDate = parseDateFromAPI(exception.newDate);
+                                        return newDate ? dayjs(newDate).format('DD/MM/YYYY') : dayjs(exception.newDate).format('DD/MM/YYYY');
+                                      })()
+                                    }
                                   </Typography>
                                 )}
                                 {exception.newTimeSlotName && (
                                   <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                                    <strong>Tiết mới:</strong> {exception.newTimeSlotName} ({exception.newTimeSlotStart}-{exception.newTimeSlotEnd})
+                                    <strong>Tiết mới:</strong> {exception.newTimeSlotName} ({formatTimeFromAPI(exception.newTimeSlotStart)}-{formatTimeFromAPI(exception.newTimeSlotEnd)})
                                   </Typography>
                                 )}
                                 {exception.newClassRoomName && (
@@ -1099,7 +1205,7 @@ const ScheduleManagement = () => {
                               GIỜ HỌC
                             </Typography>
                             <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                              {selectedSchedule.startTime} - {selectedSchedule.endTime}
+                              {formatTimeFromAPI(selectedSchedule.startTime)} - {formatTimeFromAPI(selectedSchedule.endTime)}
                             </Typography>
                           </Box>
                         </Box>
@@ -1154,11 +1260,27 @@ const ScheduleManagement = () => {
                 <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
                   <DatePicker
                     label="Ngày ngoại lệ"
-                    value={formData.exceptionDate ? dayjs(formData.exceptionDate) : null}
-                    onChange={(newValue) => setFormData(prev => ({ 
-                      ...prev, 
-                      exceptionDate: newValue?.format('YYYY-MM-DD') || dayjs().format('YYYY-MM-DD')
-                    }))}
+                    value={formData.exceptionDate ? (() => {
+                      const parsedDate = parseDateFromAPI(formData.exceptionDate);
+                      return parsedDate ? dayjs(parsedDate) : dayjs(formData.exceptionDate);
+                    })() : null}
+                    onChange={(newValue: Dayjs | null) => {
+                      if (newValue) {
+                        const dateValue = newValue.toDate();
+                        const transDate = TransDateTime(dateValue);
+                        const formattedDate = formatDateForAPI(transDate);
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          exceptionDate: formattedDate || newValue.format('YYYY-MM-DD')
+                        }));
+                      } else {
+                        const today = TransDateTime(new Date());
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          exceptionDate: formatDateForAPI(today) || dayjs().format('YYYY-MM-DD')
+                        }));
+                      }
+                    }}
                     slotProps={{ textField: { size: 'small', fullWidth: true, required: true } }}
                   />
                 </Box>
@@ -1188,51 +1310,151 @@ const ScheduleManagement = () => {
 
               {/* Conditional fields based on exception type */}
               {(formData.exceptionType === 'moved' || formData.exceptionType === 'exam') && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                  <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
-                    <DatePicker
-                      label="Ngày chuyển đến"
-                      value={formData.newDate ? dayjs(formData.newDate) : null}
-                      onChange={(newValue) => setFormData(prev => ({ 
-                        ...prev, 
-                        newDate: newValue?.format('YYYY-MM-DD')
-                      }))}
-                      slotProps={{ textField: { size: 'small', fullWidth: true } }}
-                    />
-                  </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                    <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                      <DatePicker
+                        label="Ngày chuyển đến"
+                        value={formData.newDate ? (() => {
+                          const parsedDate = parseDateFromAPI(formData.newDate);
+                          return parsedDate ? dayjs(parsedDate) : dayjs(formData.newDate);
+                        })() : null}
+                        onChange={(newValue: Dayjs | null) => {
+                          if (newValue) {
+                            const dateValue = newValue.toDate();
+                            const transDate = TransDateTime(dateValue);
+                            const formattedDate = formatDateForAPI(transDate);
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              newDate: formattedDate,
+                              // Reset phòng khi đổi ngày
+                              newClassRoomId: undefined
+                            }));
+                          } else {
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              newDate: undefined,
+                              newClassRoomId: undefined
+                            }));
+                          }
+                        }}
+                        slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                      />
+                    </Box>
 
-                  <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Tiết chuyển đến</InputLabel>
-                      <Select
-                        value={formData.newTimeSlotId || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, newTimeSlotId: parseInt(String(e.target.value)) }))}
-                        label="Tiết chuyển đến"
-                      >
-                        {timeSlots.map(slot => (
-                          <MenuItem key={slot.id} value={slot.id}>
-                            {slot.slotName} ({slot.startTime}-{slot.endTime})
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Box>
+                    <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Tiết chuyển đến</InputLabel>
+                        <Select
+                          value={formData.newTimeSlotId || ''}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            newTimeSlotId: parseInt(String(e.target.value)),
+                            // Reset phòng khi đổi tiết
+                            newClassRoomId: undefined
+                          }))}
+                          label="Tiết chuyển đến"
+                        >
+                          {timeSlots.map(slot => (
+                            <MenuItem key={slot.id} value={slot.id}>
+                              {slot.slotName} ({formatTimeFromAPI(slot.startTime)}-{formatTimeFromAPI(slot.endTime)})
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Box>
 
-                  <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Phòng chuyển đến</InputLabel>
-                      <Select
-                        value={formData.newClassRoomId || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, newClassRoomId: parseInt(String(e.target.value)) }))}
-                        label="Phòng chuyển đến"
-                      >
-                        {rooms.map(room => (
-                          <MenuItem key={room.id} value={room.id}>
-                            {room.name} ({room.code}) - {room.capacity} chỗ
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                    <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>
+                          Phòng chuyển đến
+                          {checkingRooms && ' (Đang kiểm tra...)'}
+                        </InputLabel>
+                        <Select
+                          value={formData.newClassRoomId || ''}
+                          onChange={(e) => {
+                            const selectedRoomId = parseInt(String(e.target.value));
+                            
+                            // Kiểm tra phòng có trong danh sách available không (convert id về number để so sánh)
+                            const selectedRoom = availableRoomsForException.find((r: any) => {
+                              const roomIdNum = parseInt(String(r.id));
+                              return roomIdNum === selectedRoomId;
+                            });
+                            if (!selectedRoom) {
+                              toast.error('Phòng không khả dụng! Vui lòng chọn phòng khác.');
+                              setFormData(prev => ({ ...prev, newClassRoomId: undefined }));
+                              return;
+                            }
+                            
+                            // Kiểm tra xem phòng có bị occupied không
+                            if (occupiedRoomIds.includes(selectedRoomId)) {
+                              toast.error('Phòng này đã có lớp ngoại lệ! Vui lòng chọn phòng khác.');
+                              setFormData(prev => ({ ...prev, newClassRoomId: undefined }));
+                              return;
+                            }
+                            
+                            // Phòng available, cho phép chọn
+                            setFormData(prev => ({ ...prev, newClassRoomId: selectedRoomId }));
+                          }}
+                          label="Phòng chuyển đến"
+                          disabled={checkingRooms || !formData.newDate || !formData.newTimeSlotId}
+                        >
+                          {checkingRooms ? (
+                            <MenuItem value="" disabled>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CircularProgress size={16} />
+                                <Typography variant="body2">Đang kiểm tra phòng...</Typography>
+                              </Box>
+                            </MenuItem>
+                          ) : availableRoomsForException.length > 0 ? (
+                            // Chỉ hiển thị phòng available (filter lại để loại bỏ occupied)
+                            availableRoomsForException
+                              .filter((room: any) => {
+                                const roomIdNum = parseInt(String(room.id));
+                                return !occupiedRoomIds.includes(roomIdNum);
+                              })
+                              .map((room: any) => {
+                                const isFreed = room.isFreedByException;
+                                const roomIdNum = parseInt(String(room.id)); // Convert về number cho value
+                                return (
+                                  <MenuItem key={room.id} value={roomIdNum}>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                      <Typography variant="body2">
+                                        {room.name} ({room.code}) - {room.capacity} chỗ
+                                      </Typography>
+                                      {isFreed && (
+                                        <Typography variant="caption" color="info.main" sx={{ fontSize: '0.65rem' }}>
+                                          🎉 Trống do ngoại lệ
+                                        </Typography>
+                                      )}
+                                    </Box>
+                                  </MenuItem>
+                                );
+                              })
+                          ) : (
+                            <MenuItem value="" disabled>
+                              Không có phòng trống
+                            </MenuItem>
+                          )}
+                        </Select>
+                      </FormControl>
+                      
+                      {/* Cảnh báo nếu phòng đã chọn bị occupied */}
+                      {formData.newClassRoomId && occupiedRoomIds.includes(formData.newClassRoomId) && (
+                        <Alert severity="error" sx={{ mt: 1 }}>
+                          Phòng này đã có lớp ngoại lệ! Vui lòng chọn phòng khác.
+                        </Alert>
+                      )}
+                      
+                      {/* Thông báo số phòng available */}
+                      {formData.newDate && formData.newTimeSlotId && !checkingRooms && (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                          {availableRoomsForException.length > 0 
+                            ? `Có ${availableRoomsForException.length} phòng trống cho ngày/tiết này`
+                            : 'Không có phòng trống cho ngày/tiết này'}
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
               )}

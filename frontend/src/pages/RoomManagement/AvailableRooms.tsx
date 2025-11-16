@@ -26,7 +26,8 @@ import {
   Room as RoomIcon,
   Business as BuildingIcon,
   People as PeopleIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import { GridColDef, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
@@ -37,6 +38,7 @@ import { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
 import { roomService, scheduleManagementService } from '../../services/api';
 import { toast } from 'react-toastify';
+import { formatTimeFromAPI } from '../../utils/transDateTime';
 
 interface Department {
   id: number;
@@ -176,49 +178,80 @@ const AvailableRooms: React.FC = () => {
         }
       }
 
-      console.log('Rooms after dept/type filter:', rooms.length);
-
       // Step 2: Filter by minimum capacity
       if (filters.minCapacity) {
         const minCap = parseInt(filters.minCapacity);
         rooms = rooms.filter(room => room.capacity >= minCap);
       }
 
-      console.log('Rooms after capacity filter:', rooms.length);
+      // Step 3: Get schedule data với exception info - Sử dụng API mới
+      if (!filters.selectedDate) {
+        toast.warning('Vui lòng chọn ngày cụ thể để kiểm tra tình trạng phòng');
+        setSearching(false);
+        return;
+      }
 
-      // Step 3: Get schedule data - *** QUAN TRỌNG: Truyền date parameter ***
-      const schedulesResponse = await roomService.getSchedulesByTimeSlotAndDate(
+      // Sử dụng API getAvailableRoomsForException để lấy thông tin đầy đủ
+      const availableRoomsResponse = await roomService.getAvailableRoomsForException(
         parseInt(filters.timeSlotId),
         parseInt(filters.dayOfWeek),
-        filters.selectedDate || undefined // ← Thêm tham số ngày cụ thể
+        filters.selectedDate,
+        filters.minCapacity ? parseInt(filters.minCapacity) : undefined,
+        filters.classRoomTypeId || undefined,
+        filters.departmentId || undefined
       );
 
       let scheduleData: any[] = [];
       let occupiedRoomIds: string[] = [];
+      let freedRoomsInfo: any[] = [];
+      let movedToRoomsInfo: any[] = [];
 
-      if (schedulesResponse.success) {
-        scheduleData = schedulesResponse.data;
+      if (availableRoomsResponse.success) {
+        const data = availableRoomsResponse.data;
         
-        // Lọc bỏ các schedule có ngoại lệ (classRoomId = null)
-        occupiedRoomIds = scheduleData
-          .filter((schedule: any) => schedule.classRoomId && !schedule.hasException)
-          .map((schedule: any) => schedule.classRoomId.toString());
+        // Kết hợp tất cả rooms (normal + freed + occupied)
+        const allRoomsWithStatus = [
+          ...(data.normalRooms || []),
+          ...(data.freedRooms || []),
+          ...(data.occupiedRooms || [])
+        ];
 
-        console.log('Occupied room IDs (excluding exceptions):', occupiedRoomIds);
-        console.log('Schedule data:', scheduleData);
-        
+        // Lấy thông tin schedule để hiển thị
+        const schedulesResponse = await roomService.getSchedulesByTimeSlotAndDate(
+          parseInt(filters.timeSlotId),
+          parseInt(filters.dayOfWeek),
+          filters.selectedDate
+        );
+
+        if (schedulesResponse.success) {
+          scheduleData = schedulesResponse.data;
+        }
+
+        // Xử lý occupied rooms (bao gồm cả moved exceptions)
+        allRoomsWithStatus.forEach((roomWithStatus: any) => {
+          if (roomWithStatus.status === 'occupied') {
+            occupiedRoomIds.push(roomWithStatus.id.toString());
+            // Nếu có moved exception, lưu thông tin
+            if (roomWithStatus.isOccupiedByMovedException && roomWithStatus.movedToExceptionInfo) {
+              movedToRoomsInfo.push({
+                roomId: roomWithStatus.id,
+                ...roomWithStatus.movedToExceptionInfo
+              });
+            }
+          }
+          // Nếu có freed exception, lưu thông tin
+          if (roomWithStatus.isFreedByException && roomWithStatus.exceptionInfo) {
+            freedRoomsInfo.push({
+              roomId: roomWithStatus.id,
+              ...roomWithStatus.exceptionInfo
+            });
+          }
+        });
+
         // Log các phòng bị giải phóng do ngoại lệ
-        const freedRooms = scheduleData.filter((s: any) => s.hasException && s.originalClassRoom);
-        if (freedRooms.length > 0) {
-          console.log('🎉 Rooms freed due to exceptions:', freedRooms.map((s: any) => ({
-            room: s.originalClassRoom.name,
-            exceptionType: s.exceptionType,
-            class: s.class.className,
-            reason: s.exceptionReason
-          })));
-          
+        if (freedRoomsInfo.length > 0) {
           toast.info(
-            `🎉 Phát hiện ${freedRooms.length} phòng trống do ngoại lệ lịch học (nghỉ/thi/dời lịch)`,
+            `🎉 Phát hiện ${freedRoomsInfo.length} phòng trống do ngoại lệ lịch học (nghỉ/thi/dời lịch)`,
             { autoClose: 5000 }
           );
         }
@@ -238,30 +271,34 @@ const AvailableRooms: React.FC = () => {
           s.hasException && s.originalClassRoom?.id.toString() === room.id.toString()
         );
         
+        // Kiểm tra xem phòng này có đang được đổi lịch đến không (QUAN TRỌNG)
+        const movedToInfo = movedToRoomsInfo.find((m: any) => m.roomId.toString() === room.id.toString());
+        
+        // Kiểm tra xem phòng này có phải freed room không
+        const freedInfo = freedRoomsInfo.find((f: any) => f.roomId.toString() === room.id.toString());
+        
+        // Ưu tiên: Nếu có moved exception → occupied, ngược lại nếu có freed → available
+        const finalOccupancyStatus = (movedToInfo || isOccupied) ? 'Đã có lớp' : 'Còn trống';
+        const isFreedByException = !!freedInfo && !movedToInfo; // Chỉ freed nếu không bị occupied bởi moved
+        
         return {
           ...room,
           searchDayOfWeek: filters.dayOfWeek,
           searchTimeSlot: selectedTimeSlot ? `${selectedTimeSlot.slotName}` : '',
           searchDate: filters.selectedDate || null,
-          occupancyStatus: isOccupied ? 'Đã có lớp' : 'Còn trống',
+          occupancyStatus: finalOccupancyStatus,
           scheduleInfo: scheduleInfo || null,
-          className: scheduleInfo?.class?.className || null,
+          className: scheduleInfo?.class?.className || movedToInfo?.className || null,
           teacherName: scheduleInfo?.teacher?.user?.fullName || null,
-          // Thêm thông tin về ngoại lệ nếu là freed room
-          isFreedByException: !!freedSchedule,
-          exceptionInfo: freedSchedule ? {
-            className: freedSchedule.class.className,
-            exceptionType: freedSchedule.exceptionType,
-            exceptionReason: freedSchedule.exceptionReason,
-            exceptionTypeName: freedSchedule.exceptionTypeName
-          } : null
+          // Thêm thông tin về ngoại lệ
+          isFreedByException,
+          exceptionInfo: freedInfo && !movedToInfo ? freedInfo : null,
+          // Thêm thông tin về moved exception (QUAN TRỌNG)
+          isOccupiedByMovedException: !!movedToInfo,
+          movedToExceptionInfo: movedToInfo || null
         };
       });
 
-      console.log('All rooms with status:', enrichedRooms.length);
-      console.log('Available rooms:', enrichedRooms.filter(r => r.occupancyStatus === 'Còn trống').length);
-      console.log('Occupied rooms:', enrichedRooms.filter(r => r.occupancyStatus === 'Đã có lớp').length);
-      console.log('Freed rooms:', enrichedRooms.filter(r => r.isFreedByException).length);
 
       setAvailableRooms(enrichedRooms);
       
@@ -448,7 +485,31 @@ const AvailableRooms: React.FC = () => {
       renderCell: (params) => {
         const row = params.row;
         const isFreed = row.isFreedByException;
+        const isOccupiedByMoved = row.isOccupiedByMovedException;
         
+        // Nếu phòng bị occupied bởi moved exception
+        if (isOccupiedByMoved) {
+          return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+              <Chip
+                icon={<CancelIcon fontSize="small" />}
+                label="Đã có lớp"
+                size="small"
+                color="error"
+                sx={{ fontWeight: 'medium' }}
+              />
+              <Chip
+                label={`🚫 ${row.movedToExceptionInfo?.className || 'Đổi lịch'}`}
+                size="small"
+                color="warning"
+                variant="outlined"
+                sx={{ fontSize: '0.65rem', height: '18px' }}
+              />
+            </Box>
+          );
+        }
+        
+        // Nếu phòng bị freed do exception
         if (isFreed) {
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
@@ -460,7 +521,7 @@ const AvailableRooms: React.FC = () => {
                 sx={{ fontWeight: 'medium' }}
               />
               <Chip
-                label={`🎉 Do ${row.exceptionInfo?.exceptionType || 'ngoại lệ'}`}
+                label={`🎉 Do ${row.exceptionInfo?.exceptionTypeName || row.exceptionInfo?.exceptionType || 'ngoại lệ'}`}
                 size="small"
                 color="info"
                 variant="outlined"
@@ -470,9 +531,10 @@ const AvailableRooms: React.FC = () => {
           );
         }
         
+        // Phòng bình thường
         return (
           <Chip
-            icon={<CheckCircleIcon fontSize="small" />}
+            icon={params.value === 'Còn trống' ? <CheckCircleIcon fontSize="small" /> : <CancelIcon fontSize="small" />}
             label={params.value}
             size="small"
             color={params.value === 'Còn trống' ? 'success' : 'error'}
@@ -760,13 +822,13 @@ const AvailableRooms: React.FC = () => {
                       return <Box component="em" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>Tất cả</Box>;
                     }
                     const slot = timeSlots.find(s => s.id.toString() === selected.toString());
-                    return slot ? `${slot.slotName} (${slot.startTime} - ${slot.endTime}) - ${getShiftName(slot.shift)}` : selected;
+                    return slot ? `${slot.slotName} (${formatTimeFromAPI(slot.startTime)} - ${formatTimeFromAPI(slot.endTime)}) - ${getShiftName(slot.shift)}` : selected;
                   }}
                 >
                   <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
                   {timeSlots.map((slot) => (
                     <MenuItem key={slot.id} value={slot.id} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                      {slot.slotName} ({slot.startTime} - {slot.endTime}) - {getShiftName(slot.shift)}
+                      {slot.slotName} ({formatTimeFromAPI(slot.startTime)} - {formatTimeFromAPI(slot.endTime)}) - {getShiftName(slot.shift)}
                     </MenuItem>
                   ))}
                 </Select>

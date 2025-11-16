@@ -780,7 +780,7 @@ class ScheduleManagementService {
           departmentName: schedule.class.department?.name || 'Chưa xác định',
           majorId: schedule.class.majorId,
           majorName: schedule.class.major?.name || 'Chưa xác định',
-          timeSlotOrder: this.getTimeSlotOrder(timeSlot.id),
+          timeSlotOrder: this.getTimeSlotOrder(timeSlot.shift),
           assignedAt: schedule.assignedAt,
           note: schedule.note,
           // Thông tin ngoại lệ
@@ -834,7 +834,7 @@ class ScheduleManagementService {
             departmentName: schedule.class.department?.name || 'Chưa xác định',
             majorId: schedule.class.majorId,
             majorName: schedule.class.major?.name || 'Chưa xác định',
-            timeSlotOrder: movedTimeSlot ? this.getTimeSlotOrder(movedTimeSlot.id) : this.getTimeSlotOrder(timeSlot.id),
+            timeSlotOrder: movedTimeSlot ? this.getTimeSlotOrder(movedTimeSlot.shift) : this.getTimeSlotOrder(timeSlot.shift),
             assignedAt: schedule.assignedAt,
             note: `Đã chuyển từ ${this.getDayName(schedule.dayOfWeek)} - ${timeSlot.slotName}`,
             // Thông tin ngoại lệ
@@ -914,7 +914,7 @@ class ScheduleManagementService {
           departmentName: schedule.class.department?.name || 'Chưa xác định',
           majorId: schedule.class.majorId,
           majorName: schedule.class.major?.name || 'Chưa xác định',
-          timeSlotOrder: movedTimeSlot ? this.getTimeSlotOrder(movedTimeSlot.id) : this.getTimeSlotOrder(originalTimeSlot.id),
+          timeSlotOrder: movedTimeSlot ? this.getTimeSlotOrder(movedTimeSlot.shift) : this.getTimeSlotOrder(originalTimeSlot.shift),
           assignedAt: schedule.assignedAt,
           note: `Đã chuyển từ ${this.getDayName(schedule.dayOfWeek)} - ${originalTimeSlot.slotName}`,
           // Thông tin ngoại lệ
@@ -983,12 +983,14 @@ class ScheduleManagementService {
     return types[classRoomTypeId] || 'theory';
   }
 
-  getTimeSlotOrder(timeSlotId) {
-    // Dựa trên sample_data.sql, timeSlotId từ 1-16
-    // Sắp xếp theo thứ tự: 1-6 (sáng), 7-12 (chiều), 13-16 (tối)
-    if (timeSlotId <= 6) return 1; // Tiết 1-3, 4-6
-    if (timeSlotId <= 12) return 2; // Tiết 7-9, 10-12
-    return 3; // Tiết 13-15, 16
+  getTimeSlotOrder(shift) {
+    // Dựa trên shift của TimeSlot: 1 = Sáng, 2 = Chiều, 3 = Tối
+    // shift trực tiếp là 1, 2, 3 nên có thể return luôn
+    if (typeof shift === 'number' && shift >= 1 && shift <= 3) {
+      return shift;
+    }
+    // Fallback: nếu shift không hợp lệ, mặc định là sáng
+    return 1;
   }
 }
 
