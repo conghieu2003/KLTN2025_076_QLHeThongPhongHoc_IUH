@@ -46,6 +46,12 @@ import {
   fetchTeachers,
   selectWeeklyScheduleLoading
 } from '../../redux/slices/scheduleSlice';
+import { 
+  initSocket, 
+  getSocket, 
+  joinWeeklySchedule, 
+  leaveWeeklySchedule
+} from '../../utils/socket';
 
 // Types
 interface WeeklyScheduleItem {
@@ -459,6 +465,203 @@ const WeeklySchedule = memo(() => {
   
   // Ref để tránh re-render không cần thiết
   const headerRef = useRef<HTMLTableSectionElement>(null);
+  
+  // Socket connection ref
+  const socketInitialized = useRef(false);
+  
+  // Refs for cleanup
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectHandlerRef = useRef<(() => void) | null>(null);
+  
+  // Refs to store current filter values to avoid stale closures
+  const selectedDateRef = useRef(selectedDate);
+  const isAdminRef = useRef(isAdmin);
+  const selectedDepartmentRef = useRef(selectedDepartment);
+  const selectedClassRef = useRef(selectedClass);
+  const selectedTeacherRef = useRef(selectedTeacher);
+  
+  // Update refs when values change
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+    isAdminRef.current = isAdmin;
+    selectedDepartmentRef.current = selectedDepartment;
+    selectedClassRef.current = selectedClass;
+    selectedTeacherRef.current = selectedTeacher;
+  }, [selectedDate, isAdmin, selectedDepartment, selectedClass, selectedTeacher]);
+
+  // Setup socket listeners
+  useEffect(() => {
+    if (!socketInitialized.current && user?.id) {
+      let socket = getSocket();
+      if (!socket) {
+        socket = initSocket(user.id);
+      }
+      socketInitialized.current = true;
+
+      const handleScheduleUpdated = (data: any) => {
+        
+        // Get current values from refs to avoid stale closure
+        const currentDate = selectedDateRef.current;
+        const currentIsAdmin = isAdminRef.current;
+        const currentDepartment = selectedDepartmentRef.current;
+        const currentClass = selectedClassRef.current;
+        const currentTeacher = selectedTeacherRef.current;
+        
+        // Reload weekly schedule for current week
+        const dayOfWeek = currentDate.day();
+        let startOfWeek;
+        if (dayOfWeek === 0) {
+          startOfWeek = currentDate.subtract(6, 'day');
+        } else {
+          startOfWeek = currentDate.subtract(dayOfWeek - 1, 'day');
+        }
+        const weekStartDate = startOfWeek.format('YYYY-MM-DD');
+        
+        // Reload schedule for current week
+        const filters = currentIsAdmin ? {
+          departmentId: currentDepartment ? parseInt(currentDepartment) : undefined,
+          classId: currentClass ? parseInt(currentClass) : undefined,
+          teacherId: currentTeacher ? parseInt(currentTeacher) : undefined
+        } : {};
+        
+        dispatch(fetchWeeklySchedule({ weekStartDate, filters }));
+      };
+
+      // Handler for schedule exception updated event
+      const handleScheduleExceptionUpdated = (data: any) => {
+        // Get current values from refs
+        const currentDate = selectedDateRef.current;
+        const currentIsAdmin = isAdminRef.current;
+        const currentDepartment = selectedDepartmentRef.current;
+        const currentClass = selectedClassRef.current;
+        const currentTeacher = selectedTeacherRef.current;
+        
+        // Reload weekly schedule
+        const dayOfWeek = currentDate.day();
+        let startOfWeek;
+        if (dayOfWeek === 0) {
+          startOfWeek = currentDate.subtract(6, 'day');
+        } else {
+          startOfWeek = currentDate.subtract(dayOfWeek - 1, 'day');
+        }
+        const weekStartDate = startOfWeek.format('YYYY-MM-DD');
+        
+        const filters = currentIsAdmin ? {
+          departmentId: currentDepartment ? parseInt(currentDepartment) : undefined,
+          classId: currentClass ? parseInt(currentClass) : undefined,
+          teacherId: currentTeacher ? parseInt(currentTeacher) : undefined
+        } : {};
+        
+        dispatch(fetchWeeklySchedule({ weekStartDate, filters }));
+      };
+
+      // Wait for connection before registering listeners
+      const setupListeners = () => {
+        if (!socket) return;
+        socket.on('schedule-updated', handleScheduleUpdated);
+        socket.on('schedule-exception-updated', handleScheduleExceptionUpdated);
+      };
+
+      if (socket) {
+        if (socket.connected) {
+          setupListeners();
+        } else {
+          socket.once('connect', setupListeners);
+        }
+      }
+
+      // Cleanup on unmount
+      return () => {
+        // Remove event listeners (socket may be null)
+        if (socket) {
+          socket.off('schedule-updated', handleScheduleUpdated);
+          socket.off('schedule-exception-updated', handleScheduleExceptionUpdated);
+          socket.off('connect', setupListeners);
+        }
+        // Don't logout here as user might still be using socket in other components
+        socketInitialized.current = false;
+      };
+    }
+  }, [dispatch, user?.id]); // Only depend on user.id to avoid re-setting listeners
+
+  // Join/leave weekly schedule room when date changes - for all users
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    // Calculate week start date
+    const dayOfWeek = selectedDate.day();
+    let startOfWeek;
+    if (dayOfWeek === 0) {
+      startOfWeek = selectedDate.subtract(6, 'day');
+    } else {
+      startOfWeek = selectedDate.subtract(dayOfWeek - 1, 'day');
+    }
+    const weekStartDate = startOfWeek.format('YYYY-MM-DD');
+    
+    // Clear previous timeout/handler if exists
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    
+    // Get socket - may need to wait for initialization from Layout
+    const getSocketAndJoin = () => {
+      const socket = getSocket();
+      if (!socket) {
+        // Retry after a short delay if socket not ready yet
+        retryTimeoutRef.current = setTimeout(() => {
+          const retrySocket = getSocket();
+          if (retrySocket) {
+            joinRoomWithSocket(retrySocket);
+          }
+          retryTimeoutRef.current = null;
+        }, 500);
+        return;
+      }
+      
+      joinRoomWithSocket(socket);
+    };
+    
+    const joinRoomWithSocket = (socket: any) => {
+      if (!socket) return;
+      
+      // Join room when connected
+      const joinRoom = () => {
+        joinWeeklySchedule(weekStartDate);
+      };
+      
+      if (socket.connected) {
+        joinRoom();
+      } else {
+        connectHandlerRef.current = () => {
+          joinRoom();
+          connectHandlerRef.current = null;
+        };
+        socket.once('connect', connectHandlerRef.current);
+      }
+    };
+    
+    // Try to join immediately
+    getSocketAndJoin();
+    
+    return () => {
+      // Clear retry timeout if exists
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+      
+      // Remove connect handler if exists
+      const socket = getSocket();
+      if (socket && connectHandlerRef.current) {
+        socket.off('connect', connectHandlerRef.current);
+        connectHandlerRef.current = null;
+      }
+      
+      // Leave room
+      leaveWeeklySchedule(weekStartDate);
+    };
+  }, [selectedDate, user?.id, user?.role]);
 
   // Load initial data only once and only for admin
   useEffect(() => {

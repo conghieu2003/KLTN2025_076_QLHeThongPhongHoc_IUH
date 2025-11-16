@@ -124,12 +124,8 @@ const Dashboard = () => {
           return isNotExam;
         });
         
-        // Count exam schedules (lịch thi)
-        // Lịch thi là những schedule có type === 'exam' hoặc exceptionType === 'exam' hoặc requestTypeId === 6
         const examSchedules = validSchedules.filter((schedule: any) => {
-          return schedule.type === 'exam' || 
-                 schedule.exceptionType === 'exam' ||
-                 schedule.requestTypeId === 6; // RequestTypeId 6 = Thi
+          return schedule.requestTypeId === 6; 
         });
         
         setWeeklySchedules(classSchedules.length);
