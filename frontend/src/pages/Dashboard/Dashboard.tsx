@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Box, 
@@ -23,7 +23,7 @@ import {
   SwapHoriz as SwapHorizIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
-import { authService, profileService } from '../../services/api';
+import { authService, profileService, scheduleManagementService } from '../../services/api';
 import { User } from '../../types';
 
 interface MenuCard {
@@ -44,6 +44,103 @@ const Dashboard = () => {
   const [weeklyExams, setWeeklyExams] = useState(0);
   const [profileData, setProfileData] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Helper function to get current week start date (Monday)
+  const getCurrentWeekStartDate = (): string => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); 
+    let daysToSubtract;
+    
+    if (dayOfWeek === 0) {
+      daysToSubtract = 6;
+    } else {
+      daysToSubtract = dayOfWeek - 1;
+    }
+    
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - daysToSubtract);
+    weekStart.setHours(0, 0, 0, 0);
+    
+    const year = weekStart.getFullYear();
+    const month = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const day = String(weekStart.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const hasDayOffException = (schedule: any): boolean => {
+    if (!schedule.exceptionDate) {
+      return false;
+    }
+    
+    const isDayOff = schedule.requestTypeId === 5 || '';
+    
+    if (!isDayOff) {
+      return false;
+    }
+    
+    // Check if exception date is in current week
+    const exceptionDate = new Date(schedule.exceptionDate);
+    exceptionDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    let daysToSubtract;
+    
+    if (dayOfWeek === 0) {
+      daysToSubtract = 6;
+    } else {
+      daysToSubtract = dayOfWeek - 1;
+    }
+    
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - daysToSubtract);
+    weekStart.setHours(0, 0, 0, 0);
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    return exceptionDate >= weekStart && exceptionDate <= weekEnd;
+  };
+
+  const fetchWeeklyScheduleCount = useCallback(async () => {
+    try {
+      const weekStartDate = getCurrentWeekStartDate();
+      const user = authService.getCurrentUser();
+      
+      const filters: any = {};
+      if (user?.role === 'teacher' || user?.role === 'student') {
+      }
+      
+      const response = await scheduleManagementService.getWeeklySchedule(weekStartDate, filters);
+      
+      if (response.success && Array.isArray(response.data)) {
+        const schedules = response.data;
+        
+        const validSchedules = schedules.filter((schedule: any) => !hasDayOffException(schedule));
+        
+        const classSchedules = validSchedules.filter((schedule: any) => {
+          const isNotExam = schedule.requestTypeId !== 6; 
+          return isNotExam;
+        });
+        
+        // Count exam schedules (lịch thi)
+        // Lịch thi là những schedule có type === 'exam' hoặc exceptionType === 'exam' hoặc requestTypeId === 6
+        const examSchedules = validSchedules.filter((schedule: any) => {
+          return schedule.type === 'exam' || 
+                 schedule.exceptionType === 'exam' ||
+                 schedule.requestTypeId === 6; // RequestTypeId 6 = Thi
+        });
+        
+        setWeeklySchedules(classSchedules.length);
+        setWeeklyExams(examSchedules.length);
+      }
+    } catch (error) {
+      console.error('Error fetching weekly schedule count:', error);
+      setWeeklySchedules(0);
+      setWeeklyExams(0);
+    }
+  }, []);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -69,10 +166,11 @@ const Dashboard = () => {
     
     fetchProfile();
     
+    // Fetch weekly schedule counts
+    fetchWeeklyScheduleCount();
+    
     setUnreadNotifications(0);
-    setWeeklySchedules(0);
-    setWeeklyExams(0);
-  }, []);
+  }, [fetchWeeklyScheduleCount]);
 
   // Menu cards based on user role
   const getMenuCards = (): MenuCard[] => {

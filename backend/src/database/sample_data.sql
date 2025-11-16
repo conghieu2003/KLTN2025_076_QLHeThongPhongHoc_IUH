@@ -102,7 +102,17 @@ INSERT INTO TimeSlot (slotName, startTime, endTime, shift) VALUES
 (N'Tiết 13', '18:00:00', '18:50:00', 3),
 (N'Tiết 14', '18:50:00', '19:40:00', 3),
 (N'Tiết 15', '19:50:00', '20:40:00', 3),
-(N'Tiết 16', '20:40:00', '21:30:00', 3);
+(N'Tiết 16', '20:40:00', '21:30:00', 3),
+
+-- Nhóm tiết học (dùng cho lịch học thường xuyên)
+-- Buổi sáng (shift = 1)
+(N'Tiết 1-3', '06:30:00', '09:00:00', 1),  -- Từ tiết 1 đến tiết 3 (06:30 - 09:00)
+(N'Tiết 4-6', '09:10:00', '11:40:00', 1),  -- Từ tiết 4 đến tiết 6 (09:10 - 11:40)
+-- Buổi chiều (shift = 2)
+(N'Tiết 7-9', '12:30:00', '15:00:00', 2),  -- Từ tiết 7 đến tiết 9 (12:30 - 15:00)
+(N'Tiết 10-12', '15:10:00', '17:40:00', 2), -- Từ tiết 10 đến tiết 12 (15:10 - 17:40)
+-- Buổi tối (shift = 3)
+(N'Tiết 13-15', '18:00:00', '20:40:00', 3); -- Từ tiết 13 đến tiết 15 (18:00 - 20:40)
 
 -- =====================================================
 -- 8. DỮ LIỆU TÀI KHOẢN ADMIN
@@ -815,68 +825,85 @@ INSERT INTO ClassSchedule (classId, teacherId, classRoomId, dayOfWeek, timeSlotI
 VALUES 
 -- Lớp COMP101 (mixed): Thứ 3, tiết 1-3 (LT) và Thứ 5, tiết 7-9 (TH)
 -- TIẾT HỌC ĐÃ CỐ ĐỊNH - Admin chỉ cần gán phòng
-(1, 1, NULL, 3, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP101 - Tiết 1-3 cố định, chờ phân phòng'),
-(1, 1, NULL, 5, 7, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP101 - Nhóm 1 - Tiết 7-9 cố định, chờ phân phòng'),
-(1, 1, NULL, 5, 10, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP101 - Nhóm 2 - Tiết 10-12 cố định, chờ phân phòng'),
-(1, 1, NULL, 5, 13, 2, 3, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP101 - Nhóm 3 - Tiết 13-15 cố định, chờ phân phòng'),
+-- TimeSlot ID: 17 = Tiết 1-3, 19 = Tiết 7-9, 20 = Tiết 10-12, 21 = Tiết 13-15
+(1, 1, NULL, 3, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP101 - Tiết 1-3 cố định, chờ phân phòng'),
+(1, 1, NULL, 5, 19, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP101 - Nhóm 1 - Tiết 7-9 cố định, chờ phân phòng'),
+(1, 1, NULL, 5, 20, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP101 - Nhóm 2 - Tiết 10-12 cố định, chờ phân phòng'),
+(1, 1, NULL, 5, 21, 2, 3, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP101 - Nhóm 3 - Tiết 13-15 cố định, chờ phân phòng'),
 
 -- Lớp COMP102 (mixed): Thứ 2, tiết 4-6 (LT) và Thứ 4, tiết 7-9 (TH)
-(2, 2, NULL, 2, 4, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP102 - Chờ phân phòng'),
-(2, 2, NULL, 4, 7, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP102 - Nhóm 1 - Chờ phân phòng'),
-(2, 2, NULL, 4, 10, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP102 - Nhóm 2 - Chờ phân phòng'),
+-- TimeSlot ID: 18 = Tiết 4-6, 19 = Tiết 7-9, 20 = Tiết 10-12
+(2, 2, NULL, 2, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP102 - Chờ phân phòng'),
+(2, 2, NULL, 4, 19, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP102 - Nhóm 1 - Chờ phân phòng'),
+(2, 2, NULL, 4, 20, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành COMP102 - Nhóm 2 - Chờ phân phòng'),
 
 -- Lớp COMP103 (theory only): Thứ 6, tiết 4-6
-(3, 1, NULL, 6, 4, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP103 - Chờ phân phòng'),
+-- TimeSlot ID: 18 = Tiết 4-6
+(3, 1, NULL, 6, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP103 - Chờ phân phòng'),
 
 -- Lớp MECH101 (mixed): Thứ 2, tiết 1-3 (LT) và Thứ 4, tiết 7-9 (TH)
-(4, 3, NULL, 2, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết MECH101 - Chờ phân phòng'),
-(4, 3, NULL, 4, 7, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH101 - Nhóm 1 - Chờ phân phòng'),
-(4, 3, NULL, 4, 10, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH101 - Nhóm 2 - Chờ phân phòng'),
+-- TimeSlot ID: 17 = Tiết 1-3, 19 = Tiết 7-9, 20 = Tiết 10-12
+(4, 3, NULL, 2, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết MECH101 - Chờ phân phòng'),
+(4, 3, NULL, 4, 19, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH101 - Nhóm 1 - Chờ phân phòng'),
+(4, 3, NULL, 4, 20, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH101 - Nhóm 2 - Chờ phân phòng'),
 
 -- Lớp MECH102 (practice only): Thứ 7, tiết 7-9
-(5, 3, NULL, 7, 7, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH102 - Nhóm 1 - Chờ phân phòng'),
-(5, 3, NULL, 7, 10, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH102 - Nhóm 2 - Chờ phân phòng'),
+-- TimeSlot ID: 19 = Tiết 7-9, 20 = Tiết 10-12
+(5, 3, NULL, 7, 19, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH102 - Nhóm 1 - Chờ phân phòng'),
+(5, 3, NULL, 7, 20, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành MECH102 - Nhóm 2 - Chờ phân phòng'),
 
 -- Lớp ELEC101 (mixed): Thứ 3, tiết 4-6 (LT) và Thứ 5, tiết 7-9 (TH)
-(6, 4, NULL, 3, 4, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết ELEC101 - Chờ phân phòng'),
-(6, 4, NULL, 5, 7, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành ELEC101 - Nhóm 1 - Chờ phân phòng'),
-(6, 4, NULL, 5, 10, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành ELEC101 - Nhóm 2 - Chờ phân phòng'),
+-- TimeSlot ID: 18 = Tiết 4-6, 19 = Tiết 7-9, 20 = Tiết 10-12
+(6, 4, NULL, 3, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết ELEC101 - Chờ phân phòng'),
+(6, 4, NULL, 5, 19, 2, 1, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành ELEC101 - Nhóm 1 - Chờ phân phòng'),
+(6, 4, NULL, 5, 20, 2, 2, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch thực hành ELEC101 - Nhóm 2 - Chờ phân phòng'),
 
 -- Lớp BUS101 (theory only): Thứ 2, tiết 7-9
-(7, 5, NULL, 2, 7, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết BUS101 - Chờ phân phòng'),
+-- TimeSlot ID: 19 = Tiết 7-9
+(7, 5, NULL, 2, 19, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết BUS101 - Chờ phân phòng'),
 
 -- =====================================================
 -- LỊCH HỌC CHO 10 LỚP LÝ THUYẾT MỚI (CHỈ LÝ THUYẾT)
 -- =====================================================
 -- Lớp COMP201 (Cấu trúc dữ liệu và giải thuật): Thứ 3, tiết 4-6
-(8, 1, NULL, 3, 4, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP201 - Chờ phân phòng'),
+-- TimeSlot ID: 18 = Tiết 4-6
+(8, 1, NULL, 3, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP201 - Chờ phân phòng'),
 
 -- Lớp COMP202 (Lập trình hướng đối tượng): Thứ 4, tiết 1-3
-(9, 2, NULL, 4, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP202 - Chờ phân phòng'),
+-- TimeSlot ID: 17 = Tiết 1-3
+(9, 2, NULL, 4, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP202 - Chờ phân phòng'),
 
 -- Lớp COMP203 (Hệ điều hành): Thứ 5, tiết 4-6
-(10, 1, NULL, 5, 4, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP203 - Chờ phân phòng'),
+-- TimeSlot ID: 18 = Tiết 4-6
+(10, 1, NULL, 5, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP203 - Chờ phân phòng'),
 
 -- Lớp COMP204 (Trí tuệ nhân tạo): Thứ 6, tiết 1-3
-(11, 2, NULL, 6, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP204 - Chờ phân phòng'),
+-- TimeSlot ID: 17 = Tiết 1-3
+(11, 2, NULL, 6, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP204 - Chờ phân phòng'),
 
 -- Lớp MECH201 (Vật liệu kỹ thuật): Thứ 2, tiết 1-3
-(12, 3, NULL, 2, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết MECH201 - Chờ phân phòng'),
+-- TimeSlot ID: 17 = Tiết 1-3
+(12, 3, NULL, 2, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết MECH201 - Chờ phân phòng'),
 
 -- Lớp MECH202 (Động lực học): Thứ 3, tiết 7-9
-(13, 3, NULL, 3, 7, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết MECH202 - Chờ phân phòng'),
+-- TimeSlot ID: 19 = Tiết 7-9
+(13, 3, NULL, 3, 19, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết MECH202 - Chờ phân phòng'),
 
 -- Lớp ELEC201 (Viễn thông số): Thứ 4, tiết 4-6
-(14, 4, NULL, 4, 4, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết ELEC201 - Chờ phân phòng'),
+-- TimeSlot ID: 18 = Tiết 4-6
+(14, 4, NULL, 4, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết ELEC201 - Chờ phân phòng'),
 
 -- Lớp ELEC202 (Xử lý tín hiệu số): Thứ 5, tiết 1-3
-(15, 4, NULL, 5, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết ELEC202 - Chờ phân phòng'),
+-- TimeSlot ID: 17 = Tiết 1-3
+(15, 4, NULL, 5, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết ELEC202 - Chờ phân phòng'),
 
 -- Lớp BUS201 (Quản trị học): Thứ 6, tiết 7-9
-(16, 5, NULL, 6, 7, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết BUS201 - Chờ phân phòng'),
+-- TimeSlot ID: 19 = Tiết 7-9
+(16, 5, NULL, 6, 19, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết BUS201 - Chờ phân phòng'),
 
 -- Lớp BUS202 (Marketing căn bản): Thứ 7, tiết 1-3
-(17, 5, NULL, 7, 1, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết BUS202 - Chờ phân phòng');
+-- TimeSlot ID: 17 = Tiết 1-3
+(17, 5, NULL, 7, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết BUS202 - Chờ phân phòng');
 
 -- =====================================================
 -- 14. DỮ LIỆU SINH VIÊN TRONG LỚP (VỚI NHÓM THỰC HÀNH)
