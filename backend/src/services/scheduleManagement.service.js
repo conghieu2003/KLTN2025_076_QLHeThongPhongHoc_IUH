@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const SocketClient = require('../utils/socketClient');
 
 class ScheduleManagementService {
   // =====================================================
@@ -344,8 +345,31 @@ class ScheduleManagementService {
         dayOfWeek: updatedSchedule.dayOfWeek,
         dayName: this.getDayName(updatedSchedule.dayOfWeek),
         timeSlot: updatedSchedule.timeSlot.slotName,
-        assignedAt: updatedSchedule.assignedAt
+        startTime: updatedSchedule.timeSlot.startTime,
+        endTime: updatedSchedule.timeSlot.endTime,
+        assignedAt: updatedSchedule.assignedAt,
+        assignedBy: assignedBy
       };
+
+      // Emit socket event for real-time updates
+      try {
+        await SocketClient.emitRoomAssigned(result);
+        
+        // Emit schedule updated event for weekly schedule view (student/teacher)
+        // This will broadcast to all weekly-schedule rooms
+        await SocketClient.emitScheduleUpdated({
+          ...result,
+          // Include weekStartDate: null to broadcast to all weekly-schedule rooms
+          weekStartDate: null // null means broadcast to all weekly-schedule rooms
+        });
+        
+        // Emit updated stats
+        const stats = await this.getSchedulingStats();
+        await SocketClient.emitStatsUpdated(stats);
+      } catch (socketError) {
+        console.error('Error emitting socket event:', socketError);
+        // Don't fail the operation if socket fails
+      }
       
       return result;
     } catch (error) {
@@ -356,6 +380,26 @@ class ScheduleManagementService {
   // Hủy gán phòng
   async unassignRoomFromSchedule(scheduleId) {
     try {
+      // Get schedule info before update
+      const schedule = await prisma.classSchedule.findUnique({
+        where: { id: parseInt(scheduleId) },
+        include: {
+          class: {
+            include: {
+              teacher: {
+                include: { user: true }
+              }
+            }
+          },
+          timeSlot: true,
+          ClassRoomType: true
+        }
+      });
+
+      if (!schedule) {
+        throw new Error('Không tìm thấy lịch học');
+      }
+
       const updatedSchedule = await prisma.classSchedule.update({
         where: { id: parseInt(scheduleId) },
         data: {
@@ -363,15 +407,65 @@ class ScheduleManagementService {
           statusId: 1, 
           assignedBy: null,
           assignedAt: null
+        },
+        include: {
+          class: {
+            include: {
+              teacher: {
+                include: { user: true }
+              }
+            }
+          },
+          timeSlot: true,
+          ClassRoomType: true
         }
       });
 
-      return {
-        id: updatedSchedule.id,
-        statusId: 1,
-        statusName: 'Chờ phân phòng',
+      // Determine class status after unassignment
+      const classInfo = await prisma.class.findUnique({
+        where: { id: updatedSchedule.classId },
+        include: { classSchedules: true }
+      });
+
+      const allSchedulesAssigned = classInfo?.classSchedules.every(s => s.statusId === 2) || false;
+      const classStatusId = allSchedulesAssigned ? 2 : 1;
+
+      const result = {
+        scheduleId: updatedSchedule.id,
+        scheduleStatusId: 1,
+        scheduleStatusName: 'Chờ phân phòng',
+        classId: updatedSchedule.classId,
+        className: updatedSchedule.class.className,
+        classStatusId: classStatusId,
+        dayOfWeek: updatedSchedule.dayOfWeek,
+        dayName: this.getDayName(updatedSchedule.dayOfWeek),
+        timeSlot: updatedSchedule.timeSlot.slotName,
+        startTime: updatedSchedule.timeSlot.startTime,
+        endTime: updatedSchedule.timeSlot.endTime,
         message: 'Đã hủy gán phòng thành công'
       };
+
+      // Emit socket event for real-time updates
+      try {
+        await SocketClient.emitRoomUnassigned(result);
+        
+        // Emit schedule updated event for weekly schedule view (student/teacher)
+        // This will broadcast to all weekly-schedule rooms
+        await SocketClient.emitScheduleUpdated({
+          ...result,
+          // Include weekStartDate: null to broadcast to all weekly-schedule rooms
+          weekStartDate: null // null means broadcast to all weekly-schedule rooms
+        });
+        
+        // Emit updated stats
+        const stats = await this.getSchedulingStats();
+        await SocketClient.emitStatsUpdated(stats);
+      } catch (socketError) {
+        console.error('Error emitting socket event:', socketError);
+        // Don't fail the operation if socket fails
+      }
+
+      return result;
     } catch (error) {
       throw new Error(`Lỗi hủy gán phòng: ${error.message}`);
     }

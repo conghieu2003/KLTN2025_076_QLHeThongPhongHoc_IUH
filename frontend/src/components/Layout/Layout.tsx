@@ -7,6 +7,7 @@ import Sidebar from './Sidebar';
 import { Box, Grid, useTheme, useMediaQuery, IconButton } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import { initSocket } from '../../utils/socket';
 import 'devextreme/dist/css/dx.light.css';
 
 
@@ -24,6 +25,7 @@ const Layout: React.FC = () => {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
   const currentUser: User | null = authService.getCurrentUser();
+  const socketInitialized = useRef(false);
 
   // Xử lý click outside
   useEffect(() => {
@@ -70,6 +72,21 @@ const Layout: React.FC = () => {
       setSidebarOpen(false);
     }
   }, [isDesktop, isMobile]);
+
+  // Initialize socket for all authenticated users (admin, teacher, student)
+  useEffect(() => {
+    if (currentUser?.id && !socketInitialized.current) {
+      initSocket(currentUser.id);
+      socketInitialized.current = true;
+    }
+
+    // Cleanup on unmount or logout
+    return () => {
+      if (!currentUser) {
+        socketInitialized.current = false;
+      }
+    };
+  }, [currentUser?.id, currentUser?.role]);
 
   const handleMenuItemClick = (action: string): void => {
     setShowUserMenu(false);

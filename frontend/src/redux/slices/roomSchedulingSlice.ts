@@ -298,6 +298,38 @@ const roomSchedulingSlice = createSlice({
       state.error = null;
       state.successMessage = null;
     },
+    
+    // Socket real-time update actions
+    updateScheduleFromSocket: (state, action: PayloadAction<any>) => {
+      const { scheduleId, scheduleStatusId, classId, classStatusId, roomId, roomName, roomCode } = action.payload;
+      
+      // Update schedule in classes
+      state.classes = state.classes.map(cls => {
+        if (cls.classId === classId) {
+          // Update class status
+          cls.statusId = classStatusId;
+          
+          // Update schedule
+          cls.schedules = cls.schedules.map(schedule => {
+            if (schedule.scheduleId === scheduleId) {
+              return {
+                ...schedule,
+                statusId: scheduleStatusId,
+                roomId: roomId || undefined,
+                roomName: roomName || undefined,
+                roomCode: roomCode || undefined
+              };
+            }
+            return schedule;
+          });
+        }
+        return cls;
+      });
+    },
+    
+    updateStatsFromSocket: (state, action: PayloadAction<AssignmentStats>) => {
+      state.stats = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -409,6 +441,8 @@ export const {
   closeAssignDialog,
   setSelectedRoom,
   clearMessages,
+  updateScheduleFromSocket,
+  updateStatsFromSocket
 } = roomSchedulingSlice.actions;
 
 export default roomSchedulingSlice.reducer;

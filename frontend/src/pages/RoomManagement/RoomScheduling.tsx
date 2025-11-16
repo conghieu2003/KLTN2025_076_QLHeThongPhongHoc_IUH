@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Typography,
@@ -55,9 +55,16 @@ import {
   setSuccessMessage,
   openAssignDialog,
   closeAssignDialog,
-  setSelectedRoom
+  setSelectedRoom,
+  updateScheduleFromSocket,
+  updateStatsFromSocket
 } from '../../redux/slices/roomSchedulingSlice';
 import { scheduleManagementService } from '../../services/api';
+import { 
+  initSocket, 
+  joinRoomScheduling, 
+  leaveRoomScheduling
+} from '../../utils/socket';
 
 // Import types from slice
 import type { 
@@ -625,6 +632,73 @@ const RoomScheduling: React.FC = () => {
       )
     }
   ];
+
+  // Get user from auth state for socket
+  const { user } = useSelector((state: RootState) => state.auth);
+  
+  // Socket connection ref
+  const socketInitialized = useRef(false);
+
+  // Initialize socket and join room on mount
+  useEffect(() => {
+    if (!socketInitialized.current && user?.id) {
+      // Initialize socket
+      const socket = initSocket(user.id);
+      socketInitialized.current = true;
+
+      // Wait for connection before joining room
+      const handleConnect = () => {
+        joinRoomScheduling();
+      };
+
+      // Join room immediately if already connected, otherwise wait for connection
+      if (socket.connected) {
+        joinRoomScheduling();
+      } else {
+        socket.once('connect', handleConnect);
+      }
+
+      // Listen for room assigned event
+      const handleRoomAssigned = (data: any) => {
+        dispatch(updateScheduleFromSocket(data));
+        dispatch(setSuccessMessage(`Phòng ${data.roomName} đã được gán cho ${data.className} (real-time)`));
+        
+        // Auto close dialog if it's open and matches the assigned schedule
+        if (selectedSchedule?.scheduleId === data.scheduleId) {
+          dispatch(closeAssignDialog());
+        }
+      };
+
+      // Listen for room unassigned event
+      const handleRoomUnassigned = (data: any) => {
+        dispatch(updateScheduleFromSocket(data));
+        dispatch(setSuccessMessage(`Phòng đã được hủy gán cho ${data.className} (real-time)`));
+      };
+
+      // Listen for stats updated event
+      const handleStatsUpdated = (stats: any) => {
+        dispatch(updateStatsFromSocket(stats));
+      };
+
+      // Register event listeners
+      socket.on('room-assigned', handleRoomAssigned);
+      socket.on('room-unassigned', handleRoomUnassigned);
+      socket.on('stats-updated', handleStatsUpdated);
+
+      // Cleanup on unmount
+      return () => {
+        // Remove event listeners
+        socket.off('room-assigned', handleRoomAssigned);
+        socket.off('room-unassigned', handleRoomUnassigned);
+        socket.off('stats-updated', handleStatsUpdated);
+        socket.off('connect', handleConnect);
+        
+        leaveRoomScheduling();
+        // Don't logout here as user might still be using socket in other components
+        socketInitialized.current = false;
+      };
+    }
+  }, [dispatch, user?.id, selectedSchedule]);
 
   // Load data on component mount
   useEffect(() => {
