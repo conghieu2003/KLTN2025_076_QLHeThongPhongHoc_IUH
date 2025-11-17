@@ -1,34 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Grid,
-  Paper,
-  Chip,
-  CircularProgress,
-  Alert,
-  TextField,
-  IconButton,
-  Tooltip,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  Search as SearchIcon,
-  Refresh as RefreshIcon,
-  Room as RoomIcon,
-  Business as BuildingIcon,
-  People as PeopleIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon
-} from '@mui/icons-material';
+import { Box, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem, Button, Grid, Paper, Chip, CircularProgress, Alert, TextField, IconButton, Tooltip, useTheme, useMediaQuery } from '@mui/material';
+import { Search as SearchIcon, Refresh as RefreshIcon, Room as RoomIcon, Business as BuildingIcon, People as PeopleIcon, CheckCircle as CheckCircleIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { GridColDef, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';

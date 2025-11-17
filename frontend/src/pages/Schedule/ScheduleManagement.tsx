@@ -1,58 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
-import {
-  createScheduleException,
-  getScheduleExceptions,
-  getAvailableSchedules,
-  updateScheduleException,
-  deleteScheduleException,
-  clearError,
-  ScheduleException,
-  AvailableSchedule,
-  CreateScheduleExceptionData
-} from '../../redux/slices/scheduleExceptionSlice';
+import { createScheduleException, getScheduleExceptions, getAvailableSchedules, updateScheduleException, deleteScheduleException, clearError, ScheduleException, AvailableSchedule, CreateScheduleExceptionData } from '../../redux/slices/scheduleExceptionSlice'; 
 import { scheduleExceptionService, roomService } from '../../services/api';
-import {
-  Box,
-  Paper,
-  Typography,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Card,
-  CardContent,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Tabs,
-  Tab,
-  Alert,
-  CircularProgress,
-  Tooltip,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
+import { Box, Paper, Typography, Button, FormControl, InputLabel, Select, MenuItem, Card, CardContent, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Tabs, Tab, Alert, CircularProgress, Tooltip, Grid, useTheme, useMediaQuery } from '@mui/material';
 import { toast } from 'react-toastify';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Schedule as ScheduleIcon,
-  Person as PersonIcon,
-  Cancel as CancelIcon,
-  Close as CloseIcon,
-  Warning as WarningIcon,
-  SwapHoriz as SwapIcon,
-  Info as InfoIcon
-} from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, Cancel as CloseIcon, Warning as WarningIcon, SwapHoriz as SwapIcon, Info as InfoIcon } from '@mui/icons-material'; 
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -60,7 +13,6 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
 import { formatDateForAPI, parseDateFromAPI, TransDateTime, formatTimeFromAPI } from '../../utils/transDateTime';
 
-// Types for API data
 interface Department {
   id: number;
   code: string;
@@ -97,7 +49,6 @@ interface RequestType {
   name: string;
 }
 
-// Mapping từ RequestType ID sang exception type
 const getExceptionTypeFromRequestType = (requestTypeId: number): string => {
   switch (requestTypeId) {
     case 5: return 'paused'; // Tạm ngưng
@@ -108,7 +59,6 @@ const getExceptionTypeFromRequestType = (requestTypeId: number): string => {
   }
 };
 
-// Mapping từ exception type sang RequestType ID
 const getRequestTypeIdFromExceptionType = (exceptionType: string): number => {
   switch (exceptionType) {
     case 'cancelled': return 5; // Tạm ngưng
@@ -119,10 +69,9 @@ const getRequestTypeIdFromExceptionType = (exceptionType: string): number => {
   }
 };
 
-// Tạo exceptionTypes từ RequestType data
 const createExceptionTypes = (requestTypes: RequestType[]) => {
   const exceptionTypeMap = {
-    'cancelled': { label: 'Hủy lớp', color: 'error', icon: <CancelIcon /> },
+    'cancelled': { label: 'Hủy lớp', color: 'error', icon: <CloseIcon /> },
     'exam': { label: 'Thi', color: 'secondary', icon: <ScheduleIcon /> },
     'moved': { label: 'Chuyển lịch', color: 'warning', icon: <SwapIcon /> },
     'substitute': { label: 'Thay giảng viên', color: 'info', icon: <PersonIcon /> }
@@ -133,7 +82,7 @@ const createExceptionTypes = (requestTypes: RequestType[]) => {
     .map(rt => {
       const exceptionType = getExceptionTypeFromRequestType(rt.id);
       const typeInfo = exceptionTypeMap[exceptionType as keyof typeof exceptionTypeMap] || 
-                      { label: rt.name, color: 'default', icon: <CancelIcon /> };
+                      { label: rt.name, color: 'default', icon: <CloseIcon /> };
       return {
         value: exceptionType,
         label: rt.name,

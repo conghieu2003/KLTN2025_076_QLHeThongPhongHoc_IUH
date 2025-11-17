@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const SocketClient = require('../utils/socketClient');
 
 // Tạo ngoại lệ lịch học
 const createScheduleException = async (data) => {
@@ -107,6 +108,44 @@ const createScheduleException = async (data) => {
         requester: true
       }
     });
+
+    // Emit socket event để cập nhật real-time
+    try {
+      const exceptionDate = newException.exceptionDate;
+      const movedToDate = newException.movedToDate;
+      
+      // Tính weekStartDate từ exceptionDate
+      if (exceptionDate) {
+        const date = new Date(exceptionDate);
+        const dayOfWeek = date.getDay();
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const weekStartDate = startOfWeek.toISOString().split('T')[0];
+        
+        await SocketClient.emitScheduleExceptionUpdated({
+          exceptionId: newException.id,
+          classScheduleId: newException.classScheduleId,
+          weekStartDate: weekStartDate
+        });
+      }
+      
+      // Nếu có movedToDate, cũng emit cho tuần đó
+      if (movedToDate) {
+        const date = new Date(movedToDate);
+        const dayOfWeek = date.getDay();
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const weekStartDate = startOfWeek.toISOString().split('T')[0];
+        
+        await SocketClient.emitScheduleExceptionUpdated({
+          exceptionId: newException.id,
+          classScheduleId: newException.classScheduleId,
+          weekStartDate: weekStartDate
+        });
+      }
+    } catch (socketError) {
+      console.error('[Schedule Exception] Lỗi khi emit socket event:', socketError);
+    }
 
     return newException;
 
@@ -357,6 +396,46 @@ const updateScheduleException = async (id, updateData, userId) => {
         }
       }
     });
+
+    // Emit socket event để cập nhật real-time
+    try {
+      const exceptionDate = updatedException.exceptionDate;
+      const movedToDate = updatedException.movedToDate;
+      
+      // Tính weekStartDate từ exceptionDate
+      if (exceptionDate) {
+        const date = new Date(exceptionDate);
+        const dayOfWeek = date.getDay();
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const weekStartDate = startOfWeek.toISOString().split('T')[0];
+        
+        await SocketClient.emitScheduleExceptionUpdated({
+          exceptionId: updatedException.id,
+          classScheduleId: updatedException.classScheduleId,
+          weekStartDate: weekStartDate,
+          requestStatusId: updatedException.requestStatusId
+        });
+      }
+      
+      // Nếu có movedToDate, cũng emit cho tuần đó
+      if (movedToDate) {
+        const date = new Date(movedToDate);
+        const dayOfWeek = date.getDay();
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        const weekStartDate = startOfWeek.toISOString().split('T')[0];
+        
+        await SocketClient.emitScheduleExceptionUpdated({
+          exceptionId: updatedException.id,
+          classScheduleId: updatedException.classScheduleId,
+          weekStartDate: weekStartDate,
+          requestStatusId: updatedException.requestStatusId
+        });
+      }
+    } catch (socketError) {
+      console.error('[Schedule Exception] Lỗi khi emit socket event:', socketError);
+    }
 
     return updatedException;
 

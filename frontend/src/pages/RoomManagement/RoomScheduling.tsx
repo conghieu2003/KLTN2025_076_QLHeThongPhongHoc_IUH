@@ -1,138 +1,29 @@
 import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  Button,
-  IconButton,
-  Tooltip,
-  Card,
-  CardContent,
-  Chip,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Snackbar,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  GridColDef,
-  GridToolbar,
-  useGridApiRef
-} from '@mui/x-data-grid';
+import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Chip, Paper, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Grid, useTheme, useMediaQuery } from '@mui/material'; 
+import { GridColDef, GridToolbar, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
-import {
-  Refresh as RefreshIcon,
-  Schedule as ScheduleIcon,
-  Room as RoomIcon,
-  Person as PersonIcon,
-  Class as ClassIcon,
-  CalendarToday as CalendarIcon,
-  Assignment as AssignmentIcon,
-  AutoAwesome as AutoAssignIcon,
-} from '@mui/icons-material';
+import { Refresh as RefreshIcon, Schedule as ScheduleIcon, Room as RoomIcon, Person as PersonIcon, Class as ClassIcon, CalendarToday as CalendarIcon, Assignment as AssignmentIcon, AutoAwesome as AutoAssignIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../../redux/store';
-import {
-  loadAllData,
-  loadAvailableRooms,
-  loadRoomsByDepartmentAndType,
-  assignRoomToSchedule,
-  setSelectedDepartment,
-  setSelectedClass,
-  setSelectedTeacher,
-  setSelectedStatus,
-  setError,
-  setSuccessMessage,
-  openAssignDialog,
-  closeAssignDialog,
-  setSelectedRoom,
-  updateScheduleFromSocket,
-  updateStatsFromSocket
-} from '../../redux/slices/roomSchedulingSlice';
+import { loadAllData, loadAvailableRooms, loadRoomsByDepartmentAndType, assignRoomToSchedule, setSelectedDepartment, setSelectedClass, setSelectedTeacher, setSelectedStatus, setError, setSuccessMessage, openAssignDialog, closeAssignDialog, setSelectedRoom, updateScheduleFromSocket, updateStatsFromSocket} from '../../redux/slices/roomSchedulingSlice';
 import { scheduleManagementService } from '../../services/api';
-import { 
-  initSocket, 
-  joinRoomScheduling, 
-  leaveRoomScheduling
-} from '../../utils/socket';
-
-// Import types from slice
-import type { 
-  ScheduleData
-} from '../../redux/slices/roomSchedulingSlice';
+import { initSocket, getSocket } from '../../utils/socket';
+import type { ScheduleData } from '../../redux/slices/roomSchedulingSlice';
 
 const RoomScheduling: React.FC = () => {
-  // Redux hooks
   const dispatch = useDispatch<AppDispatch>();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const dataGridRef = useGridApiRef();
-  const {
-    // Data
-    classes,
-    departments,
-    teachers,
-    stats,
-    requestTypes,
-    availableRooms,
-    
-    // Filters
-    selectedDepartment,
-    selectedClass,
-    selectedTeacher,
-    selectedStatus,
-    
-    // UI State
-    loading,
-    refreshing,
-    loadingRooms,
-    error,
-    successMessage,
-    
-    // Dialog state
-    assignDialogOpen,
-    selectedSchedule,
-    selectedRoom,
-    isAssigning
-  } = useSelector((state: RootState) => state.roomScheduling);
-  
-
-  // Load all data using Redux
-  const handleLoadAllData = useCallback(() => {
-    dispatch(loadAllData());
-  }, [dispatch]);
-
-
-
-  // Assign room to schedule using Redux
-  const handleAssignRoom = () => {
-    if (!selectedSchedule || !selectedRoom) return;
-    
-    dispatch(assignRoomToSchedule({
-      scheduleId: selectedSchedule.scheduleId.toString(),
-      roomId: selectedRoom
-    }));
-  };
-
-  // Auto assign rooms for a class
+  const { classes, departments, teachers, stats, requestTypes, availableRooms, selectedDepartment, selectedClass, selectedTeacher, selectedStatus, loading, refreshing, loadingRooms, error, successMessage, assignDialogOpen, selectedSchedule, selectedRoom, isAssigning } = useSelector((state: RootState) => state.roomScheduling);
+  const handleLoadAllData = useCallback(() => { dispatch(loadAllData());}, [dispatch]);
+  const handleAssignRoom = () => { if (!selectedSchedule || !selectedRoom) return; dispatch(assignRoomToSchedule({ scheduleId: selectedSchedule.scheduleId.toString(), roomId: selectedRoom })); };
   const handleAutoAssign = async (classId: number) => {
     try {
-      // Tạm thời sử dụng logic đơn giản cho auto assign
       const classData = classes.find(c => c.classId === classId);
       if (classData && classData.schedules) {
-        let successCount = 0;
-        // Chỉ lấy lịch học chưa có phòng (statusId = 1)
+        let successCount = 0; 
         const pendingSchedules = classData.schedules.filter(schedule => schedule.statusId === 1);
         for (const schedule of pendingSchedules) {
           const roomsResponse = await scheduleManagementService.getAvailableRoomsForSchedule(schedule.scheduleId.toString());
@@ -152,7 +43,6 @@ const RoomScheduling: React.FC = () => {
     }
   };
 
-  // Open assign dialog
   const handleOpenAssignDialog = (schedule: ScheduleData) => {
     dispatch(openAssignDialog(schedule));
     
@@ -169,27 +59,22 @@ const RoomScheduling: React.FC = () => {
           classRoomTypeId: schedule.classRoomTypeId.toString()
         }));
       } else {
-        // Fallback to available rooms for schedule
         dispatch(loadAvailableRooms(schedule.scheduleId.toString()));
       }
     } else {
-      // Fallback to available rooms for schedule
       dispatch(loadAvailableRooms(schedule.scheduleId.toString()));
     }
   };
 
-  // Filter classes based on selected filters
+  //lọc lớp học dựa trên các bộ lọc đã chọn
   const filteredClasses = useMemo(() => {
     return classes.filter(cls => {
-      // Tìm departmentId từ departments array
       const department = departments.find(d => d.name === cls.departmentName);
       const departmentMatch = !selectedDepartment || (department && department.id.toString() === selectedDepartment);
       
-      // Tìm teacherId từ teachers array
       const teacher = teachers.find(t => t.fullName === cls.teacherName);
       const teacherMatch = !selectedTeacher || (teacher && teacher.id.toString() === selectedTeacher);
       
-      // Nếu có filter khoa, kiểm tra giáo viên có thuộc khoa đó không
       let teacherDepartmentMatch = true;
       if (selectedDepartment && teacher) {
         teacherDepartmentMatch = !!(teacher.departmentId && teacher.departmentId.toString() === selectedDepartment);
@@ -202,7 +87,7 @@ const RoomScheduling: React.FC = () => {
     });
   }, [classes, departments, teachers, selectedDepartment, selectedClass, selectedTeacher, selectedStatus]);
 
-  // Filter options for dropdowns based on selected department
+  //lọc lớp học dựa trên khoa đã chọn
   const filteredClassesForDropdown = useMemo(() => {
     if (!selectedDepartment) return classes;
     
@@ -212,6 +97,7 @@ const RoomScheduling: React.FC = () => {
     return classes.filter(cls => cls.departmentName === selectedDept.name);
   }, [classes, departments, selectedDepartment]);
 
+  //lọc giảng viên dựa trên khoa đã chọn
   const filteredTeachersForDropdown = useMemo(() => {
     if (!selectedDepartment) return teachers;
     
@@ -220,12 +106,11 @@ const RoomScheduling: React.FC = () => {
     );
   }, [teachers, selectedDepartment]);
 
-  // Flatten schedules for grid display
+  //chuyển đổi lịch học thành dữ liệu cho DataGrid
   const scheduleRows = useMemo(() => {
     const rows: any[] = [];
     
       filteredClasses.forEach(cls => {
-        // Hiển thị tất cả lịch học (cả chờ phân phòng và đã phân phòng)
         cls.schedules.forEach((schedule: ScheduleData) => {
         rows.push({
           id: `${cls.id}-${schedule.id}`,
@@ -244,7 +129,7 @@ const RoomScheduling: React.FC = () => {
           startWeek: schedule.startWeek,
           endWeek: schedule.endWeek,
           note: schedule.note,
-          status: schedule.statusId, // Sử dụng statusId từ schedule
+          status: schedule.statusId, 
           maxStudents: cls.maxStudents,
           classRoomTypeId: schedule.classRoomTypeId,
           classRoomTypeName: schedule.classRoomTypeName,
@@ -259,7 +144,7 @@ const RoomScheduling: React.FC = () => {
     return rows;
   }, [filteredClasses]);
 
-  // Grid columns
+  //cột của DataGrid
   const columns: GridColDef[] = [
     {
       field: 'className',
@@ -518,7 +403,6 @@ const RoomScheduling: React.FC = () => {
       headerAlign: 'center',
       disableColumnMenu: isMobile,
       renderCell: (params) => {
-        // Ẩn Số SV cho nhóm thực hành (classRoomTypeId === 2)
         if (params.row.classRoomTypeId === 2) {
           return (
             <Typography 
@@ -554,13 +438,12 @@ const RoomScheduling: React.FC = () => {
       align: 'center',
       disableColumnMenu: isMobile,
       renderCell: (params) => {
-        // Sử dụng trực tiếp statusId từ database
         const statusType = requestTypes.find(type => type.id === params.value);
         
         if (statusType) {
           let color: 'warning' | 'success' | 'default' = 'default';
-          if (statusType.id === 1) color = 'warning'; // Chờ phân phòng
-          else if (statusType.id === 2) color = 'success'; // Đã phân phòng
+          if (statusType.id === 1) color = 'warning'; 
+          else if (statusType.id === 2) color = 'success'; 
           
           return (
             <Chip 
@@ -631,76 +514,47 @@ const RoomScheduling: React.FC = () => {
         </Box>
       )
     }
-  ];
-
-  // Get user from auth state for socket
+  ];  
   const { user } = useSelector((state: RootState) => state.auth);
-  
-  // Socket connection ref
   const socketInitialized = useRef(false);
-
-  // Initialize socket and join room on mount
   useEffect(() => {
     if (!socketInitialized.current && user?.id) {
-      // Initialize socket
-      const socket = initSocket(user.id);
+      const socket = getSocket() || initSocket(user.id);
       socketInitialized.current = true;
-
-      // Wait for connection before joining room
-      const handleConnect = () => {
-        joinRoomScheduling();
-      };
-
-      // Join room immediately if already connected, otherwise wait for connection
-      if (socket.connected) {
-        joinRoomScheduling();
-      } else {
-        socket.once('connect', handleConnect);
-      }
-
-      // Listen for room assigned event
       const handleRoomAssigned = (data: any) => {
         dispatch(updateScheduleFromSocket(data));
         dispatch(setSuccessMessage(`Phòng ${data.roomName} đã được gán cho ${data.className} (real-time)`));
         
-        // Auto close dialog if it's open and matches the assigned schedule
         if (selectedSchedule?.scheduleId === data.scheduleId) {
           dispatch(closeAssignDialog());
         }
       };
-
-      // Listen for room unassigned event
       const handleRoomUnassigned = (data: any) => {
         dispatch(updateScheduleFromSocket(data));
         dispatch(setSuccessMessage(`Phòng đã được hủy gán cho ${data.className} (real-time)`));
       };
-
-      // Listen for stats updated event
       const handleStatsUpdated = (stats: any) => {
         dispatch(updateStatsFromSocket(stats));
       };
-
-      // Register event listeners
+      const handleScheduleUpdated = (data: any) => {
+        dispatch(updateScheduleFromSocket(data));
+      };
       socket.on('room-assigned', handleRoomAssigned);
       socket.on('room-unassigned', handleRoomUnassigned);
       socket.on('stats-updated', handleStatsUpdated);
+      socket.on('schedule-updated', handleScheduleUpdated);
 
-      // Cleanup on unmount
       return () => {
-        // Remove event listeners
         socket.off('room-assigned', handleRoomAssigned);
         socket.off('room-unassigned', handleRoomUnassigned);
         socket.off('stats-updated', handleStatsUpdated);
-        socket.off('connect', handleConnect);
+        socket.off('schedule-updated', handleScheduleUpdated);
         
-        leaveRoomScheduling();
-        // Don't logout here as user might still be using socket in other components
         socketInitialized.current = false;
       };
     }
   }, [dispatch, user?.id, selectedSchedule]);
 
-  // Load data on component mount
   useEffect(() => {
     handleLoadAllData();
   }, [handleLoadAllData]);

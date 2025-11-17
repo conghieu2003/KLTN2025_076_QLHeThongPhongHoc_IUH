@@ -1,34 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-    Box,
-    Card,
-    CardContent,
-    Typography,
-    Button,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Alert,
-    Chip,
-    CircularProgress,
-    Paper,
-    Divider,
-    Stack,
-    TextField,
-    Grid,
-    useTheme,
-    useMediaQuery
-} from '@mui/material';
-import {
-    Person as PersonIcon,
-    Class as ClassIcon,
-    Room as RoomIcon,
-    Schedule as ScheduleIcon,
-    ArrowBack as ArrowBackIcon,
-    Save as SaveIcon
-} from '@mui/icons-material';
+import { Box, Card, CardContent, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, Chip, CircularProgress, Paper, Divider, Stack, TextField, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { Person as PersonIcon, Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { roomService } from '../../services/api';
 
@@ -126,7 +99,6 @@ const ProcessRequest: React.FC = () => {
     const loadRequestData = async () => {
         try {
             setLoading(true);
-            // Load request details
             const response = await roomService.getScheduleRequestById(parseInt(requestId!));
             console.log('API Response:', response);
             if (response.success) {
@@ -157,7 +129,6 @@ const ProcessRequest: React.FC = () => {
 
             console.log('Class requirements:', { classMaxStudents, classRoomTypeId });
 
-            // ⭐ Nếu là yêu cầu "Đổi lịch" và có ngày cụ thể → Sử dụng API mới
             if (request.RequestType?.name === 'Đổi lịch' && 
                 request.movedToTimeSlotId && 
                 request.movedToDayOfWeek && 
@@ -188,12 +159,11 @@ const ProcessRequest: React.FC = () => {
                         freed: freedRooms.length
                     });
 
-                    // Merge normal và freed rooms với flag để phân biệt
                     const allAvailable = [
                         ...freedRooms.map((room: any) => ({ 
                             ...room, 
                             isFreedByException: true,
-                            sortPriority: 1 // Freed rooms có priority cao hơn
+                            sortPriority: 1 
                         })),
                         ...normalRooms.map((room: any) => ({ 
                             ...room, 
