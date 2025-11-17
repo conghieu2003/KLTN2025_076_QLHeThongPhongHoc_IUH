@@ -104,7 +104,7 @@ const ScheduleManagement = () => {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedExceptionType, setSelectedExceptionType] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
 
   const [exceptionDialogOpen, setExceptionDialogOpen] = useState(false);
   const [editingException, setEditingException] = useState<ScheduleException | null>(null);
@@ -136,8 +136,7 @@ const ScheduleManagement = () => {
     const loadData = async () => {
       setApiLoading(true);
       try {
-        // Load Redux data
-        dispatch(getScheduleExceptions({}));
+        dispatch(getScheduleExceptions({ getAll: true }));
         dispatch(getAvailableSchedules({}));
 
         // Load API data
@@ -401,9 +400,10 @@ const ScheduleManagement = () => {
         toast.success('Tạo ngoại lệ thành công!');
       }
       handleCloseExceptionDialog();
-      dispatch(getScheduleExceptions({}));
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi lưu ngoại lệ');
+      dispatch(getScheduleExceptions({ getAll: true }));
+    } catch (error: any) {
+      const errorMessage = error?.message || error?.payload || 'Có lỗi xảy ra khi lưu ngoại lệ';
+      toast.error(errorMessage);
     }
   };
 
@@ -412,7 +412,7 @@ const ScheduleManagement = () => {
       try {
         await dispatch(deleteScheduleException(id)).unwrap();
         toast.success('Xóa ngoại lệ thành công!');
-        dispatch(getScheduleExceptions({}));
+        dispatch(getScheduleExceptions({ getAll: true }));
       } catch (error) {
         toast.error('Có lỗi xảy ra khi xóa ngoại lệ');
       }

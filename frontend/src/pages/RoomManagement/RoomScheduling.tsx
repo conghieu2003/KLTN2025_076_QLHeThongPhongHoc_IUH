@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Chip, Paper, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Grid, useTheme, useMediaQuery } from '@mui/material'; 
+import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Chip, Paper, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { toast } from 'react-toastify'; 
 import { GridColDef, GridToolbar, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
 import { Refresh as RefreshIcon, Schedule as ScheduleIcon, Room as RoomIcon, Person as PersonIcon, Class as ClassIcon, CalendarToday as CalendarIcon, Assignment as AssignmentIcon, AutoAwesome as AutoAssignIcon } from '@mui/icons-material';
 import { RootState, AppDispatch } from '../../redux/store';
-import { loadAllData, loadAvailableRooms, loadRoomsByDepartmentAndType, assignRoomToSchedule, setSelectedDepartment, setSelectedClass, setSelectedTeacher, setSelectedStatus, setError, setSuccessMessage, openAssignDialog, closeAssignDialog, setSelectedRoom, updateScheduleFromSocket, updateStatsFromSocket} from '../../redux/slices/roomSchedulingSlice';
+import { loadAllData, loadAvailableRooms, loadRoomsByDepartmentAndType, assignRoomToSchedule, setSelectedDepartment, setSelectedClass, setSelectedTeacher, setSelectedStatus, setError, openAssignDialog, closeAssignDialog, setSelectedRoom, updateScheduleFromSocket, updateStatsFromSocket} from '../../redux/slices/roomSchedulingSlice';
 import { scheduleManagementService } from '../../services/api';
 import { initSocket, getSocket } from '../../utils/socket';
 import type { ScheduleData } from '../../redux/slices/roomSchedulingSlice';
@@ -16,9 +17,27 @@ const RoomScheduling: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const dataGridRef = useGridApiRef();
-  const { classes, departments, teachers, stats, requestTypes, availableRooms, selectedDepartment, selectedClass, selectedTeacher, selectedStatus, loading, refreshing, loadingRooms, error, successMessage, assignDialogOpen, selectedSchedule, selectedRoom, isAssigning } = useSelector((state: RootState) => state.roomScheduling);
+  const { classes, departments, teachers, stats, requestTypes, availableRooms, selectedDepartment, selectedClass, selectedTeacher, selectedStatus, loading, refreshing, loadingRooms, error, assignDialogOpen, selectedSchedule, selectedRoom, isAssigning } = useSelector((state: RootState) => state.roomScheduling);
   const handleLoadAllData = useCallback(() => { dispatch(loadAllData());}, [dispatch]);
-  const handleAssignRoom = () => { if (!selectedSchedule || !selectedRoom) return; dispatch(assignRoomToSchedule({ scheduleId: selectedSchedule.scheduleId.toString(), roomId: selectedRoom })); };
+  const handleAssignRoom = async () => {
+    if (!selectedSchedule || !selectedRoom) {
+      toast.warning('Vui lòng chọn phòng học');
+      return;
+    }
+    
+    try {
+      await dispatch(assignRoomToSchedule({ 
+        scheduleId: selectedSchedule.scheduleId.toString(), 
+        roomId: selectedRoom 
+      })).unwrap();
+      
+      toast.success('Gán phòng thành công');
+      dispatch(closeAssignDialog());
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Có lỗi xảy ra khi gán phòng';
+      toast.error(errorMessage);
+    }
+  };
   const handleAutoAssign = async (classId: number) => {
     try {
       const classData = classes.find(c => c.classId === classId);
@@ -34,12 +53,14 @@ const RoomScheduling: React.FC = () => {
         }
         
         if (successCount > 0) {
-          dispatch(setSuccessMessage(`Tự động gán phòng thành công: ${successCount} lịch học`));
+          toast.success(`Tự động gán phòng thành công: ${successCount} lịch học`);
         }
       }
     } catch (err: any) {
       console.error('Error auto assigning:', err);
-      dispatch(setError(err.response?.data?.message || 'Lỗi tự động gán phòng'));
+      const errorMessage = err.response?.data?.message || 'Lỗi tự động gán phòng';
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
     }
   };
 
@@ -523,7 +544,6 @@ const RoomScheduling: React.FC = () => {
       socketInitialized.current = true;
       const handleRoomAssigned = (data: any) => {
         dispatch(updateScheduleFromSocket(data));
-        dispatch(setSuccessMessage(`Phòng ${data.roomName} đã được gán cho ${data.className} (real-time)`));
         
         if (selectedSchedule?.scheduleId === data.scheduleId) {
           dispatch(closeAssignDialog());
@@ -531,7 +551,6 @@ const RoomScheduling: React.FC = () => {
       };
       const handleRoomUnassigned = (data: any) => {
         dispatch(updateScheduleFromSocket(data));
-        dispatch(setSuccessMessage(`Phòng đã được hủy gán cho ${data.className} (real-time)`));
       };
       const handleStatsUpdated = (stats: any) => {
         dispatch(updateStatsFromSocket(stats));
@@ -621,7 +640,7 @@ const RoomScheduling: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Error/Success Messages */}
+      {/* Error Messages */}
       {error && (
         <Alert 
           severity="error" 
@@ -1191,13 +1210,6 @@ const RoomScheduling: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Success Snackbar */}
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={6000}
-        onClose={() => dispatch(setSuccessMessage(null))}
-        message={successMessage}
-      />
     </Box>
   );
 };

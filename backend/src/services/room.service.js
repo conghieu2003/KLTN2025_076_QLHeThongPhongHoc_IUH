@@ -628,7 +628,71 @@ class RoomService {
 
       console.log(`[getAvailableRoomsForException] Found ${schedules.length} schedules for this time slot`);
 
-      // Step 3: Phân loại phòng
+      // Step 3: Lấy các exceptions "moved" đã được duyệt sắp vào phòng trong cùng timeSlot
+      const specificDateObj = specificDate ? new Date(specificDate) : null;
+      let movedToRoomIds = [];
+      
+      if (specificDateObj) {
+        const dateStart = new Date(specificDateObj);
+        dateStart.setHours(0, 0, 0, 0);
+        const dateEnd = new Date(specificDateObj);
+        dateEnd.setHours(23, 59, 59, 999);
+
+        const movedExceptions = await prisma.scheduleRequest.findMany({
+          where: {
+            requestStatusId: 2, // Chỉ lấy exceptions đã duyệt
+            AND: [
+              {
+                OR: [
+                  { exceptionType: 'moved' },
+                  { requestTypeId: 6 } // RequestType ID cho "Đổi lịch"
+                ]
+              },
+              {
+                OR: [
+                  {
+                    movedToDate: {
+                      gte: dateStart,
+                      lte: dateEnd
+                    }
+                  },
+                  {
+                    exceptionDate: {
+                      gte: dateStart,
+                      lte: dateEnd
+                    }
+                  }
+                ]
+              },
+              {
+                OR: [
+                  { movedToTimeSlotId: timeSlotId },
+                  { newTimeSlotId: timeSlotId }
+                ]
+              }
+            ]
+          },
+          select: {
+            movedToClassRoomId: true,
+            newClassRoomId: true
+          }
+        });
+
+        movedExceptions.forEach(exception => {
+          if (exception.movedToClassRoomId) {
+            movedToRoomIds.push(exception.movedToClassRoomId);
+          }
+          if (exception.newClassRoomId) {
+            movedToRoomIds.push(exception.newClassRoomId);
+          }
+        });
+
+        // Loại bỏ duplicate và lưu vào biến
+        movedToRoomIds = [...new Set(movedToRoomIds)];
+        console.log(`[getAvailableRoomsForException] Found ${movedToRoomIds.length} rooms occupied by moved exceptions`);
+      }
+
+      // Step 4: Phân loại phòng
       const occupiedRoomIds = schedules
         .filter(s => s.classRoomId && !s.hasException)
         .map(s => s.classRoomId);
@@ -645,13 +709,17 @@ class RoomService {
 
       const freedRoomIds = freedRoomInfo.map(r => r.roomId);
 
-      console.log(`[getAvailableRoomsForException] Occupied rooms: ${occupiedRoomIds.length}, Freed rooms: ${freedRoomIds.length}`);
+      // Kết hợp occupied rooms và moved exception rooms
+      const allOccupiedRoomIds = [...new Set([...occupiedRoomIds, ...movedToRoomIds])];
 
-      // Step 4: Tạo danh sách phòng với thông tin chi tiết
+      console.log(`[getAvailableRoomsForException] Occupied rooms: ${occupiedRoomIds.length}, Freed rooms: ${freedRoomIds.length}, Moved exception rooms: ${movedToRoomIds.length}`);
+
+      // Step 5: Tạo danh sách phòng với thông tin chi tiết
       const categorizedRooms = allRooms.map(room => {
-        const isOccupied = occupiedRoomIds.includes(room.id);
+        const isOccupied = allOccupiedRoomIds.includes(room.id);
         const freedInfo = freedRoomInfo.find(f => f.roomId === room.id);
         const isFreedByException = !!freedInfo;
+        const isOccupiedByMovedException = movedToRoomIds.includes(room.id);
 
         const processedRoom = this.processRoomData(room);
 
@@ -659,16 +727,17 @@ class RoomService {
           ...processedRoom,
           status: isOccupied ? 'occupied' : 'available',
           isFreedByException,
+          isOccupiedByMovedException, // Đánh dấu phòng bị chiếm bởi exception "moved"
           exceptionInfo: isFreedByException ? freedInfo : null
         };
       });
 
-      // Step 5: Lọc và sắp xếp
+      // Step 6: Lọc và sắp xếp - loại bỏ phòng bị chiếm bởi moved exception
       const result = {
-        normalRooms: categorizedRooms.filter(r => r.status === 'available' && !r.isFreedByException),
-        freedRooms: categorizedRooms.filter(r => r.isFreedByException),
-        occupiedRooms: categorizedRooms.filter(r => r.status === 'occupied'),
-        totalAvailable: categorizedRooms.filter(r => r.status === 'available').length
+        normalRooms: categorizedRooms.filter(r => r.status === 'available' && !r.isFreedByException && !r.isOccupiedByMovedException),
+        freedRooms: categorizedRooms.filter(r => r.isFreedByException && !r.isOccupiedByMovedException),
+        occupiedRooms: categorizedRooms.filter(r => r.status === 'occupied' || r.isOccupiedByMovedException),
+        totalAvailable: categorizedRooms.filter(r => r.status === 'available' && !r.isOccupiedByMovedException).length
       };
 
       console.log(`[getAvailableRoomsForException] Result: ${result.normalRooms.length} normal, ${result.freedRooms.length} freed, ${result.occupiedRooms.length} occupied`);
