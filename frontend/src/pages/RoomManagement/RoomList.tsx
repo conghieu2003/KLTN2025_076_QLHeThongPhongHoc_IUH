@@ -2,38 +2,10 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchRoomsThunk, selectRooms, selectRoomsLoading, selectRoomsError, clearRooms } from '../../redux/slices/roomSlice';
 import { Room } from '../../types';
-import {
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  Button,
-  IconButton,
-  Tooltip,
-  Card,
-  CardContent,
-  Container,
-  Chip,
-  Paper,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  GridColDef,
-  GridToolbar,
-  useGridApiRef
-} from '@mui/x-data-grid';
+import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Container, Chip, Paper, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { GridColDef, GridToolbar, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
-import {
-  Refresh as RefreshIcon,
-  MeetingRoom as RoomIcon,
-  School as TheoryIcon,
-  Science as LabIcon,
-  Groups as SeminarIcon,
-  Computer as OnlineIcon,
-  Business as PracticeIcon
-} from '@mui/icons-material';
+import { Refresh as RefreshIcon, MeetingRoom as RoomIcon, School as TheoryIcon, Science as LabIcon, Groups as SeminarIcon, Computer as OnlineIcon, Business as PracticeIcon } from '@mui/icons-material';
 
 interface ExtendedRoom extends Room {
   location?: string;
@@ -62,7 +34,7 @@ const RoomList = () => {
   const getTypeText = (type: string) => {
     switch (type) {
       case 'theory': return 'Lý thuyết';
-      case 'lecture': return 'Lý thuyết'; // Fallback cho dữ liệu cũ
+      case 'lecture': return 'Lý thuyết'; 
       case 'lab': return 'Thực hành';
       case 'practice': return 'Thực hành';
       case 'seminar': return 'Hội thảo';

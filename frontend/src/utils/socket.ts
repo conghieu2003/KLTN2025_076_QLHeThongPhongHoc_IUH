@@ -4,11 +4,7 @@ const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
 
 let socket: Socket | null = null;
 
-/**
- * Initialize socket connection
- */
 export const initSocket = (userId?: string | number): Socket => {
-  // If socket already exists and is connected, just login if userId provided
   if (socket?.connected) {
     if (userId) {
       socket.emit('login', userId.toString());
@@ -16,8 +12,6 @@ export const initSocket = (userId?: string | number): Socket => {
     }
     return socket;
   }
-
-  // If socket exists but not connected, reconnect it
   if (socket && !socket.connected) {
     socket.connect();
     if (userId) {
@@ -28,8 +22,6 @@ export const initSocket = (userId?: string | number): Socket => {
     }
     return socket;
   }
-
-  // Create new socket connection
   socket = io(SOCKET_URL, {
     withCredentials: true,
     transports: ['websocket', 'polling'],
@@ -75,16 +67,10 @@ export const initSocket = (userId?: string | number): Socket => {
   return socket;
 };
 
-/**
- * Get current socket instance
- */
 export const getSocket = (): Socket | null => {
   return socket;
 };
 
-/**
- * Disconnect socket
- */
 export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
@@ -92,9 +78,6 @@ export const disconnectSocket = () => {
   }
 };
 
-/**
- * Login user (store socket connection)
- */
 export const loginSocket = (userId: string | number) => {
   if (!socket) {
     initSocket(userId);
@@ -103,78 +86,12 @@ export const loginSocket = (userId: string | number) => {
   socket.emit('login', userId.toString());
 };
 
-/**
- * Logout user
- */
 export const logoutSocket = (userId: string | number) => {
   if (socket) {
     socket.emit('logout', userId.toString());
   }
 };
 
-/**
- * Join room scheduling room
- */
-export const joinRoomScheduling = () => {
-  if (socket && socket.connected) {
-    socket.emit('join-room-scheduling');
-    console.log('[Socket] Đã tham gia phòng sắp xếp phòng học');
-  } else {
-    console.warn('[Socket] Socket chưa kết nối, không thể tham gia phòng sắp xếp phòng học');
-    // Try to join after connection
-    if (socket) {
-      socket.once('connect', () => {
-        socket?.emit('join-room-scheduling');
-        console.log('[Socket] Đã tham gia phòng sắp xếp phòng học sau khi kết nối');
-      });
-    }
-  }
-};
-
-/**
- * Leave room scheduling room
- */
-export const leaveRoomScheduling = () => {
-  if (socket && socket.connected) {
-    socket.emit('leave-room-scheduling');
-    console.log('[Socket] Đã rời phòng sắp xếp phòng học');
-  }
-};
-
-/**
- * Join weekly schedule room
- */
-export const joinWeeklySchedule = (weekStartDate: string) => {
-  if (socket && socket.connected) {
-    socket.emit('join-weekly-schedule', weekStartDate);
-    console.log(`[Socket] Đã tham gia phòng lịch tuần: ${weekStartDate}`);
-  } else {
-    console.warn(`[Socket] Socket chưa kết nối, không thể tham gia phòng lịch tuần: ${weekStartDate}`);
-    // Try to join after connection
-    if (socket) {
-      socket.once('connect', () => {
-        socket?.emit('join-weekly-schedule', weekStartDate);
-        console.log(`[Socket] Đã tham gia phòng lịch tuần sau khi kết nối: ${weekStartDate}`);
-      });
-    } else {
-      console.error('[Socket] Socket không tồn tại, không thể tham gia phòng lịch tuần');
-    }
-  }
-};
-
-/**
- * Leave weekly schedule room
- */
-export const leaveWeeklySchedule = (weekStartDate: string) => {
-  if (socket && socket.connected) {
-    socket.emit('leave-weekly-schedule', weekStartDate);
-    console.log(`[Socket] Đã rời phòng lịch tuần: ${weekStartDate}`);
-  }
-};
-
-/**
- * Check if socket is connected
- */
 export const isSocketConnected = (): boolean => {
   return socket?.connected || false;
 };

@@ -1,27 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Typography,
-  Alert,
-  CircularProgress,
-  Divider,
-  Chip,
-  Paper,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  Email as EmailIcon,
-  Person as PersonIcon,
-  School as SchoolIcon,
-  Send as SendIcon
-} from '@mui/icons-material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Typography, Alert, CircularProgress, Divider, Chip, Paper, Grid, useTheme, useMediaQuery } from '@mui/material';   
+import { Email as EmailIcon, Person as PersonIcon, School as SchoolIcon, Send as SendIcon } from '@mui/icons-material';
 import { User } from '../../types';
 
 interface EmailDialogProps {

@@ -1,28 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Card, 
-  CardContent, 
-  Typography,
-  Grid,
-  Avatar,
-  CircularProgress
-} from '@mui/material';
-import { 
-  Notifications as NotificationsIcon,
-  CalendarToday as CalendarTodayIcon,
-  Assignment as AssignmentIcon,
-  People as PeopleIcon,
-  MeetingRoom as MeetingRoomIcon,
-  Search as SearchIcon,
-  List as ListIcon,
-  EventNote as EventNoteIcon,
-  CalendarMonth as CalendarMonthIcon,
-  Warning as WarningIcon,
-  SwapHoriz as SwapHorizIcon,
-  Person as PersonIcon
-} from '@mui/icons-material';
+import { Box, Card, CardContent, Typography, Grid, Avatar, CircularProgress } from '@mui/material';
+import { Notifications as NotificationsIcon, CalendarToday as CalendarTodayIcon, Assignment as AssignmentIcon, People as PeopleIcon, MeetingRoom as MeetingRoomIcon, Search as SearchIcon, List as ListIcon, EventNote as EventNoteIcon, CalendarMonth as CalendarMonthIcon, Warning as WarningIcon, SwapHoriz as SwapHorizIcon, Person as PersonIcon } from '@mui/icons-material'; 
 import { authService, profileService, scheduleManagementService } from '../../services/api';
 import { User } from '../../types';
 
@@ -45,7 +24,6 @@ const Dashboard = () => {
   const [profileData, setProfileData] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Helper function to get current week start date (Monday)
   const getCurrentWeekStartDate = (): string => {
     const today = new Date();
     const dayOfWeek = today.getDay(); 

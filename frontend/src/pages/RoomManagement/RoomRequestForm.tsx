@@ -1,40 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Box,
-    Card,
-    CardContent,
-    Typography,
-    Button,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Alert,
-    CircularProgress,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    FormControlLabel,
-    Radio,
-    RadioGroup,
-    TextField,
-    Paper
-} from '@mui/material';
-import {
-    Class as ClassIcon,
-    Room as RoomIcon,
-    Schedule as ScheduleIcon,
-    CheckCircle as CheckCircleIcon,
-    Send as SendIcon,
-    Info as InfoIcon
-} from '@mui/icons-material';
+import { Box, Card, CardContent, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Radio, RadioGroup, TextField, Paper } from '@mui/material';    
+import { Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, CheckCircle as CheckCircleIcon, Send as SendIcon, Info as InfoIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { roomService } from '../../services/api';
 
-// Interface cho ScheduleRequest dựa trên database schema
 interface ScheduleRequestForm {
     requestType: 'room_request' | 'schedule_change' | 'exception' | 'time_change';
     classScheduleId?: number;
@@ -110,7 +81,6 @@ const RoomRequestForm: React.FC = () => {
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [classSchedules, setClassSchedules] = useState<ClassSchedule[]>([]);
     const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-    // Bỏ availableRooms vì admin sẽ chọn phòng
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
     const [formData, setFormData] = useState<ScheduleRequestForm>({
@@ -125,20 +95,16 @@ const RoomRequestForm: React.FC = () => {
 
     useEffect(() => {
         loadInitialData();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []); 
 
     const loadInitialData = async () => {
         setLoading(true);
         try {
-            // Load time slots
             const timeSlotsResponse = await roomService.getTimeSlots();
             if (timeSlotsResponse.success) {
                 setTimeSlots(timeSlotsResponse.data);
             }
 
-            // Bỏ load rooms vì admin sẽ chọn phòng
-
-            // Load teacher's class schedules
             if (user?.id) {
                 const schedulesResponse = await roomService.getTeacherSchedules(user.id);
                 if (schedulesResponse.success) {
@@ -169,14 +135,12 @@ const RoomRequestForm: React.FC = () => {
         if (!selectedSchedule) {
             errors.push('Vui lòng chọn lớp học');
         }
-        // Validation cho time_change (chỉ đổi lịch mới cần chọn thứ và tiết)
         if (formData.requestType === 'time_change' && !formData.timeSlotId) {
             errors.push('Vui lòng chọn tiết học');
         }
         if (formData.requestType === 'time_change' && !formData.dayOfWeek) {
             errors.push('Vui lòng chọn thứ trong tuần');
         }
-        // Bỏ validation phòng mới vì admin sẽ chọn
         if (!formData.reason.trim()) {
             errors.push('Vui lòng nhập lý do');
         }
@@ -195,11 +159,9 @@ const RoomRequestForm: React.FC = () => {
             oldClassRoomId: schedule?.classRoomId,
             oldTimeSlotId: schedule?.timeSlotId,
             dayOfWeek: schedule?.dayOfWeek,
-            // Chỉ set timeSlotId nếu không phải schedule_change
             ...(prev.requestType !== 'schedule_change' && { timeSlotId: schedule?.timeSlotId || 0 })
         }));
 
-        // Bỏ logic filter phòng vì admin sẽ chọn
     };
 
     const handleSubmit = async () => {
@@ -215,23 +177,21 @@ const RoomRequestForm: React.FC = () => {
 
         setLoading(true);
         try {
-            // Chuẩn bị dữ liệu yêu cầu theo format của database
             const requestData = {
                 requestTypeId: getRequestTypeId(formData.requestType),
                 classScheduleId: selectedSchedule?.id || null,
                 requesterId: user?.id || 0,
                 requestDate: new Date().toISOString().split('T')[0],
                 reason: formData.reason,
-                // Các trường khác tùy theo loại yêu cầu
                 ...(formData.requestType === 'room_request' && {
                     timeSlotId: formData.timeSlotId
                 }),
                 ...(formData.requestType === 'time_change' && {
-                    timeSlotId: selectedSchedule?.timeSlotId, // Tiết hiện tại
+                    timeSlotId: selectedSchedule?.timeSlotId, 
                     changeType: 'time_change',
                     oldTimeSlotId: selectedSchedule?.timeSlotId,
-                    movedToTimeSlotId: formData.timeSlotId, // Tiết muốn đổi
-                    movedToDayOfWeek: formData.dayOfWeek // Thứ trong tuần muốn đổi
+                    movedToTimeSlotId: formData.timeSlotId, 
+                    movedToDayOfWeek: formData.dayOfWeek 
                 }),
                 ...(formData.requestType === 'schedule_change' && {
                     timeSlotId: selectedSchedule?.timeSlotId,
@@ -254,7 +214,6 @@ const RoomRequestForm: React.FC = () => {
             if (response.success) {
                 toast.success('Yêu cầu đã được gửi thành công!');
 
-                // Reset form
                 setFormData({
                     requestType: 'room_request',
                     requesterId: user?.id || 0,
@@ -276,13 +235,11 @@ const RoomRequestForm: React.FC = () => {
     };
 
     const getDayName = (dayOfWeek: number): string => {
-        // Mapping theo logic của WeeklySchedule.tsx: 1=CN, 2=T2, 3=T3, 4=T4, 5=T5, 6=T6, 7=T7
         const days = ['', 'Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
         return days[dayOfWeek] || '';
     };
 
     const getRequestTypeId = (requestType: string): number => {
-        // Mapping theo sample data: Đổi phòng = 7, Đổi lịch = 8, Đổi giáo viên = 9
         switch (requestType) {
             case 'room_request':
                 return 7; // Đổi phòng

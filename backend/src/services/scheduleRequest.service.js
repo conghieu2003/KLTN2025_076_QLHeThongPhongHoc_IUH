@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const SocketClient = require('../utils/socketClient');
 
 const createScheduleRequest = async (requestData) => {
     try {
@@ -129,6 +130,31 @@ const createScheduleRequest = async (requestData) => {
                 }
             }
         });
+
+        // Emit socket event khi teacher tạo request có exception
+        try {
+          if (scheduleRequest.exceptionDate || scheduleRequest.movedToDate) {
+            const dates = [];
+            if (scheduleRequest.exceptionDate) dates.push(new Date(scheduleRequest.exceptionDate));
+            if (scheduleRequest.movedToDate) dates.push(new Date(scheduleRequest.movedToDate));
+            
+            for (const date of dates) {
+              const dayOfWeek = date.getDay();
+              const startOfWeek = new Date(date);
+              startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+              const weekStartDate = startOfWeek.toISOString().split('T')[0];
+              
+              await SocketClient.emitScheduleExceptionUpdated({
+                exceptionId: scheduleRequest.id,
+                classScheduleId: scheduleRequest.classScheduleId,
+                weekStartDate: weekStartDate,
+                requestStatusId: scheduleRequest.requestStatusId
+              });
+            }
+          }
+        } catch (socketError) {
+          console.error('[Schedule Request] Lỗi khi emit socket event:', socketError);
+        }
 
         return scheduleRequest;
     } catch (error) {
@@ -598,6 +624,31 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                     });
                 }
             }
+        }
+
+        // Emit socket event để cập nhật real-time khi duyệt/từ chối request
+        try {
+          if (scheduleRequest.exceptionDate || scheduleRequest.movedToDate) {
+            const dates = [];
+            if (scheduleRequest.exceptionDate) dates.push(new Date(scheduleRequest.exceptionDate));
+            if (scheduleRequest.movedToDate) dates.push(new Date(scheduleRequest.movedToDate));
+            
+            for (const date of dates) {
+              const dayOfWeek = date.getDay();
+              const startOfWeek = new Date(date);
+              startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+              const weekStartDate = startOfWeek.toISOString().split('T')[0];
+              
+              await SocketClient.emitScheduleExceptionUpdated({
+                exceptionId: scheduleRequest.id,
+                classScheduleId: scheduleRequest.classScheduleId,
+                weekStartDate: weekStartDate,
+                requestStatusId: scheduleRequest.requestStatusId
+              });
+            }
+          }
+        } catch (socketError) {
+          console.error('[Schedule Request] Lỗi khi emit socket event:', socketError);
         }
 
         return scheduleRequest;

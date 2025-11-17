@@ -1,59 +1,17 @@
 import React, { useState, useMemo, useEffect, useCallback, memo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Box,
-  Paper,
-  Typography,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  IconButton,
-  Card,
-  CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
-  Alert,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  Print as PrintIcon,
-  ArrowBack as ArrowBackIcon,
-  ArrowForward as ArrowForwardIcon,
-  Fullscreen as FullscreenIcon
-} from '@mui/icons-material';
+import {Box, Paper, Typography, Button, FormControl, InputLabel, Select, MenuItem, RadioGroup, FormControlLabel, Radio, IconButton, Card, CardContent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress, Alert, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { Print as PrintIcon, ArrowBack as ArrowBackIcon, ArrowForward as ArrowForwardIcon, Fullscreen as FullscreenIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
 import { RootState, AppDispatch } from '../../redux/store';
-import { 
-  fetchWeeklySchedule, 
-  fetchDepartments, 
-  fetchClasses, 
-  fetchTeachers,
-  selectWeeklyScheduleLoading
-} from '../../redux/slices/scheduleSlice';
-import { 
-  initSocket, 
-  getSocket, 
-  joinWeeklySchedule, 
-  leaveWeeklySchedule
-} from '../../utils/socket';
+import { fetchWeeklySchedule, fetchDepartments, fetchClasses, fetchTeachers, selectWeeklyScheduleLoading } from '../../redux/slices/scheduleSlice';
+import { getSocket, initSocket } from '../../utils/socket';
+import { authService } from '../../services/api';
 
-// Types
 interface WeeklyScheduleItem {
   id: number;
   classId: number;
@@ -91,21 +49,18 @@ interface WeeklyScheduleItem {
   timeSlotOrder: number;
   assignedAt: string;
   note?: string;
-  // Exception data
   exceptionDate?: string | null;
   exceptionType?: string | null;
   exceptionReason?: string | null;
   exceptionStatus?: string | null;
   requestTypeId?: number | null;
-  // Moved schedule data
   isOriginalSchedule?: boolean;
   isMovedSchedule?: boolean;
-  isStandaloneException?: boolean; // Exception nằm ngoài khoảng thời gian học
+  isStandaloneException?: boolean; 
   originalDayOfWeek?: number;
   originalTimeSlot?: string;
 }
 
-// Function để lấy tên RequestType từ ID
 const getRequestTypeName = (requestTypeId: number) => {
   switch (requestTypeId) {
     case 1: return 'Chờ phân phòng';
@@ -121,7 +76,6 @@ const getRequestTypeName = (requestTypeId: number) => {
   }
 };
 
-// Component tĩnh cho table header - không re-render
 const ScheduleTableHeader = memo(({ selectedDate, headerRef }: { selectedDate: Dayjs, headerRef: React.RefObject<HTMLTableSectionElement> }) => {
   const currentWeek = useMemo(() => {
     const dayOfWeek = selectedDate.day(); // 0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7
@@ -353,7 +307,8 @@ const ScheduleTableBody = memo(({
                         fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }
                       }}
                     >
-                      Tiết: {schedule.timeSlot}
+                      {/* Tiết: */}
+                       {schedule.timeSlot}
                     </Typography>
                     <Typography 
                       variant="caption" 
@@ -363,7 +318,8 @@ const ScheduleTableBody = memo(({
                         wordBreak: 'break-word'
                       }}
                     >
-                      Phòng: {schedule.roomName}
+                      {/* Phòng: */}
+                       {schedule.roomName}
                     </Typography>
                     <Typography 
                       variant="caption" 
@@ -432,440 +388,229 @@ const ScheduleTableBody = memo(({
 ScheduleTableBody.displayName = 'ScheduleTableBody';
 
 const WeeklySchedule = memo(() => {
-  // Redux hooks
   const dispatch = useDispatch<AppDispatch>();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const {
-    weeklySchedules,
-    departments,
-    classes,
-    teachers,
-    loading,
-    error
-  } = useSelector((state: RootState) => state.schedule);
-  
-  // Get user role from auth state
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { weeklySchedules, departments, classes, teachers, loading, error } = useSelector((state: RootState) => state.schedule);
+  const user = authService.getCurrentUser();
   const isAdmin = user?.role === 'admin';
-  
-  // Sử dụng selector riêng cho weekly schedule loading
   const weeklyScheduleLoading = useSelector(selectWeeklyScheduleLoading);
-  
-  // Local loading state để control minimum loading time
-  const [localLoading, setLocalLoading] = useState(false);
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Local state
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [scheduleType, setScheduleType] = useState('all');
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('');
+  const [navigating, setNavigating] = useState(false);
   
-  // Ref để tránh re-render không cần thiết
   const headerRef = useRef<HTMLTableSectionElement>(null);
-  
-  // Socket connection ref
   const socketInitialized = useRef(false);
-  
-  // Refs for cleanup
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const connectHandlerRef = useRef<(() => void) | null>(null);
-  
-  // Refs to store current filter values to avoid stale closures
-  const selectedDateRef = useRef(selectedDate);
-  const isAdminRef = useRef(isAdmin);
-  const selectedDepartmentRef = useRef(selectedDepartment);
-  const selectedClassRef = useRef(selectedClass);
-  const selectedTeacherRef = useRef(selectedTeacher);
-  
-  // Update refs when values change
-  useEffect(() => {
-    selectedDateRef.current = selectedDate;
-    isAdminRef.current = isAdmin;
-    selectedDepartmentRef.current = selectedDepartment;
-    selectedClassRef.current = selectedClass;
-    selectedTeacherRef.current = selectedTeacher;
-  }, [selectedDate, isAdmin, selectedDepartment, selectedClass, selectedTeacher]);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const navigateTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper function để tính weekStartDate
+  const getWeekStartDate = (date: Dayjs) => {
+    const dayOfWeek = date.day();
+    const startOfWeek = dayOfWeek === 0 ? date.subtract(6, 'day') : date.subtract(dayOfWeek - 1, 'day');
+    return startOfWeek.format('YYYY-MM-DD');
+  };
 
   // Setup socket listeners
   useEffect(() => {
     if (!socketInitialized.current && user?.id) {
-      let socket = getSocket();
-      if (!socket) {
-        socket = initSocket(user.id);
-      }
+      const socket = getSocket() || initSocket(user.id);
       socketInitialized.current = true;
 
-      const handleScheduleUpdated = (data: any) => {
-        
-        // Get current values from refs to avoid stale closure
-        const currentDate = selectedDateRef.current;
-        const currentIsAdmin = isAdminRef.current;
-        const currentDepartment = selectedDepartmentRef.current;
-        const currentClass = selectedClassRef.current;
-        const currentTeacher = selectedTeacherRef.current;
-        
-        // Reload weekly schedule for current week
-        const dayOfWeek = currentDate.day();
-        let startOfWeek;
-        if (dayOfWeek === 0) {
-          startOfWeek = currentDate.subtract(6, 'day');
-        } else {
-          startOfWeek = currentDate.subtract(dayOfWeek - 1, 'day');
-        }
-        const weekStartDate = startOfWeek.format('YYYY-MM-DD');
-        
-        // Reload schedule for current week
-        const filters = currentIsAdmin ? {
-          departmentId: currentDepartment ? parseInt(currentDepartment) : undefined,
-          classId: currentClass ? parseInt(currentClass) : undefined,
-          teacherId: currentTeacher ? parseInt(currentTeacher) : undefined
+      const reloadSchedule = () => {
+        const weekStartDate = getWeekStartDate(selectedDate);
+        const filters = isAdmin ? {
+          departmentId: selectedDepartment ? parseInt(selectedDepartment) : undefined,
+          classId: selectedClass ? parseInt(selectedClass) : undefined,
+          teacherId: selectedTeacher ? parseInt(selectedTeacher) : undefined
         } : {};
-        
         dispatch(fetchWeeklySchedule({ weekStartDate, filters }));
       };
 
-      // Handler for schedule exception updated event
-      const handleScheduleExceptionUpdated = (data: any) => {
-        // Get current values from refs
-        const currentDate = selectedDateRef.current;
-        const currentIsAdmin = isAdminRef.current;
-        const currentDepartment = selectedDepartmentRef.current;
-        const currentClass = selectedClassRef.current;
-        const currentTeacher = selectedTeacherRef.current;
-        
-        // Reload weekly schedule
-        const dayOfWeek = currentDate.day();
-        let startOfWeek;
-        if (dayOfWeek === 0) {
-          startOfWeek = currentDate.subtract(6, 'day');
-        } else {
-          startOfWeek = currentDate.subtract(dayOfWeek - 1, 'day');
-        }
-        const weekStartDate = startOfWeek.format('YYYY-MM-DD');
-        
-        const filters = currentIsAdmin ? {
-          departmentId: currentDepartment ? parseInt(currentDepartment) : undefined,
-          classId: currentClass ? parseInt(currentClass) : undefined,
-          teacherId: currentTeacher ? parseInt(currentTeacher) : undefined
-        } : {};
-        
-        dispatch(fetchWeeklySchedule({ weekStartDate, filters }));
-      };
-
-      // Wait for connection before registering listeners
       const setupListeners = () => {
         if (!socket) return;
-        socket.on('schedule-updated', handleScheduleUpdated);
-        socket.on('schedule-exception-updated', handleScheduleExceptionUpdated);
+        socket.on('schedule-updated', reloadSchedule);
+        socket.on('schedule-exception-updated', reloadSchedule);
       };
 
-      if (socket) {
-        if (socket.connected) {
-          setupListeners();
-        } else {
-          socket.once('connect', setupListeners);
-        }
+      if (socket.connected) {
+        setupListeners();
+      } else {
+        socket.once('connect', setupListeners);
       }
 
-      // Cleanup on unmount
       return () => {
-        // Remove event listeners (socket may be null)
         if (socket) {
-          socket.off('schedule-updated', handleScheduleUpdated);
-          socket.off('schedule-exception-updated', handleScheduleExceptionUpdated);
+          socket.off('schedule-updated', reloadSchedule);
+          socket.off('schedule-exception-updated', reloadSchedule);
           socket.off('connect', setupListeners);
         }
-        // Don't logout here as user might still be using socket in other components
         socketInitialized.current = false;
       };
     }
-  }, [dispatch, user?.id]); // Only depend on user.id to avoid re-setting listeners
+  }, [dispatch, user?.id, selectedDate, selectedDepartment, selectedClass, selectedTeacher, isAdmin]); 
 
-  // Join/leave weekly schedule room when date changes - for all users
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    // Calculate week start date
-    const dayOfWeek = selectedDate.day();
-    let startOfWeek;
-    if (dayOfWeek === 0) {
-      startOfWeek = selectedDate.subtract(6, 'day');
-    } else {
-      startOfWeek = selectedDate.subtract(dayOfWeek - 1, 'day');
-    }
-    const weekStartDate = startOfWeek.format('YYYY-MM-DD');
-    
-    // Clear previous timeout/handler if exists
-    if (retryTimeoutRef.current) {
-      clearTimeout(retryTimeoutRef.current);
-      retryTimeoutRef.current = null;
-    }
-    
-    // Get socket - may need to wait for initialization from Layout
-    const getSocketAndJoin = () => {
-      const socket = getSocket();
-      if (!socket) {
-        // Retry after a short delay if socket not ready yet
-        retryTimeoutRef.current = setTimeout(() => {
-          const retrySocket = getSocket();
-          if (retrySocket) {
-            joinRoomWithSocket(retrySocket);
-          }
-          retryTimeoutRef.current = null;
-        }, 500);
-        return;
-      }
-      
-      joinRoomWithSocket(socket);
-    };
-    
-    const joinRoomWithSocket = (socket: any) => {
-      if (!socket) return;
-      
-      // Join room when connected
-      const joinRoom = () => {
-        joinWeeklySchedule(weekStartDate);
-      };
-      
-      if (socket.connected) {
-        joinRoom();
-      } else {
-        connectHandlerRef.current = () => {
-          joinRoom();
-          connectHandlerRef.current = null;
-        };
-        socket.once('connect', connectHandlerRef.current);
-      }
-    };
-    
-    // Try to join immediately
-    getSocketAndJoin();
-    
-    return () => {
-      // Clear retry timeout if exists
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-      }
-      
-      // Remove connect handler if exists
-      const socket = getSocket();
-      if (socket && connectHandlerRef.current) {
-        socket.off('connect', connectHandlerRef.current);
-        connectHandlerRef.current = null;
-      }
-      
-      // Leave room
-      leaveWeeklySchedule(weekStartDate);
-    };
-  }, [selectedDate, user?.id, user?.role]);
 
-  // Load initial data only once and only for admin
+  // Load initial data
   useEffect(() => {
-    // Chỉ fetch data nếu là admin và chưa có data
     if (isAdmin) {
-      if (departments.length === 0) {
-        dispatch(fetchDepartments());
-      }
-      if (classes.length === 0) {
-        dispatch(fetchClasses());
-      }
-      if (teachers.length === 0) {
-        dispatch(fetchTeachers());
-      }
+      if (departments.length === 0) dispatch(fetchDepartments());
+      if (classes.length === 0) dispatch(fetchClasses());
+      if (teachers.length === 0) dispatch(fetchTeachers());
     }
-  }, [dispatch, departments.length, classes.length, teachers.length, isAdmin]);
+  }, [dispatch, isAdmin, departments.length, classes.length, teachers.length]);
 
-  // Debounce timer ref
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Load weekly schedule when filters change with debouncing
-  const loadWeeklySchedule = useCallback(() => {
-    // Clear previous timer
+  // Load schedule when filters change
+  useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    
-    // Show loading immediately
-    setLocalLoading(true);
-    
-    // Debounce API call để tránh gọi quá nhiều lần
     debounceTimerRef.current = setTimeout(() => {
-      const dayOfWeek = selectedDate.day(); // 0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7
-      let startOfWeek;
-      
-      if (dayOfWeek === 0) { 
-        startOfWeek = selectedDate.subtract(6, 'day');
-      } else {
-        startOfWeek = selectedDate.subtract(dayOfWeek - 1, 'day'); 
-      }
-      
-      const weekStartDate = startOfWeek.format('YYYY-MM-DD'); 
+      const weekStartDate = getWeekStartDate(selectedDate);
       const filters = isAdmin ? {
         departmentId: selectedDepartment ? parseInt(selectedDepartment) : undefined,
         classId: selectedClass ? parseInt(selectedClass) : undefined,
         teacherId: selectedTeacher ? parseInt(selectedTeacher) : undefined
       } : {};
-      
       dispatch(fetchWeeklySchedule({ weekStartDate, filters }));
-    }, 100); // Debounce 100ms
+    }, 100);
   }, [dispatch, selectedDate, selectedDepartment, selectedClass, selectedTeacher, isAdmin]);
 
+  // Auto tắt navigating sau 3s
   useEffect(() => {
-    loadWeeklySchedule();
-  }, [loadWeeklySchedule]);
-
-  // Effect để quản lý loading state với minimum time
-  useEffect(() => {
-    if (weeklyScheduleLoading) {
-      // Clear any existing timeout
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
-      }
-    } else if (localLoading) {
-      // API call completed, but ensure minimum loading time
-      loadingTimeoutRef.current = setTimeout(() => {
-        setLocalLoading(false);
-      }, 200); // Minimum 200ms loading time
+    if (navigating) {
+      if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
+      navigateTimerRef.current = setTimeout(() => {
+        setNavigating(false);
+      }, 500);
     }
-  }, [weeklyScheduleLoading, localLoading]);
+    return () => {
+      if (navigateTimerRef.current) {
+        clearTimeout(navigateTimerRef.current);
+      }
+    };
+  }, [navigating]);
 
-  // Cleanup timers on unmount
+  // Cleanup timers
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current);
+      if (navigateTimerRef.current) {
+        clearTimeout(navigateTimerRef.current);
       }
     };
   }, []);
 
-  // Filter schedules dựa trên các điều kiện
-  const filteredSchedules = useMemo(() => {
-    if (!weeklySchedules || weeklySchedules.length === 0) {
-      return [];
-    }
-
-    // Filter theo loại lịch
+  // Filter schedules
+  const getFilteredSchedules = () => {
+    if (!weeklySchedules || weeklySchedules.length === 0) return [];
     if (scheduleType === 'study') {
       return weeklySchedules.filter(s => s.type === 'theory' || s.type === 'practice');
-    } else if (scheduleType === 'exam') {
+    }
+    if (scheduleType === 'exam') {
       return weeklySchedules.filter(s => s.type === 'exam');
     }
-
     return weeklySchedules;
-  }, [weeklySchedules, scheduleType]);
+  };
 
-  // Tạo lưới lịch học - chỉ phụ thuộc vào filteredSchedules, không phụ thuộc vào currentWeek
-  const scheduleGrid = useMemo(() => {
+  // Build schedule grid
+  const getScheduleGrid = () => {
+    const filteredSchedules = getFilteredSchedules();
     const shifts = [
       { key: 'morning', name: 'Sáng', color: '#fff3cd' },
       { key: 'afternoon', name: 'Chiều', color: '#d1ecf1' },
       { key: 'evening', name: 'Tối', color: '#f8d7da' }
     ];
 
-    const grid = shifts.map(shift => {
-      // Tạo 7 ngày cố định (Thứ 2 đến Chủ nhật)
+    return shifts.map(shift => {
       const shiftSchedules = Array.from({ length: 7 }, (_, i) => {
-        // Map từ index 0-6 thành dayOfWeek 2-8, nhưng Chủ nhật (index 6) = dayOfWeek 1
-        const dayOfWeek = i === 6 ? 1 : i + 2; // 2=Thứ 2, 3=Thứ 3, ..., 7=Thứ 7, 1=Chủ nhật
+        const dayOfWeek = i === 6 ? 1 : i + 2;
         const daySchedules = filteredSchedules.filter(schedule => 
           schedule.dayOfWeek === dayOfWeek && schedule.shift === shift.key
         );
-        
-        // Sắp xếp theo thứ tự tiết học (timeSlotOrder)
-        return daySchedules.sort((a, b) => {
-          const aOrder = a.timeSlotOrder || 0;
-          const bOrder = b.timeSlotOrder || 0;
-          return aOrder - bOrder;
-        });
+        return daySchedules.sort((a, b) => (a.timeSlotOrder || 0) - (b.timeSlotOrder || 0));
       });
-
-      return {
-        ...shift,
-        schedules: shiftSchedules
-      };
+      return { ...shift, schedules: shiftSchedules };
     });
-
-    return grid;
-  }, [filteredSchedules]); // Chỉ phụ thuộc vào filteredSchedules
-
-  // Function để lấy màu sắc dựa trên RequestType ID
-  const getRequestTypeColor = (requestTypeId: number): string => {
-    switch (requestTypeId) {
-      case 1: return '#e3f2fd'; // Light blue - Chờ phân phòng
-      case 2: return '#f3e5f5'; // Light purple - Đã phân phòng
-      case 3: return '#e8f5e8'; // Light green - Đang hoạt động
-      case 4: return '#f8d7da'; // Red - Đã hủy
-      case 5: return '#f8d7da'; // Red - Tạm ngưng
-      case 6: return '#fff3cd'; // Yellow - Thi
-      case 7: return '#ffeaa7'; // Light orange - Đổi phòng
-      case 8: return '#d1ecf1'; // Light cyan - Đổi lịch
-      case 9: return '#a8e6cf'; // Light green - Đổi giáo viên
-      default: return '#f8f9fa'; // Default light grey
-    }
   };
 
-  const getScheduleColor = (schedule: WeeklyScheduleItem) => {
-    // Kiểm tra ngoại lệ trước - sử dụng requestTypeId nếu có
-    if (schedule.exceptionDate && schedule.requestTypeId) {
-      return getRequestTypeColor(schedule.requestTypeId);
-    }
-    
-    // Nếu không có ngoại lệ, dùng màu theo loại lớp
-    switch (schedule.type) {
-      case 'theory': return '#f8f9fa'; // Light grey
-      case 'practice': return '#d4edda'; // Green
-      case 'online': return '#cce7ff'; // Light blue
+  const scheduleGrid = getScheduleGrid(); 
+
+  const getRequestTypeColor = (requestTypeId: number): string => {
+    switch (requestTypeId) {
+      case 1: return '#e3f2fd';
+      case 2: return '#f3e5f5';
+      case 3: return '#e8f5e8';
+      case 4: return '#f8d7da';
+      case 5: return '#f8d7da';
+      case 6: return '#fff3cd';
+      case 7: return '#ffeaa7';
+      case 8: return '#d1ecf1';
+      case 9: return '#a8e6cf';
       default: return '#f8f9fa';
     }
   };
 
-  const handlePreviousWeek = useCallback(() => {
-    if (!weeklyScheduleLoading && !localLoading) {
+  const getScheduleColor = (schedule: WeeklyScheduleItem) => {
+    if (schedule.exceptionDate && schedule.requestTypeId) {
+      return getRequestTypeColor(schedule.requestTypeId);
+    }
+    switch (schedule.type) {
+      case 'theory': return '#f8f9fa';
+      case 'practice': return '#d4edda';
+      case 'online': return '#cce7ff';
+      default: return '#f8f9fa';
+    }
+  };
+
+  const handlePreviousWeek = () => {
+    if (!weeklyScheduleLoading && !navigating) {
+      setNavigating(true);
       setSelectedDate(prev => prev.subtract(1, 'week'));
     }
-  }, [weeklyScheduleLoading, localLoading]);
+  };
 
-  const handleNextWeek = useCallback(() => {
-    if (!weeklyScheduleLoading && !localLoading) {
+  const handleNextWeek = () => {
+    if (!weeklyScheduleLoading && !navigating) {
+      setNavigating(true);
       setSelectedDate(prev => prev.add(1, 'week'));
     }
-  }, [weeklyScheduleLoading, localLoading]);
+  };
 
-  const handleCurrentWeek = useCallback(() => {
-    if (!weeklyScheduleLoading && !localLoading) {
+  const handleCurrentWeek = () => {
+    if (!weeklyScheduleLoading) {
       setSelectedDate(dayjs());
     }
-  }, [weeklyScheduleLoading, localLoading]);
+  };
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = () => {
     window.print();
-  }, []);
+  };
 
-  // Filter classes based on selected department - only for admin
-  const filteredClassesForDropdown = useMemo(() => {
+  // Filter classes based on selected department
+  const getFilteredClassesForDropdown = () => {
     if (!isAdmin || !selectedDepartment || !classes || classes.length === 0) return [];
-    
     const selectedDept = departments?.find(d => d.id.toString() === selectedDepartment);
     if (!selectedDept) return [];
-    
     return classes.filter(cls => cls.departmentId === selectedDept.id);
-  }, [isAdmin, classes, departments, selectedDepartment]);
+  };
 
-  // Filter teachers based on selected department - only for admin
-  const filteredTeachersForDropdown = useMemo(() => {
+  // Filter teachers based on selected department
+  const getFilteredTeachersForDropdown = () => {
     if (!isAdmin || !selectedDepartment || !teachers || teachers.length === 0) return [];
-    
     return teachers.filter(teacher => 
       teacher.departmentId && teacher.departmentId.toString() === selectedDepartment
     );
-  }, [isAdmin, teachers, selectedDepartment]);
+  };
+
+  const filteredClassesForDropdown = getFilteredClassesForDropdown();
+  const filteredTeachersForDropdown = getFilteredTeachersForDropdown();
 
   // Chỉ hiển thị loading toàn màn hình khi load initial data (departments, classes, teachers)
   // và chỉ khi là admin và chưa có data nào
@@ -1089,7 +834,7 @@ const WeeklySchedule = memo(() => {
                         setSelectedDate(newValue);
                       }
                     }}
-                    disabled={weeklyScheduleLoading}
+                    disabled={weeklyScheduleLoading || navigating}
                     slotProps={{ 
                       textField: { 
                         size: isMobile ? "small" : "medium",
@@ -1115,7 +860,7 @@ const WeeklySchedule = memo(() => {
                     variant="outlined"
                     onClick={handleCurrentWeek}
                     size={isMobile ? "small" : "medium"}
-                    disabled={weeklyScheduleLoading || localLoading}
+                    disabled={weeklyScheduleLoading || navigating}
                     fullWidth={isMobile}
                     sx={{ 
                       borderRadius: '4px',
@@ -1158,7 +903,7 @@ const WeeklySchedule = memo(() => {
                     onClick={handlePreviousWeek}
                     size={isMobile ? "small" : "medium"}
                     startIcon={<ArrowBackIcon sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />}
-                    disabled={weeklyScheduleLoading || localLoading}
+                    disabled={weeklyScheduleLoading || navigating}
                     fullWidth={isMobile}
                     sx={{ 
                       borderRadius: '4px',
@@ -1180,7 +925,7 @@ const WeeklySchedule = memo(() => {
                     onClick={handleNextWeek}
                     size={isMobile ? "small" : "medium"}
                     endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }} />}
-                    disabled={weeklyScheduleLoading || localLoading}
+                    disabled={weeklyScheduleLoading || navigating}
                     fullWidth={isMobile}
                     sx={{ 
                       borderRadius: '4px',
@@ -1229,7 +974,7 @@ const WeeklySchedule = memo(() => {
           maxWidth: '100%'
         }}>
           {/* Loading overlay cho weekly schedule */}
-          {(weeklyScheduleLoading || localLoading) && (
+          {(weeklyScheduleLoading || navigating) && (
             <Box
               sx={{
                 position: 'absolute',

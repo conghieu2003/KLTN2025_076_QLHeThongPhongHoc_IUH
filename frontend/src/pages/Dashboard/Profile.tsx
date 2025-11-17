@@ -1,21 +1,5 @@
 import React, { useEffect } from 'react';
-import {
-  Box,
-  Container,
-  Paper,
-  Typography,
-  Avatar,
-  Divider,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Alert,
-  Stack,
-  Grid,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
+import { Box, Container, Paper, Typography, Avatar, Divider, Card, CardContent, Chip, CircularProgress, Alert, Stack, Grid, useTheme, useMediaQuery } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
 import { fetchProfileData, clearError } from '../../redux/slices/profileSlice';
@@ -30,7 +14,6 @@ const Profile: React.FC = () => {
   useEffect(() => {
     dispatch(fetchProfileData());
     
-    // Clear any previous errors when component mounts
     return () => {
       dispatch(clearError());
     };
