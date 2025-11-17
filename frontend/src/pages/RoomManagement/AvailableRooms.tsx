@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Card, CardContent, Typography, FormControl, InputLabel, Select, MenuItem, Button, Grid, Paper, Chip, CircularProgress, Alert, TextField, IconButton, Tooltip, useTheme, useMediaQuery } from '@mui/material';
 import { Search as SearchIcon, Refresh as RefreshIcon, Room as RoomIcon, Business as BuildingIcon, People as PeopleIcon, CheckCircle as CheckCircleIcon, Cancel as CancelIcon } from '@mui/icons-material';
 import { GridColDef, useGridApiRef } from '@mui/x-data-grid';
@@ -8,9 +8,10 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Dayjs } from 'dayjs';
 import 'dayjs/locale/vi';
-import { roomService, scheduleManagementService } from '../../services/api';
+import { roomService, scheduleManagementService, authService } from '../../services/api';
 import { toast } from 'react-toastify';
 import { formatTimeFromAPI } from '../../utils/transDateTime';
+import { initSocket, getSocket } from '../../utils/socket';
 
 interface Department {
   id: number;
@@ -76,6 +77,7 @@ const AvailableRooms: React.FC = () => {
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+  const socketInitialized = useRef(false);
 
   const [filters, setFilters] = useState<FilterState>({
     departmentId: '',
@@ -86,9 +88,190 @@ const AvailableRooms: React.FC = () => {
     selectedDate: ''
   });
 
+  const user = authService.getCurrentUser();
+
   useEffect(() => {
     loadMasterData();
   }, []);
+
+  // Setup socket listeners để reload khi có thay đổi exception
+  useEffect(() => {
+    if (!socketInitialized.current && user?.id) {
+      const socket = getSocket() || initSocket(user.id);
+      socketInitialized.current = true;
+
+      const reloadRooms = async () => {
+        // Chỉ reload nếu đã có kết quả tìm kiếm và có đủ thông tin filter
+        if (hasSearched && filters.dayOfWeek && filters.timeSlotId && filters.selectedDate) {
+          try {
+            setSearching(true);
+
+            // Step 1: Get rooms filtered by department and type
+            let rooms: any[] = [];
+            
+            if (filters.departmentId || filters.classRoomTypeId) {
+              const roomsResponse = await scheduleManagementService.getRoomsByDepartmentAndType(
+                filters.departmentId || 'all',
+                filters.classRoomTypeId || 'all'
+              );
+              
+              if (roomsResponse.success) {
+                rooms = roomsResponse.data;
+              }
+            } else {
+              const allRoomsResponse = await roomService.getAllRooms();
+              if (allRoomsResponse.success) {
+                rooms = allRoomsResponse.data;
+              }
+            }
+
+            // Step 2: Filter by minimum capacity
+            if (filters.minCapacity) {
+              const minCap = parseInt(filters.minCapacity);
+              rooms = rooms.filter(room => room.capacity >= minCap);
+            }
+
+            // Step 3: Get schedule data với exception info
+            const availableRoomsResponse = await roomService.getAvailableRoomsForException(
+              parseInt(filters.timeSlotId),
+              parseInt(filters.dayOfWeek),
+              filters.selectedDate,
+              filters.minCapacity ? parseInt(filters.minCapacity) : undefined,
+              filters.classRoomTypeId || undefined,
+              filters.departmentId || undefined
+            );
+
+            let scheduleData: any[] = [];
+            let occupiedRoomIds: string[] = [];
+            let freedRoomsInfo: any[] = [];
+            let movedToRoomsInfo: any[] = [];
+            let allRoomsWithStatus: any[] = [];
+
+            if (availableRoomsResponse.success) {
+              const data = availableRoomsResponse.data;
+              
+              allRoomsWithStatus = [
+                ...(data.normalRooms || []),
+                ...(data.freedRooms || []),
+                ...(data.occupiedRooms || [])
+              ];
+
+              const schedulesResponse = await roomService.getSchedulesByTimeSlotAndDate(
+                parseInt(filters.timeSlotId),
+                parseInt(filters.dayOfWeek),
+                filters.selectedDate
+              );
+
+              if (schedulesResponse.success) {
+                scheduleData = schedulesResponse.data;
+              }
+
+              allRoomsWithStatus.forEach((roomWithStatus: any) => {
+                if (roomWithStatus.status === 'occupied') {
+                  occupiedRoomIds.push(roomWithStatus.id.toString());
+                  if (roomWithStatus.isOccupiedByMovedException) {
+                    movedToRoomsInfo.push({
+                      roomId: roomWithStatus.id,
+                      className: roomWithStatus.className || 'Đổi lịch',
+                      exceptionType: 'moved',
+                      exceptionTypeName: 'Đổi lịch',
+                      ...(roomWithStatus.movedToExceptionInfo || {})
+                    });
+                  }
+                }
+                if (roomWithStatus.isFreedByException && roomWithStatus.exceptionInfo) {
+                  freedRoomsInfo.push({
+                    roomId: roomWithStatus.id,
+                    ...roomWithStatus.exceptionInfo
+                  });
+                }
+              });
+            }
+
+            // Step 4: Add metadata to all rooms
+            const selectedTimeSlot = timeSlots.find(s => s.id.toString() === filters.timeSlotId);
+            
+            const roomStatusMap = new Map();
+            allRoomsWithStatus.forEach((roomWithStatus: any) => {
+              roomStatusMap.set(roomWithStatus.id.toString(), roomWithStatus);
+            });
+            
+            const enrichedRooms = rooms.map(room => {
+              const roomIdStr = room.id.toString();
+              const roomStatus = roomStatusMap.get(roomIdStr);
+              
+              const isOccupied = occupiedRoomIds.includes(roomIdStr);
+              const scheduleInfo = scheduleData.find((s: any) => 
+                s.classRoomId?.toString() === roomIdStr && !s.hasException
+              );
+              
+              const movedToInfo = movedToRoomsInfo.find((m: any) => m.roomId.toString() === roomIdStr);
+              const isOccupiedByMovedException = roomStatus?.isOccupiedByMovedException || !!movedToInfo;
+              const freedInfo = freedRoomsInfo.find((f: any) => f.roomId.toString() === roomIdStr);
+              
+              const finalOccupancyStatus = (isOccupiedByMovedException || isOccupied) ? 'Đã có lớp' : 'Còn trống';
+              const isFreedByException = !!freedInfo && !isOccupiedByMovedException;
+              
+              let movedClassName = null;
+              if (isOccupiedByMovedException) {
+                const movedSchedule = scheduleData.find((s: any) => 
+                  (s.movedToClassRoomId?.toString() === roomIdStr || s.newClassRoomId?.toString() === roomIdStr) &&
+                  (s.exceptionType === 'moved' || s.hasException)
+                );
+                if (movedSchedule?.class?.className) {
+                  movedClassName = movedSchedule.class.className;
+                } else if (movedToInfo?.className) {
+                  movedClassName = movedToInfo.className;
+                }
+              }
+              
+              return {
+                ...room,
+                searchDayOfWeek: filters.dayOfWeek,
+                searchTimeSlot: selectedTimeSlot ? `${selectedTimeSlot.slotName}` : '',
+                searchDate: filters.selectedDate || null,
+                occupancyStatus: finalOccupancyStatus,
+                scheduleInfo: scheduleInfo || null,
+                className: scheduleInfo?.class?.className || movedClassName || null,
+                teacherName: scheduleInfo?.teacher?.user?.fullName || null,
+                isFreedByException,
+                exceptionInfo: freedInfo && !isOccupiedByMovedException ? freedInfo : null,
+                isOccupiedByMovedException,
+                movedToExceptionInfo: movedToInfo || (isOccupiedByMovedException ? { className: movedClassName || 'Đổi lịch' } : null)
+              };
+            });
+
+            setAvailableRooms(enrichedRooms);
+          } catch (error) {
+            console.error('Error reloading rooms from socket:', error);
+          } finally {
+            setSearching(false);
+          }
+        }
+      };
+
+      const setupListeners = () => {
+        if (!socket) return;
+        socket.on('schedule-exception-updated', reloadRooms);
+        socket.on('schedule-updated', reloadRooms);
+      };
+
+      if (socket.connected) {
+        setupListeners();
+      } else {
+        socket.once('connect', setupListeners);
+      }
+
+      return () => {
+        if (socket) {
+          socket.off('schedule-exception-updated', reloadRooms);
+          socket.off('schedule-updated', reloadRooms);
+          socket.off('connect', setupListeners);
+        }
+        socketInitialized.current = false;
+      };
+    }
+  }, [user?.id, hasSearched, filters.dayOfWeek, filters.timeSlotId, filters.selectedDate, filters.departmentId, filters.classRoomTypeId, filters.minCapacity, timeSlots]);
 
   const loadMasterData = async () => {
     try {
@@ -177,12 +360,13 @@ const AvailableRooms: React.FC = () => {
       let occupiedRoomIds: string[] = [];
       let freedRoomsInfo: any[] = [];
       let movedToRoomsInfo: any[] = [];
+      let allRoomsWithStatus: any[] = [];
 
       if (availableRoomsResponse.success) {
         const data = availableRoomsResponse.data;
         
         // Kết hợp tất cả rooms (normal + freed + occupied)
-        const allRoomsWithStatus = [
+        allRoomsWithStatus = [
           ...(data.normalRooms || []),
           ...(data.freedRooms || []),
           ...(data.occupiedRooms || [])
@@ -204,10 +388,13 @@ const AvailableRooms: React.FC = () => {
           if (roomWithStatus.status === 'occupied') {
             occupiedRoomIds.push(roomWithStatus.id.toString());
             // Nếu có moved exception, lưu thông tin
-            if (roomWithStatus.isOccupiedByMovedException && roomWithStatus.movedToExceptionInfo) {
+            if (roomWithStatus.isOccupiedByMovedException) {
               movedToRoomsInfo.push({
                 roomId: roomWithStatus.id,
-                ...roomWithStatus.movedToExceptionInfo
+                className: roomWithStatus.className || 'Đổi lịch',
+                exceptionType: 'moved',
+                exceptionTypeName: 'Đổi lịch',
+                ...(roomWithStatus.movedToExceptionInfo || {})
               });
             }
           }
@@ -232,26 +419,48 @@ const AvailableRooms: React.FC = () => {
       // Step 4: Add metadata to all rooms
       const selectedTimeSlot = timeSlots.find(s => s.id.toString() === filters.timeSlotId);
       
+      // Tạo map để tra cứu nhanh từ allRoomsWithStatus
+      const roomStatusMap = new Map();
+      allRoomsWithStatus.forEach((roomWithStatus: any) => {
+        roomStatusMap.set(roomWithStatus.id.toString(), roomWithStatus);
+      });
+      
       const enrichedRooms = rooms.map(room => {
-        const isOccupied = occupiedRoomIds.includes(room.id.toString());
-        const scheduleInfo = scheduleData.find((s: any) => 
-          s.classRoomId?.toString() === room.id.toString() && !s.hasException
-        );
+        const roomIdStr = room.id.toString();
+        const roomStatus = roomStatusMap.get(roomIdStr);
         
-        // Kiểm tra xem phòng này có phải là freed room không
-        const freedSchedule = scheduleData.find((s: any) => 
-          s.hasException && s.originalClassRoom?.id.toString() === room.id.toString()
+        const isOccupied = occupiedRoomIds.includes(roomIdStr);
+        const scheduleInfo = scheduleData.find((s: any) => 
+          s.classRoomId?.toString() === roomIdStr && !s.hasException
         );
         
         // Kiểm tra xem phòng này có đang được đổi lịch đến không (QUAN TRỌNG)
-        const movedToInfo = movedToRoomsInfo.find((m: any) => m.roomId.toString() === room.id.toString());
+        const movedToInfo = movedToRoomsInfo.find((m: any) => m.roomId.toString() === roomIdStr);
+        
+        // Kiểm tra từ roomStatus trực tiếp (backend đã đánh dấu)
+        const isOccupiedByMovedException = roomStatus?.isOccupiedByMovedException || !!movedToInfo;
         
         // Kiểm tra xem phòng này có phải freed room không
-        const freedInfo = freedRoomsInfo.find((f: any) => f.roomId.toString() === room.id.toString());
+        const freedInfo = freedRoomsInfo.find((f: any) => f.roomId.toString() === roomIdStr);
         
         // Ưu tiên: Nếu có moved exception → occupied, ngược lại nếu có freed → available
-        const finalOccupancyStatus = (movedToInfo || isOccupied) ? 'Đã có lớp' : 'Còn trống';
-        const isFreedByException = !!freedInfo && !movedToInfo; // Chỉ freed nếu không bị occupied bởi moved
+        const finalOccupancyStatus = (isOccupiedByMovedException || isOccupied) ? 'Đã có lớp' : 'Còn trống';
+        const isFreedByException = !!freedInfo && !isOccupiedByMovedException; // Chỉ freed nếu không bị occupied bởi moved
+        
+        // Lấy thông tin lớp từ moved exception nếu có
+        let movedClassName = null;
+        if (isOccupiedByMovedException) {
+          // Tìm trong scheduleData xem có exception moved đến phòng này không
+          const movedSchedule = scheduleData.find((s: any) => 
+            (s.movedToClassRoomId?.toString() === roomIdStr || s.newClassRoomId?.toString() === roomIdStr) &&
+            (s.exceptionType === 'moved' || s.hasException)
+          );
+          if (movedSchedule?.class?.className) {
+            movedClassName = movedSchedule.class.className;
+          } else if (movedToInfo?.className) {
+            movedClassName = movedToInfo.className;
+          }
+        }
         
         return {
           ...room,
@@ -260,14 +469,14 @@ const AvailableRooms: React.FC = () => {
           searchDate: filters.selectedDate || null,
           occupancyStatus: finalOccupancyStatus,
           scheduleInfo: scheduleInfo || null,
-          className: scheduleInfo?.class?.className || movedToInfo?.className || null,
+          className: scheduleInfo?.class?.className || movedClassName || null,
           teacherName: scheduleInfo?.teacher?.user?.fullName || null,
           // Thêm thông tin về ngoại lệ
           isFreedByException,
-          exceptionInfo: freedInfo && !movedToInfo ? freedInfo : null,
+          exceptionInfo: freedInfo && !isOccupiedByMovedException ? freedInfo : null,
           // Thêm thông tin về moved exception (QUAN TRỌNG)
-          isOccupiedByMovedException: !!movedToInfo,
-          movedToExceptionInfo: movedToInfo || null
+          isOccupiedByMovedException,
+          movedToExceptionInfo: movedToInfo || (isOccupiedByMovedException ? { className: movedClassName || 'Đổi lịch' } : null)
         };
       });
 

@@ -46,15 +46,17 @@ const createScheduleException = async (req, res) => {
 
 const getScheduleExceptions = async (req, res) => {
     try {
-        const { page = 1, limit = 10, scheduleId, exceptionType } = req.query;
+        const { page, limit, scheduleId, exceptionType, getAll } = req.query;
         const userId = req.user.id;
 
+        // Nếu getAll=true, lấy tất cả không phân trang
         const result = await scheduleExceptionService.getScheduleExceptions({
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: getAll === 'true' ? undefined : parseInt(page || 1),
+            limit: getAll === 'true' ? undefined : parseInt(limit || 1000),
             scheduleId,
             exceptionType,
-            userId
+            userId,
+            getAll: getAll === 'true'
         });
 
         res.status(200).json({
@@ -104,6 +106,7 @@ const updateScheduleException = async (req, res) => {
         const { id } = req.params;
         const { 
             exceptionType, 
+            exceptionDate,
             reason, 
             note,
             newDate,
@@ -117,6 +120,7 @@ const updateScheduleException = async (req, res) => {
 
         const result = await scheduleExceptionService.updateScheduleException(id, {
             exceptionType,
+            exceptionDate,
             reason,
             note,
             newDate,

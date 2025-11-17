@@ -131,7 +131,54 @@ const createScheduleRequest = async (requestData) => {
             }
         });
 
-        // Emit socket event khi teacher tạo request có exception
+        // Lấy danh sách users liên quan (teacher + students) - chỉ admin và teacher nhận khi tạo request
+        const relatedUserIds = [];
+        try {
+          if (scheduleRequest.classScheduleId) {
+            // Lấy classSchedule với teacher
+            const classSchedule = await prisma.classSchedule.findUnique({
+              where: { id: scheduleRequest.classScheduleId },
+              include: {
+                class: {
+                  include: {
+                    teacher: {
+                      include: {
+                        user: true
+                      }
+                    }
+                  }
+                }
+              }
+            });
+
+            // Thêm teacher (người tạo request)
+            if (classSchedule?.class?.teacher?.user?.id) {
+              relatedUserIds.push(classSchedule.class.teacher.user.id);
+            }
+
+            // Lấy tất cả admin users (để admin nhận notification)
+            const adminUsers = await prisma.user.findMany({
+              where: {
+                account: {
+                  role: 'admin'
+                }
+              },
+              select: {
+                id: true
+              }
+            });
+
+            adminUsers.forEach(admin => {
+              if (admin.id) {
+                relatedUserIds.push(admin.id);
+              }
+            });
+          }
+        } catch (error) {
+          console.error('[Schedule Request] Lỗi khi lấy danh sách users:', error);
+        }
+
+        // Emit socket event khi teacher tạo request có exception - chỉ admin và teacher nhận
         try {
           if (scheduleRequest.exceptionDate || scheduleRequest.movedToDate) {
             const dates = [];
@@ -148,7 +195,8 @@ const createScheduleRequest = async (requestData) => {
                 exceptionId: scheduleRequest.id,
                 classScheduleId: scheduleRequest.classScheduleId,
                 weekStartDate: weekStartDate,
-                requestStatusId: scheduleRequest.requestStatusId
+                requestStatusId: scheduleRequest.requestStatusId,
+                userIds: relatedUserIds
               });
             }
           }
@@ -626,7 +674,76 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
             }
         }
 
-        // Emit socket event để cập nhật real-time khi duyệt/từ chối request
+        // Lấy danh sách users liên quan (admin + teacher + students)
+        const relatedUserIds = [];
+        try {
+          if (scheduleRequest.classScheduleId) {
+            // Lấy classSchedule với teacher
+            const classSchedule = await prisma.classSchedule.findUnique({
+              where: { id: scheduleRequest.classScheduleId },
+              include: {
+                class: {
+                  include: {
+                    teacher: {
+                      include: {
+                        user: true
+                      }
+                    }
+                  }
+                }
+              }
+            });
+
+            // Thêm teacher
+            if (classSchedule?.class?.teacher?.user?.id) {
+              relatedUserIds.push(classSchedule.class.teacher.user.id);
+            }
+
+            // Lấy students của class
+            if (classSchedule?.classId) {
+              const classStudents = await prisma.classStudent.findMany({
+                where: {
+                  classId: classSchedule.classId
+                },
+                include: {
+                  student: {
+                    include: {
+                      user: true
+                    }
+                  }
+                }
+              });
+
+              classStudents.forEach(cs => {
+                if (cs.student?.user?.id) {
+                  relatedUserIds.push(cs.student.user.id);
+                }
+              });
+            }
+          }
+
+          // Thêm tất cả admin users
+          const adminUsers = await prisma.user.findMany({
+            where: {
+              account: {
+                role: 'admin'
+              }
+            },
+            select: {
+              id: true
+            }
+          });
+
+          adminUsers.forEach(admin => {
+            if (admin.id && !relatedUserIds.includes(admin.id)) {
+              relatedUserIds.push(admin.id);
+            }
+          });
+        } catch (error) {
+          console.error('[Schedule Request] Lỗi khi lấy danh sách users:', error);
+        }
+
+        // Emit socket event để cập nhật real-time khi duyệt/từ chối request - chỉ gửi đến users liên quan
         try {
           if (scheduleRequest.exceptionDate || scheduleRequest.movedToDate) {
             const dates = [];
@@ -643,7 +760,8 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                 exceptionId: scheduleRequest.id,
                 classScheduleId: scheduleRequest.classScheduleId,
                 weekStartDate: weekStartDate,
-                requestStatusId: scheduleRequest.requestStatusId
+                requestStatusId: scheduleRequest.requestStatusId,
+                userIds: relatedUserIds
               });
             }
           }

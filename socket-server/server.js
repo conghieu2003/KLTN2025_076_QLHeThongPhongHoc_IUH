@@ -101,11 +101,33 @@ function emitStatsUpdated(stats) {
 }
 
 function emitScheduleUpdated(data) {
-  io.emit('schedule-updated', data);
+  // Nếu có userIds, chỉ emit đến các user đó
+  if (data.userIds && Array.isArray(data.userIds) && data.userIds.length > 0) {
+    data.userIds.forEach(userId => {
+      io.to(`user:${userId}`).emit('schedule-updated', {
+        ...data,
+        userIds: undefined // Remove userIds from payload
+      });
+    });
+  } else {
+    // Nếu không có userIds, emit đến tất cả (backward compatibility)
+    io.emit('schedule-updated', data);
+  }
 }
 
 function emitScheduleExceptionUpdated(data) {
-  io.emit('schedule-exception-updated', data);
+  // Nếu có userIds, chỉ emit đến các user đó
+  if (data.userIds && Array.isArray(data.userIds) && data.userIds.length > 0) {
+    data.userIds.forEach(userId => {
+      io.to(`user:${userId}`).emit('schedule-exception-updated', {
+        ...data,
+        userIds: undefined // Remove userIds from payload
+      });
+    });
+  } else {
+    // Nếu không có userIds, emit đến tất cả (backward compatibility)
+    io.emit('schedule-exception-updated', data);
+  }
 }
 
 const verifyBackendRequest = (req, res, next) => {

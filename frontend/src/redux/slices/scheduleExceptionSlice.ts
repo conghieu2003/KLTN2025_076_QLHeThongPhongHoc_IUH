@@ -76,6 +76,7 @@ export interface CreateScheduleExceptionData {
 
 export interface UpdateScheduleExceptionData {
   exceptionType?: 'cancelled' | 'exam' | 'moved' | 'substitute';
+  exceptionDate?: string;
   newTimeSlotId?: number;
   newClassRoomId?: number;
   newDate?: string;
@@ -92,6 +93,7 @@ export interface ScheduleExceptionFilters {
   status?: number;
   page?: number;
   limit?: number;
+  getAll?: boolean;
 }
 
 export interface AvailableScheduleFilters {
@@ -147,7 +149,7 @@ export const createScheduleException = createAsyncThunk(
 
 export const getScheduleExceptions = createAsyncThunk(
   'scheduleException/getAll',
-  async (filters: ScheduleExceptionFilters = {}, { rejectWithValue }) => {
+  async (filters: ScheduleExceptionFilters & { getAll?: boolean } = {}, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
@@ -157,7 +159,9 @@ export const getScheduleExceptions = createAsyncThunk(
       });
 
       const response = await api.get(`/schedule-exceptions?${params.toString()}`);
-      return response.data.data; // This should be { data: [...], pagination: {...} }
+      // Nếu getAll=true, response.data.data chỉ có data array, không có pagination
+      // Nếu không, response.data.data có { data: [...], pagination: {...} }
+      return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Lỗi khi lấy danh sách ngoại lệ');
     }
@@ -267,8 +271,19 @@ const scheduleExceptionSlice = createSlice({
       })
       .addCase(getScheduleExceptions.fulfilled, (state, action) => {
         state.loading = false;
-        state.exceptions = action.payload.data;
-        state.pagination = action.payload.pagination;
+        // Nếu có pagination, action.payload = { data: [...], pagination: {...} }
+        // Nếu không có pagination (getAll=true), action.payload = { data: [...] }
+        if (action.payload && action.payload.data && Array.isArray(action.payload.data)) {
+          state.exceptions = action.payload.data;
+          if (action.payload.pagination) {
+            state.pagination = action.payload.pagination;
+          }
+        } else if (Array.isArray(action.payload)) {
+          // Trường hợp backend trả về trực tiếp array
+          state.exceptions = action.payload;
+        } else {
+          state.exceptions = [];
+        }
         state.error = null;
       })
       .addCase(getScheduleExceptions.rejected, (state, action) => {
