@@ -1,15 +1,39 @@
-import React, { useEffect } from 'react';
-import { Box, Container, Paper, Typography, Avatar, Divider, Card, CardContent, Chip, CircularProgress, Alert, Stack, Grid, useTheme, useMediaQuery } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Container, Paper, Typography, Avatar, Divider, Card, CardContent, Chip, CircularProgress, Alert, Stack, Grid, useTheme, useMediaQuery, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton } from '@mui/material';
+import { Edit as EditIcon, Close as CloseIcon } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
-import { fetchProfileData, clearError } from '../../redux/slices/profileSlice';
+import { fetchProfileData, clearError, updateProfile, updatePersonalProfile, updateFamilyInfo } from '../../redux/slices/profileSlice';
+import { toast } from 'react-toastify';
 
 
 const Profile: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { profileData, loading, error } = useSelector((state: RootState) => state.profile);
+  const { profileData, loading, error, updating, updateError } = useSelector((state: RootState) => state.profile);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+  // Edit personal profile dialog state
+  const [editPersonalDialogOpen, setEditPersonalDialogOpen] = useState(false);
+  const [editPersonalFormData, setEditPersonalFormData] = useState({
+    address: '',
+    idCardNumber: '',
+    placeOfBirth: '',
+    permanentAddress: '',
+    bankName: '',
+    bankAccountNumber: ''
+  });
+
+  // Edit family info dialog state
+  const [editFamilyDialogOpen, setEditFamilyDialogOpen] = useState(false);
+  const [editFamilyFormData, setEditFamilyFormData] = useState({
+    fatherFullName: '',
+    fatherYearOfBirth: '',
+    fatherPhone: '',
+    motherFullName: '',
+    motherYearOfBirth: '',
+    motherPhone: ''
+  });
 
   useEffect(() => {
     dispatch(fetchProfileData());
@@ -18,6 +42,13 @@ const Profile: React.FC = () => {
       dispatch(clearError());
     };
   }, [dispatch]);
+
+  // Show toast on success/error
+  useEffect(() => {
+    if (updateError) {
+      toast.error(updateError);
+    }
+  }, [updateError]);
 
 
   const formatDate = (dateString?: string) => {
@@ -31,6 +62,92 @@ const Profile: React.FC = () => {
       case 'female': return 'Nữ';
       case 'other': return 'Khác';
       default: return '';
+    }
+  };
+
+  const handleOpenEditPersonalDialog = () => {
+    if (profileData?.user && profileData?.personalProfile) {
+      const user = profileData.user;
+      const personal = profileData.personalProfile;
+      setEditPersonalFormData({
+        address: user.address || '',
+        idCardNumber: personal.idCardNumber || '',
+        placeOfBirth: personal.placeOfBirth || '',
+        permanentAddress: personal.permanentAddress || '',
+        bankName: personal.bankName || '',
+        bankAccountNumber: personal.bankAccountNumber || ''
+      });
+      setEditPersonalDialogOpen(true);
+    }
+  };
+
+  const handleCloseEditPersonalDialog = () => {
+    setEditPersonalDialogOpen(false);
+    dispatch(clearError());
+  };
+
+  const handleSavePersonalProfile = async () => {
+    try {
+      // Update user info (address only)
+      const userData = {
+        address: editPersonalFormData.address
+      };
+      await dispatch(updateProfile(userData)).unwrap();
+      
+      // Update personal profile (idCardNumber, placeOfBirth, permanentAddress, bankName, bankAccountNumber)
+      const personalData = {
+        idCardNumber: editPersonalFormData.idCardNumber,
+        placeOfBirth: editPersonalFormData.placeOfBirth,
+        permanentAddress: editPersonalFormData.permanentAddress,
+        bankName: editPersonalFormData.bankName,
+        bankAccountNumber: editPersonalFormData.bankAccountNumber
+      };
+      await dispatch(updatePersonalProfile(personalData)).unwrap();
+      
+      toast.success('Cập nhật thông tin thành công');
+      handleCloseEditPersonalDialog();
+      dispatch(fetchProfileData());
+    } catch (error) {
+      // Error handled by useEffect
+    }
+  };
+
+  const handleOpenEditFamilyDialog = () => {
+    if (profileData?.familyInfo) {
+      const family = profileData.familyInfo;
+      setEditFamilyFormData({
+        fatherFullName: family.fatherFullName || '',
+        fatherYearOfBirth: family.fatherYearOfBirth?.toString() || '',
+        fatherPhone: family.fatherPhone || '',
+        motherFullName: family.motherFullName || '',
+        motherYearOfBirth: family.motherYearOfBirth?.toString() || '',
+        motherPhone: family.motherPhone || ''
+      });
+      setEditFamilyDialogOpen(true);
+    }
+  };
+
+  const handleCloseEditFamilyDialog = () => {
+    setEditFamilyDialogOpen(false);
+    dispatch(clearError());
+  };
+
+  const handleSaveFamilyInfo = async () => {
+    try {
+      const dataToUpdate: any = {
+        fatherFullName: editFamilyFormData.fatherFullName,
+        fatherPhone: editFamilyFormData.fatherPhone,
+        motherFullName: editFamilyFormData.motherFullName,
+        motherPhone: editFamilyFormData.motherPhone,
+        fatherYearOfBirth: editFamilyFormData.fatherYearOfBirth ? parseInt(editFamilyFormData.fatherYearOfBirth) : null,
+        motherYearOfBirth: editFamilyFormData.motherYearOfBirth ? parseInt(editFamilyFormData.motherYearOfBirth) : null
+      };
+      await dispatch(updateFamilyInfo(dataToUpdate)).unwrap();
+      toast.success('Cập nhật thông tin thành công');
+      handleCloseEditFamilyDialog();
+      dispatch(fetchProfileData());
+    } catch (error) {
+      // Error handled by useEffect
     }
   };
 
@@ -351,15 +468,23 @@ const Profile: React.FC = () => {
         >
           <Card elevation={2} sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Typography 
-                variant="h6" 
-                component="h2" 
-                fontWeight="bold" 
-                mb={2}
-                sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
-              >
-                Thông tin cá nhân
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography 
+                  variant="h6" 
+                  component="h2" 
+                  fontWeight="bold" 
+                  sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
+                >
+                  Thông tin cá nhân
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={handleOpenEditPersonalDialog}
+                  sx={{ color: '#1976d2' }}
+                >
+                  <EditIcon />
+                </IconButton>
+              </Box>
               <Divider sx={{ mb: 2 }} />
               
               <Stack spacing={2}>
@@ -523,15 +648,23 @@ const Profile: React.FC = () => {
         >
           <Card elevation={2} sx={{ height: '100%' }}>
             <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-              <Typography 
-                variant="h6" 
-                component="h2" 
-                fontWeight="bold" 
-                mb={2}
-                sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
-              >
-                Quan hệ gia đình
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography 
+                  variant="h6" 
+                  component="h2" 
+                  fontWeight="bold" 
+                  sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem', md: '1.5rem' } }}
+                >
+                  Quan hệ gia đình
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={handleOpenEditFamilyDialog}
+                  sx={{ color: '#1976d2' }}
+                >
+                  <EditIcon />
+                </IconButton>
+              </Box>
               <Divider sx={{ mb: 2 }} />
               
               {/* Father's Information */}
@@ -648,6 +781,160 @@ const Profile: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* Edit Personal Profile Dialog */}
+      <Dialog 
+        open={editPersonalDialogOpen} 
+        onClose={handleCloseEditPersonalDialog}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Chỉnh sửa thông tin cá nhân</Typography>
+            <IconButton onClick={handleCloseEditPersonalDialog} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Địa chỉ liên hệ"
+              fullWidth
+              multiline
+              rows={2}
+              value={editPersonalFormData.address}
+              onChange={(e) => setEditPersonalFormData({ ...editPersonalFormData, address: e.target.value })}
+            />
+            <TextField
+              label="Số CCCD"
+              fullWidth
+              value={editPersonalFormData.idCardNumber}
+              onChange={(e) => setEditPersonalFormData({ ...editPersonalFormData, idCardNumber: e.target.value })}
+            />
+            <TextField
+              label="Nơi sinh"
+              fullWidth
+              value={editPersonalFormData.placeOfBirth}
+              onChange={(e) => setEditPersonalFormData({ ...editPersonalFormData, placeOfBirth: e.target.value })}
+            />
+            <TextField
+              label="Hộ khẩu thường trú"
+              fullWidth
+              multiline
+              rows={3}
+              value={editPersonalFormData.permanentAddress}
+              onChange={(e) => setEditPersonalFormData({ ...editPersonalFormData, permanentAddress: e.target.value })}
+            />
+            <TextField
+              label="Tên ngân hàng"
+              fullWidth
+              value={editPersonalFormData.bankName}
+              onChange={(e) => setEditPersonalFormData({ ...editPersonalFormData, bankName: e.target.value })}
+            />
+            <TextField
+              label="Số tài khoản"
+              fullWidth
+              value={editPersonalFormData.bankAccountNumber}
+              onChange={(e) => setEditPersonalFormData({ ...editPersonalFormData, bankAccountNumber: e.target.value })}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditPersonalDialog}>Hủy</Button>
+          <Button 
+            onClick={handleSavePersonalProfile} 
+            variant="contained" 
+            disabled={updating}
+            startIcon={updating ? <CircularProgress size={20} /> : null}
+          >
+            {updating ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Family Info Dialog */}
+      <Dialog 
+        open={editFamilyDialogOpen} 
+        onClose={handleCloseEditFamilyDialog}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Chỉnh sửa thông tin gia đình</Typography>
+            <IconButton onClick={handleCloseEditFamilyDialog} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 1 }}>
+              Thông tin cha
+            </Typography>
+            <TextField
+              label="Họ tên Cha"
+              fullWidth
+              value={editFamilyFormData.fatherFullName}
+              onChange={(e) => setEditFamilyFormData({ ...editFamilyFormData, fatherFullName: e.target.value })}
+            />
+            <TextField
+              label="Năm sinh (Cha)"
+              fullWidth
+              type="number"
+              value={editFamilyFormData.fatherYearOfBirth}
+              onChange={(e) => setEditFamilyFormData({ ...editFamilyFormData, fatherYearOfBirth: e.target.value })}
+              inputProps={{ min: 1900, max: new Date().getFullYear() }}
+            />
+            <TextField
+              label="Số điện thoại (Cha)"
+              fullWidth
+              value={editFamilyFormData.fatherPhone}
+              onChange={(e) => setEditFamilyFormData({ ...editFamilyFormData, fatherPhone: e.target.value })}
+            />
+            
+            <Divider sx={{ my: 1 }} />
+            
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 1 }}>
+              Thông tin mẹ
+            </Typography>
+            <TextField
+              label="Họ tên Mẹ"
+              fullWidth
+              value={editFamilyFormData.motherFullName}
+              onChange={(e) => setEditFamilyFormData({ ...editFamilyFormData, motherFullName: e.target.value })}
+            />
+            <TextField
+              label="Năm sinh (Mẹ)"
+              fullWidth
+              type="number"
+              value={editFamilyFormData.motherYearOfBirth}
+              onChange={(e) => setEditFamilyFormData({ ...editFamilyFormData, motherYearOfBirth: e.target.value })}
+              inputProps={{ min: 1900, max: new Date().getFullYear() }}
+            />
+            <TextField
+              label="Số điện thoại (Mẹ)"
+              fullWidth
+              value={editFamilyFormData.motherPhone}
+              onChange={(e) => setEditFamilyFormData({ ...editFamilyFormData, motherPhone: e.target.value })}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEditFamilyDialog}>Hủy</Button>
+          <Button 
+            onClick={handleSaveFamilyInfo} 
+            variant="contained" 
+            disabled={updating}
+            startIcon={updating ? <CircularProgress size={20} /> : null}
+          >
+            {updating ? 'Đang lưu...' : 'Lưu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Container>
   );
