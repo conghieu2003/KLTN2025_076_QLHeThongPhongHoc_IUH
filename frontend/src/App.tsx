@@ -5,6 +5,8 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { store } from './redux/store';
 import Login from './pages/Auth/Login';
+import ForgotPassword from './pages/Auth/ForgotPassword';
+import ResetPassword from './pages/Auth/ResetPassword';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard/Dashboard';
 import UserManagement from './pages/Management/UserManagement';
@@ -27,6 +29,10 @@ const App = () => {
         <Routes>
           {/* @ts-ignore */}
           <Route path="/login" element={<Login />} />
+          {/* @ts-ignore */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          {/* @ts-ignore */}
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route path="/" element={
             // @ts-ignore

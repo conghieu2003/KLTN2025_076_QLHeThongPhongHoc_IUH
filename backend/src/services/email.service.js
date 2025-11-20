@@ -1,15 +1,55 @@
 const nodemailer = require('nodemailer');
+const config = require('../config/env.config');
 
 class EmailService {
     constructor() {
         // Cấu hình transporter cho email
-        this.transporter = nodemailer.createTransport({
-            service: 'gmail', // Hoặc service khác tùy theo nhu cầu
-            auth: {
-                user: process.env.EMAIL_USER || '',
-                pass: process.env.EMAIL_PASSWORD || ''
-            }
-        });
+        // Ưu tiên sử dụng cấu hình từ env.config, fallback về process.env
+        const emailUser = config.email.user !== 'your_email@gmail.com' 
+            ? config.email.user 
+            : (process.env.EMAIL_USER || process.env.SMTP_USER || '');
+        
+        const emailPass = config.email.pass !== 'your_app_password'
+            ? config.email.pass
+            : (process.env.EMAIL_PASSWORD || process.env.SMTP_PASS || '');
+
+        // Sử dụng SMTP config nếu có, nếu không thì dùng service: 'gmail'
+        if (config.email.host && config.email.host !== 'smtp.gmail.com') {
+            this.transporter = nodemailer.createTransport({
+                host: config.email.host,
+                port: config.email.port,
+                secure: config.email.port === 465, // true for 465, false for other ports
+                auth: {
+                    user: emailUser,
+                    pass: emailPass
+                }
+            });
+        } else {
+            // Sử dụng Gmail service với App Password
+            this.transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: emailUser,
+                    pass: emailPass
+                }
+            });
+        }
+
+        // Verify connection configuration
+        this.verifyConnection();
+    }
+
+    async verifyConnection() {
+        try {
+            await this.transporter.verify();
+            console.log('✅ Email server is ready to send messages');
+        } catch (error) {
+            console.error('❌ Email server configuration error:', error.message);
+            console.error('💡 Hướng dẫn:');
+            console.error('   1. Đảm bảo EMAIL_USER/SMTP_USER và EMAIL_PASSWORD/SMTP_PASS đã được cấu hình trong .env');
+            console.error('   2. Với Gmail, cần sử dụng App Password (không phải mật khẩu thông thường)');
+            console.error('   3. Tạo App Password tại: https://myaccount.google.com/apppasswords');
+        }
     }
 
     async sendEmail({ to, subject, content }) {
@@ -35,11 +75,25 @@ class EmailService {
             };
 
             const result = await this.transporter.sendMail(mailOptions);
-            console.log('Email sent successfully:', result.messageId);
+            console.log('✅ Email sent successfully:', result.messageId);
             return result;
         } catch (error) {
-            console.error('Error sending email:', error);
-            throw new Error(`Lỗi gửi email: ${error.message}`);
+            console.error('❌ Error sending email:', error.message);
+            
+            // Xử lý các lỗi phổ biến và trả về message rõ ràng hơn
+            let errorMessage = 'Lỗi gửi email';
+            
+            if (error.message.includes('Invalid login') || error.message.includes('BadCredentials')) {
+                errorMessage = 'Lỗi xác thực email. Vui lòng kiểm tra lại EMAIL_USER và EMAIL_PASSWORD trong file .env. Với Gmail, cần sử dụng App Password.';
+            } else if (error.message.includes('ECONNECTION') || error.message.includes('ETIMEDOUT')) {
+                errorMessage = 'Không thể kết nối đến máy chủ email. Vui lòng kiểm tra kết nối mạng.';
+            } else if (error.message.includes('EENVELOPE')) {
+                errorMessage = 'Lỗi địa chỉ email người nhận.';
+            } else {
+                errorMessage = `Lỗi gửi email: ${error.message}`;
+            }
+            
+            throw new Error(errorMessage);
         }
     }
 
@@ -56,6 +110,78 @@ class EmailService {
             to, subject, content, fullName, role, username, password 
         });
         return this.sendEmail({ to, subject, content: emailContent });
+    }
+
+    // Method để gửi email reset password
+    async sendPasswordResetEmail({ to, fullName, resetLink }) {
+        const subject = 'IUH - Khôi phục mật khẩu';
+        const content = this.generatePasswordResetTemplate({ fullName, resetLink });
+        return this.sendEmail({ to, subject, content });
+    }
+
+    // Template email reset password
+    generatePasswordResetTemplate({ fullName, resetLink }) {
+        return `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8f9fa;">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                    <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
+                        Khôi phục mật khẩu
+                    </h1>
+                </div>
+                
+                <!-- Content -->
+                <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <p style="color: #333; font-size: 16px; margin-bottom: 20px;">
+                        <strong>Thân gửi ${fullName},</strong>
+                    </p>
+                    
+                    <div style="color: #555; font-size: 15px; line-height: 1.6; margin-bottom: 25px;">
+                        Chúng tôi nhận được yêu cầu khôi phục mật khẩu cho tài khoản của bạn trên hệ thống quản lý lớp học IUH.
+                    </div>
+                    
+                    <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3;">
+                        <h3 style="color: #1976d2; margin-top: 0; margin-bottom: 15px; font-size: 18px;">
+                            🔐 Đặt lại mật khẩu:
+                        </h3>
+                        <p style="color: #555; margin: 10px 0;">
+                            Vui lòng click vào nút bên dưới để đặt lại mật khẩu mới:
+                        </p>
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a href="${resetLink}" style="display: inline-block; background-color: #1976d2; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: 600; font-size: 16px;">
+                                Đặt lại mật khẩu
+                            </a>
+                        </div>
+                        <p style="color: #666; font-size: 13px; margin-top: 15px;">
+                            Hoặc copy và dán link sau vào trình duyệt:<br>
+                            <span style="color: #1976d2; word-break: break-all;">${resetLink}</span>
+                        </p>
+                    </div>
+                    
+                    <div style="background-color: #fff3e0; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #ff9800;">
+                        <h3 style="color: #f57c00; margin-top: 0; margin-bottom: 15px; font-size: 18px;">
+                            ⚠️ Lưu ý quan trọng:
+                        </h3>
+                        <ul style="color: #555; margin: 0; padding-left: 20px;">
+                            <li style="margin: 8px 0;">Link này chỉ có hiệu lực trong <strong>1 giờ</strong></li>
+                            <li style="margin: 8px 0;">Nếu bạn không yêu cầu khôi phục mật khẩu, vui lòng bỏ qua email này</li>
+                            <li style="margin: 8px 0;">Để bảo mật, không chia sẻ link này với bất kỳ ai</li>
+                            <li style="margin: 8px 0;">Nếu gặp vấn đề, vui lòng liên hệ phòng Công Tác Sinh Viên</li>
+                        </ul>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px; margin-top: 30px; text-align: center;">
+                        Trân trọng,<br>
+                        <strong>IUH - Trường Đại học Công nghiệp TP.HCM</strong>
+                    </p>
+                </div>
+                
+                <!-- Footer -->
+                <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+                    <p>© 2024 IUH Classroom Management System. Powered by IUH IT Department.</p>
+                </div>
+            </div>
+        `;
     }
 
     // Template email chung cho tất cả trường hợp

@@ -4,15 +4,21 @@ import { authService } from '../../services/api';
 import { TextBox } from 'devextreme-react/text-box';
 import { User } from '../../types';
 import Sidebar from './Sidebar';
-import { Box, Grid, useTheme, useMediaQuery, IconButton } from '@mui/material';
+import { Box, Grid, useTheme, useMediaQuery, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Typography, Stack, CircularProgress, InputAdornment } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { initSocket } from '../../utils/socket';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../../redux/store';
+import { changePassword } from '../../redux/slices/profileSlice';
+import { toast } from 'react-toastify';
 import 'devextreme/dist/css/dx.light.css';
 
 
 const Layout: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
   const isDesktop = useMediaQuery(theme.breakpoints.up('md')); // >= 960px
@@ -20,6 +26,19 @@ const Layout: React.FC = () => {
   const [searchText, setSearchText] = useState<string>('');
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState<boolean>(false);
+  const [passwordFormData, setPasswordFormData] = useState({
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState<{ [key: string]: string }>({});
+  const [changingPassword, setChangingPassword] = useState<boolean>(false);
+  const [showPasswords, setShowPasswords] = useState({
+    oldPassword: false,
+    newPassword: false,
+    confirmPassword: false
+  });
   const userMenuRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -95,7 +114,13 @@ const Layout: React.FC = () => {
         navigate('/profile');
         break;
       case 'password':
-        navigate('/change-password');
+        setPasswordDialogOpen(true);
+        setPasswordFormData({
+          oldPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+        setPasswordErrors({});
         break;
       case 'logout':
         authService.logout();
@@ -103,6 +128,87 @@ const Layout: React.FC = () => {
         break;
       default:
         break;
+    }
+  };
+
+  const handleClosePasswordDialog = () => {
+    setPasswordDialogOpen(false);
+    setPasswordFormData({
+      oldPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+    setPasswordErrors({});
+    setShowPasswords({
+      oldPassword: false,
+      newPassword: false,
+      confirmPassword: false
+    });
+  };
+
+  // Hàm validate mật khẩu mạnh
+  const validateStrongPassword = (password: string): string | null => {
+    if (!password || password.length < 6) {
+      return 'Mật khẩu phải có ít nhất 6 ký tự';
+    }
+
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+    if (!hasUpperCase) {
+      return 'Mật khẩu phải có ít nhất một chữ cái in hoa (A-Z)';
+    }
+
+    if (!hasNumber) {
+      return 'Mật khẩu phải có ít nhất một số (0-9)';
+    }
+
+    if (!hasSpecialChar) {
+      return 'Mật khẩu phải có ít nhất một ký tự đặc biệt (!@#$%^&*()_+-=[]{}|;:,.<>?)';
+    }
+
+    return null;
+  };
+
+  const handleChangePassword = async () => {
+    // Validate
+    const errors: { [key: string]: string } = {};
+    
+    if (!passwordFormData.oldPassword) {
+      errors.oldPassword = 'Vui lòng nhập mật khẩu cũ';
+    }
+    if (!passwordFormData.newPassword) {
+      errors.newPassword = 'Vui lòng nhập mật khẩu mới';
+    } else {
+      const passwordError = validateStrongPassword(passwordFormData.newPassword);
+      if (passwordError) {
+        errors.newPassword = passwordError;
+      }
+    }
+    if (!passwordFormData.confirmPassword) {
+      errors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới';
+    } else if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      errors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPasswordErrors(errors);
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await dispatch(changePassword({
+        oldPassword: passwordFormData.oldPassword,
+        newPassword: passwordFormData.newPassword
+      })).unwrap();
+      toast.success('Đổi mật khẩu thành công');
+      handleClosePasswordDialog();
+    } catch (error: any) {
+      toast.error(error || 'Có lỗi xảy ra khi đổi mật khẩu');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -572,6 +678,123 @@ const Layout: React.FC = () => {
           <Outlet />
         </Grid>
       </Grid>
+
+      {/* Change Password Dialog */}
+      <Dialog 
+        open={passwordDialogOpen} 
+        onClose={handleClosePasswordDialog}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6">Đổi mật khẩu</Typography>
+            <IconButton onClick={handleClosePasswordDialog} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="Mật khẩu cũ"
+              fullWidth
+              type={showPasswords.oldPassword ? "text" : "password"}
+              value={passwordFormData.oldPassword}
+              onChange={(e) => {
+                setPasswordFormData({ ...passwordFormData, oldPassword: e.target.value });
+                setPasswordErrors({ ...passwordErrors, oldPassword: '' });
+              }}
+              error={!!passwordErrors.oldPassword}
+              helperText={passwordErrors.oldPassword}
+              required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPasswords(prev => ({ ...prev, oldPassword: !prev.oldPassword }))}
+                      onMouseDown={(e) => e.preventDefault()}
+                      edge="end"
+                      disabled={changingPassword}
+                      sx={{ padding: '4px' }}
+                    >
+                      {showPasswords.oldPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+            <TextField
+              label="Mật khẩu mới"
+              fullWidth
+              type={showPasswords.newPassword ? "text" : "password"}
+              value={passwordFormData.newPassword}
+              onChange={(e) => {
+                setPasswordFormData({ ...passwordFormData, newPassword: e.target.value });
+                setPasswordErrors({ ...passwordErrors, newPassword: '' });
+              }}
+              error={!!passwordErrors.newPassword}
+              helperText={passwordErrors.newPassword || ''}
+              required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPasswords(prev => ({ ...prev, newPassword: !prev.newPassword }))}
+                      onMouseDown={(e) => e.preventDefault()}
+                      edge="end"
+                      disabled={changingPassword}
+                      sx={{ padding: '4px' }}
+                    >
+                      {showPasswords.newPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+            <TextField
+              label="Xác nhận mật khẩu mới"
+              fullWidth
+              type={showPasswords.confirmPassword ? "text" : "password"}
+              value={passwordFormData.confirmPassword}
+              onChange={(e) => {
+                setPasswordFormData({ ...passwordFormData, confirmPassword: e.target.value });
+                setPasswordErrors({ ...passwordErrors, confirmPassword: '' });
+              }}
+              error={!!passwordErrors.confirmPassword}
+              helperText={passwordErrors.confirmPassword}
+              required
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPasswords(prev => ({ ...prev, confirmPassword: !prev.confirmPassword }))}
+                      onMouseDown={(e) => e.preventDefault()}
+                      edge="end"
+                      disabled={changingPassword}
+                      sx={{ padding: '4px' }}
+                    >
+                      {showPasswords.confirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                )
+              }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClosePasswordDialog}>Hủy</Button>
+          <Button 
+            onClick={handleChangePassword} 
+            variant="contained" 
+            disabled={changingPassword}
+            startIcon={changingPassword ? <CircularProgress size={20} /> : null}
+          >
+            {changingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* CSS Animations */}
       <style dangerouslySetInnerHTML={{

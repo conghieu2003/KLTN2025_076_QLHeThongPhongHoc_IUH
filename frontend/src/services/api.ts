@@ -152,12 +152,40 @@ export const authService = {
   },
 
   // Đổi mật khẩu
-  changePassword: async (passwordData: { currentPassword: string; newPassword: string }): Promise<any> => {
+  changePassword: async (passwordData: { oldPassword: string; newPassword: string }): Promise<any> => {
     try {
       const response = await api.post('/auth/change-password', passwordData);
       return response.data;
     } catch (error) {
       console.error('Change password error:', error);
+      throw error;
+    }
+  },
+
+  // Quên mật khẩu
+  forgotPassword: async (identifier: string): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.post('/auth/forgot-password', { identifier });
+      return response.data;
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+
+  // Đặt lại mật khẩu
+  resetPassword: async (passwordData: { token: string; newPassword: string; confirmPassword: string }): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.post('/auth/reset-password', passwordData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
       throw error;
     }
   },

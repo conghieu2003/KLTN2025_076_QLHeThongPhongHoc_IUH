@@ -156,6 +156,55 @@ class AuthController {
             });
         }
     }
+
+    async forgotPassword(req, res) {
+        try {
+            const { identifier } = req.body;
+
+            if (!identifier) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng nhập mã số sinh viên/giảng viên'
+                });
+            }
+
+            const result = await authService.forgotPassword(identifier);
+            res.status(200).json(result);
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Có lỗi xảy ra khi xử lý yêu cầu'
+            });
+        }
+    }
+
+    async resetPassword(req, res) {
+        try {
+            const { token, newPassword, confirmPassword } = req.body;
+
+            if (!token || !newPassword || !confirmPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng nhập đầy đủ thông tin'
+                });
+            }
+
+            if (newPassword !== confirmPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mật khẩu xác nhận không khớp'
+                });
+            }
+
+            const result = await authService.resetPassword(token, newPassword);
+            res.status(200).json(result);
+        } catch (error) {
+            res.status(400).json({
+                success: false,
+                message: error.message || 'Có lỗi xảy ra khi đặt lại mật khẩu'
+            });
+        }
+    }
 }
 
 module.exports = new AuthController(); 

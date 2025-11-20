@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
 import { login, clearErrors } from '../../redux/slices/authSlice';
+import { authService } from '../../services/api';
 import { useRive, Layout, Fit, Alignment } from '@rive-app/react-canvas';
 import 'devextreme/dist/css/dx.light.css';
 import { Button } from 'devextreme-react/button';
@@ -30,6 +31,8 @@ const Login: React.FC = () => {
     password: ''
   });
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState<boolean>(false);
   
   // State để track lỗi validation
   const [loginErrors, setLoginErrors] = useState<{
@@ -229,6 +232,35 @@ const Login: React.FC = () => {
           }
         }, 100);
       }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setLoginErrors({});
+    
+    if (!loginData.username.trim()) {
+      setLoginErrors({ username: 'Vui lòng nhập mã số sinh viên/giảng viên' });
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const response = await authService.forgotPassword(loginData.username.trim());
+      
+      if (response.success) {
+        toast.success(response.message || 'Email khôi phục mật khẩu đã được gửi');
+        setShowForgotPassword(false);
+        setLoginData({ ...loginData, username: '' });
+      } else {
+        toast.error(response.message || 'Có lỗi xảy ra');
+        setLoginErrors({ username: response.message || 'Có lỗi xảy ra' });
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gửi yêu cầu';
+      toast.error(errorMessage);
+      setLoginErrors({ username: errorMessage });
+    } finally {
+      setForgotPasswordLoading(false);
     }
   };
 
@@ -617,33 +649,148 @@ const Login: React.FC = () => {
               </Grid>
 
               {/* Forgot Password */}
-              <Grid size={{ xs: 12 }}>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box
-                    component="button"
-                    type="button"
-                    onClick={() => toast.info('Tính năng quên mật khẩu đang được phát triển')}
-                    disabled={isLoading}
-                    sx={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: 'rgba(255, 255, 255, 0.7)', 
-                      fontSize: { xs: '12px', sm: '13px', md: '14px' }, 
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      textDecoration: 'underline',
-                      transition: 'color 0.3s ease',
-                      padding: 0,
-                      fontFamily: 'inherit',
-                      opacity: isLoading ? 0.5 : 1,
-                      '&:hover': {
-                        color: isLoading ? 'rgba(255, 255, 255, 0.7)' : '#fff'
-                      }
-                    }}
-                  >
-                    Quên mật khẩu?
+              {!showForgotPassword ? (
+                <Grid size={{ xs: 12 }}>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Box
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        setShowForgotPassword(true);
+                        setLoginErrors({});
+                      }}
+                      disabled={isLoading}
+                      sx={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: 'rgba(255, 255, 255, 0.7)', 
+                        fontSize: { xs: '12px', sm: '13px', md: '14px' }, 
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        textDecoration: 'underline',
+                        transition: 'color 0.3s ease',
+                        padding: 0,
+                        fontFamily: 'inherit',
+                        opacity: isLoading ? 0.5 : 1,
+                        '&:hover': {
+                          color: isLoading ? 'rgba(255, 255, 255, 0.7)' : '#fff'
+                        }
+                      }}
+                    >
+                      Quên mật khẩu?
+                    </Box>
                   </Box>
-                </Box>
-              </Grid>
+                </Grid>
+              ) : (
+                <>
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ 
+                      backgroundColor: 'rgba(102, 126, 234, 0.2)', 
+                      padding: { xs: '12px', sm: '16px' }, 
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      marginBottom: '8px'
+                    }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '12px'
+                      }}>
+                        <Box sx={{ 
+                          color: '#fff', 
+                          fontSize: { xs: '13px', sm: '14px' }, 
+                          fontWeight: '500' 
+                        }}>
+                          Khôi phục mật khẩu
+                        </Box>
+                        <Box
+                          component="button"
+                          type="button"
+                          onClick={() => {
+                            setShowForgotPassword(false);
+                            setLoginErrors({});
+                          }}
+                          sx={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: 'rgba(255, 255, 255, 0.7)', 
+                            cursor: 'pointer',
+                            padding: '4px',
+                            fontSize: '16px',
+                            '&:hover': {
+                              color: '#fff'
+                            }
+                          }}
+                        >
+                          ×
+                        </Box>
+                      </Box>
+                      <Box sx={{ 
+                        color: 'rgba(255, 255, 255, 0.8)', 
+                        fontSize: { xs: '11px', sm: '12px' }, 
+                        marginBottom: '12px' 
+                      }}>
+                        Nhập mã số sinh viên/giảng viên để nhận email khôi phục mật khẩu
+                      </Box>
+                      <Box sx={{ position: 'relative', marginBottom: '8px' }}>
+                        <TextBox
+                          stylingMode="filled"
+                          placeholder="Mã số sinh viên/giảng viên"
+                          value={loginData.username}
+                          onValueChanged={(e: any) => {
+                            setLoginData({...loginData, username: e.value});
+                            if (loginErrors.username) {
+                              setLoginErrors({...loginErrors, username: undefined});
+                            }
+                          }}
+                          onKeyDown={(e: any) => {
+                            if (e.event.key === 'Enter') {
+                              e.event.preventDefault();
+                              handleForgotPassword();
+                            }
+                          }}
+                          width="100%"
+                          isValid={!loginErrors.username}
+                          className="login-textbox"
+                          disabled={forgotPasswordLoading || isLoading}
+                          inputAttr={{
+                            style: 'color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;'
+                          }}
+                        />
+                      </Box>
+                      {loginErrors.username && (
+                        <Box sx={{ 
+                          color: '#ff6b6b', 
+                          fontSize: { xs: '11px', sm: '12px' }, 
+                          marginBottom: '8px',
+                          textAlign: 'left'
+                        }}>
+                          {loginErrors.username}
+                        </Box>
+                      )}
+                      <Button
+                        width="100%"
+                        height={isMobile ? 36 : 40}
+                        text={forgotPasswordLoading ? "ĐANG GỬI..." : "GỬI YÊU CẦU"}
+                        type="default"
+                        stylingMode="contained"
+                        onClick={handleForgotPassword}
+                        disabled={forgotPasswordLoading || isLoading}
+                        style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: isMobile ? '12px' : '13px',
+                          fontWeight: '600',
+                          cursor: forgotPasswordLoading ? 'not-allowed' : 'pointer',
+                          opacity: forgotPasswordLoading ? 0.9 : 1,
+                          color: '#fff'
+                        }}
+                      />
+                    </Box>
+                  </Grid>
+                </>
+              )}
 
               {/* Login Button */}
               <Grid size={{ xs: 12 }}>

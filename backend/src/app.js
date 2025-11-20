@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger.config');
 
 const app = express();
 
@@ -26,9 +28,23 @@ app.get('/', (req, res) => {
         message: 'Classroom Management System Backend API',
         version: '1.0.0',
         status: 'running',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        documentation: '/api-docs'
     });
 });
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Classroom Management System API',
+    customfavIcon: '/favicon.ico',
+    swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+        filter: true,
+        tryItOutEnabled: true
+    }
+}));
 
 // Routes
 const authRoutes = require('./routes/auth.routes');

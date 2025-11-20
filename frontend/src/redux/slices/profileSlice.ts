@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { profileService } from '../../services/api';
+import { profileService, authService } from '../../services/api';
 
 // Types
 export interface PersonalProfile {
@@ -117,6 +117,8 @@ interface ProfileState {
   error: string | null;
   updating: boolean;
   updateError: string | null;
+  changingPassword: boolean;
+  changePasswordError: string | null;
 }
 
 const initialState: ProfileState = {
@@ -125,6 +127,8 @@ const initialState: ProfileState = {
   error: null,
   updating: false,
   updateError: null,
+  changingPassword: false,
+  changePasswordError: null,
 };
 
 // Async thunks
@@ -184,6 +188,34 @@ export const updateAcademicProfile = createAsyncThunk(
   }
 );
 
+export const updateProfile = createAsyncThunk(
+  'profile/updateProfile',
+  async (userData: { fullName?: string; email?: string; phone?: string; address?: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.updateProfile(userData);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin'
+      );
+    }
+  }
+);
+
+export const changePassword = createAsyncThunk(
+  'profile/changePassword',
+  async (passwordData: { oldPassword: string; newPassword: string }, { rejectWithValue }) => {
+    try {
+      const response = await authService.changePassword(passwordData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Có lỗi xảy ra khi đổi mật khẩu'
+      );
+    }
+  }
+);
+
 const profileSlice = createSlice({
   name: 'profile',
   initialState,
@@ -191,11 +223,13 @@ const profileSlice = createSlice({
     clearError: (state) => {
       state.error = null;
       state.updateError = null;
+      state.changePasswordError = null;
     },
     clearProfileData: (state) => {
       state.profileData = null;
       state.error = null;
       state.updateError = null;
+      state.changePasswordError = null;
     },
   },
   extraReducers: (builder) => {
@@ -261,6 +295,39 @@ const profileSlice = createSlice({
       .addCase(updateAcademicProfile.rejected, (state, action) => {
         state.updating = false;
         state.updateError = action.payload as string;
+      });
+
+    // Update profile
+    builder
+      .addCase(updateProfile.pending, (state) => {
+        state.updating = true;
+        state.updateError = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action: PayloadAction<User>) => {
+        state.updating = false;
+        if (state.profileData) {
+          state.profileData.user = action.payload;
+        }
+        state.updateError = null;
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.updating = false;
+        state.updateError = action.payload as string;
+      });
+
+    // Change password
+    builder
+      .addCase(changePassword.pending, (state) => {
+        state.changingPassword = true;
+        state.changePasswordError = null;
+      })
+      .addCase(changePassword.fulfilled, (state) => {
+        state.changingPassword = false;
+        state.changePasswordError = null;
+      })
+      .addCase(changePassword.rejected, (state, action) => {
+        state.changingPassword = false;
+        state.changePasswordError = action.payload as string;
       });
   },
 });
