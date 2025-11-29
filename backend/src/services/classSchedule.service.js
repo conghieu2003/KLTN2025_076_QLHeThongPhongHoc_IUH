@@ -175,16 +175,14 @@ class ClassScheduleService {
   // CLASS SCHEDULE UPDATE - CẬP NHẬT GÁN PHÒNG
   // =====================================================
   
+  // Gán phòng cho lịch học
   async ClassScheduleUpdate(scheduleId, roomId, assignedBy) {
     try {
-      console.log(`[ClassScheduleUpdate] Bắt đầu gán phòng - ScheduleID: ${scheduleId}, RoomID: ${roomId}`);
-      
       // Kiểm tra nếu scheduleId có dạng "classId-scheduleId"
       let actualScheduleId = scheduleId;
       if (typeof scheduleId === 'string' && scheduleId.includes('-')) {
         const parts = scheduleId.split('-');
         actualScheduleId = parts[1]; // Lấy phần thứ 2 (scheduleId thực tế)
-        console.log(`[ClassScheduleUpdate] Parsed scheduleId: ${actualScheduleId} from ${scheduleId}`);
       }
       
       const schedule = await prisma.classSchedule.findUnique({
@@ -209,11 +207,8 @@ class ClassScheduleService {
         };
       }
 
-      console.log(`[ClassScheduleUpdate] Lịch học hiện tại - classRoomId: ${schedule.classRoomId}, statusId: ${schedule.statusId}`);
-
       // Chỉ kiểm tra nếu lịch học đã có phòng VÀ statusId = 2 (Đã phân phòng)
       if (schedule.classRoomId && schedule.statusId === 2) {
-        console.log(`[ClassScheduleUpdate] Lỗi: Lịch học đã được gán phòng (classRoomId: ${schedule.classRoomId}, statusId: ${schedule.statusId})`);
         return {
           success: false,
           message: 'Lịch học đã được gán phòng'
@@ -307,8 +302,6 @@ class ClassScheduleService {
         assignedAt: updatedSchedule.assignedAt
       };
       
-      console.log(`[ClassScheduleUpdate] Gán phòng thành công - ScheduleID: ${actualScheduleId}, RoomID: ${roomId}, ClassStatusID: ${classStatusId}`);
-      
       return {
         success: true,
         data: result,
@@ -358,6 +351,7 @@ class ClassScheduleService {
   // LẤY PHÒNG KHẢ DỤNG CHO LỊCH HỌC
   // =====================================================
   
+  // Lấy danh sách phòng khả dụng cho lịch học
   async getAvailableRoomsForSchedule(scheduleId) {
     try {
       // Kiểm tra nếu scheduleId có dạng "classId-scheduleId"
@@ -365,7 +359,6 @@ class ClassScheduleService {
       if (typeof scheduleId === 'string' && scheduleId.includes('-')) {
         const parts = scheduleId.split('-');
         actualScheduleId = parts[1]; // Lấy phần thứ 2 (scheduleId thực tế)
-        console.log(`[getAvailableRoomsForSchedule] Parsed scheduleId: ${actualScheduleId} from ${scheduleId}`);
       }
       
       const schedule = await prisma.classSchedule.findUnique({
@@ -421,9 +414,6 @@ class ClassScheduleService {
 
       const conflictingRoomIds = conflictingSchedules.map(s => s.classRoomId);
       
-      console.log(`[getAvailableRoomsForSchedule] Found ${availableRooms.length} available rooms`);
-      console.log(`[getAvailableRoomsForSchedule] Schedule classRoomTypeId: ${schedule.ClassRoomType.id}, classRoomTypeName: ${schedule.ClassRoomType.name}`);
-      
       const filteredRooms = availableRooms
         .filter(room => !conflictingRoomIds.includes(room.id))
         .map(room => ({
@@ -437,8 +427,6 @@ class ClassScheduleService {
           department: room.department?.name || 'Phòng chung',
           isSameDepartment: room.departmentId === schedule.class.departmentId
         }));
-        
-      console.log(`[getAvailableRoomsForSchedule] Filtered to ${filteredRooms.length} rooms after conflict check`);
 
       return {
         success: true,

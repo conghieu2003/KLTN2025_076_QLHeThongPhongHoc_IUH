@@ -6,6 +6,7 @@ const SocketClient = require('../utils/socketClient');
 const createScheduleException = async (data) => {
   const {
     classScheduleId,
+    classId, // Thêm classId cho trường hợp thi cuối kỳ (RequestType 10)
     exceptionDate,
     exceptionType,
     requestTypeId,
@@ -19,60 +20,125 @@ const createScheduleException = async (data) => {
   } = data;
   
   try {
-    // Validation
-    if (!classScheduleId || !exceptionDate || !exceptionType || !requestTypeId || !requesterId || !reason) {
-      throw new Error('Thiếu thông tin bắt buộc');
+    // Validation: Với RequestType 10 (Thi cuối kỳ), không cần classScheduleId, chỉ cần classId
+    const isFinalExam = requestTypeId === 10;
+    
+    if (isFinalExam) {
+      // Thi cuối kỳ: cần classId, exceptionDate, newTimeSlotId, newClassRoomId
+      if (!classId || !exceptionDate || !requestTypeId || !requesterId || !reason || !newTimeSlotId || !newClassRoomId) {
+        throw new Error('Thiếu thông tin bắt buộc cho thi cuối kỳ (cần: lớp học, ngày thi, tiết, phòng)');
+      }
+      // Đảm bảo newTimeSlotId là số hợp lệ
+      if (isNaN(parseInt(newTimeSlotId)) || parseInt(newTimeSlotId) <= 0) {
+        throw new Error('Tiết thi không hợp lệ');
+      }
+      // Đảm bảo newClassRoomId là số hợp lệ
+      if (isNaN(parseInt(newClassRoomId)) || parseInt(newClassRoomId) <= 0) {
+        throw new Error('Phòng thi không hợp lệ');
+      }
+    } else {
+      // Các loại khác: cần classScheduleId
+      if (!classScheduleId || !exceptionDate || !exceptionType || !requestTypeId || !requesterId || !reason) {
+        throw new Error('Thiếu thông tin bắt buộc');
+      }
     }
 
-    // Kiểm tra lịch học có tồn tại không
-    const schedule = await prisma.classSchedule.findFirst({
-      where: {
-        id: classScheduleId,
-        statusId: 2 // active status
-      },
-      include: {
-        class: true,
-        teacher: {
-          include: {
-            user: true
-          }
+    let schedule = null;
+    let classInfo = null;
+    let existingException = null; // Khởi tạo để dùng cho conflict check
+    
+    if (isFinalExam) {
+      // Thi cuối kỳ: lấy thông tin lớp học
+      classInfo = await prisma.class.findUnique({
+        where: { id: parseInt(classId) },
+        include: {
+          teacher: {
+            include: {
+              user: true
+            }
+          },
+          department: true
+        }
+      });
+
+      if (!classInfo) {
+        throw new Error('Không tìm thấy lớp học');
+      }
+      
+      // Với thi cuối kỳ, không kiểm tra khoảng thời gian (có thể thi ngoài thời gian học)
+      
+      // Kiểm tra đã có ngoại lệ thi cuối kỳ cho lớp này và ngày này chưa
+      existingException = await prisma.scheduleRequest.findFirst({
+        where: {
+          classId: parseInt(classId),
+          exceptionDate: new Date(exceptionDate),
+          requestTypeId: 10 // Thi cuối kỳ
+        }
+      });
+
+      if (existingException) {
+        throw new Error('Đã có lịch thi cuối kỳ cho lớp này vào ngày này');
+      }
+    } else {
+      // Các loại khác: lấy thông tin lịch học
+      schedule = await prisma.classSchedule.findFirst({
+        where: {
+          id: classScheduleId,
+          statusId: 2 // active status
         },
-        classRoom: true,
-        timeSlot: true
+        include: {
+          class: true,
+          teacher: {
+            include: {
+              user: true
+            }
+          },
+          classRoom: true,
+          timeSlot: true
+        }
+      });
+
+      if (!schedule) {
+        throw new Error('Không tìm thấy lịch học hoặc lịch học không hoạt động');
       }
-    });
 
-    if (!schedule) {
-      throw new Error('Không tìm thấy lịch học hoặc lịch học không hoạt động');
-    }
+      classInfo = schedule.class;
 
-    // Kiểm tra ngày ngoại lệ có nằm trong khoảng thời gian của lịch học không
-    const exceptionDateObj = new Date(exceptionDate);
-    const startDate = new Date(schedule.class.startDate);
-    const endDate = new Date(schedule.class.endDate);
+      // Kiểm tra ngày ngoại lệ có nằm trong khoảng thời gian của lịch học không
+      const exceptionDateObj = new Date(exceptionDate);
+      const startDate = new Date(schedule.class.startDate);
+      const endDate = new Date(schedule.class.endDate);
 
-    if (exceptionDateObj < startDate || exceptionDateObj > endDate) {
-      throw new Error('Ngày ngoại lệ phải nằm trong khoảng thời gian của lịch học');
-    }
-
-    // Kiểm tra đã có ngoại lệ cho ngày này chưa
-    const existingException = await prisma.scheduleRequest.findFirst({
-      where: {
-        classScheduleId: classScheduleId,
-        exceptionDate: new Date(exceptionDate),
-        requestTypeId: requestTypeId
+      if (exceptionDateObj < startDate || exceptionDateObj > endDate) {
+        throw new Error('Ngày ngoại lệ phải nằm trong khoảng thời gian của lịch học');
       }
-    });
 
-    if (existingException) {
-      throw new Error('Đã có ngoại lệ cho ngày này');
+      // Kiểm tra đã có ngoại lệ cho ngày này chưa
+      existingException = await prisma.scheduleRequest.findFirst({
+        where: {
+          classScheduleId: classScheduleId,
+          exceptionDate: new Date(exceptionDate),
+          requestTypeId: requestTypeId
+        }
+      });
+
+      if (existingException) {
+        throw new Error('Đã có ngoại lệ cho ngày này');
+      }
     }
 
-    // Kiểm tra phòng nếu có newClassRoomId hoặc movedToClassRoomId
-    if (newClassRoomId || (newDate && newTimeSlotId)) {
+    // Kiểm tra phòng nếu có newClassRoomId hoặc (newDate và newTimeSlotId) hoặc (thi cuối kỳ)
+    if (newClassRoomId || (newDate && newTimeSlotId) || isFinalExam) {
       const targetRoomId = newClassRoomId || null;
       const targetDate = newDate ? new Date(newDate) : new Date(exceptionDate);
-      const targetTimeSlotId = newTimeSlotId || schedule.timeSlotId;
+      const targetTimeSlotId = isFinalExam 
+        ? (newTimeSlotId ? parseInt(newTimeSlotId) : null)
+        : (newTimeSlotId ? parseInt(newTimeSlotId) : (schedule ? schedule.timeSlotId : null));
+      
+      if (!targetTimeSlotId) {
+        throw new Error('Với thi cuối kỳ, cần chọn tiết học');
+      }
+      
       const targetDayOfWeek = targetDate.getDay() === 0 ? 7 : targetDate.getDay();
 
       // Kiểm tra phòng có đang bận không (có lớp học hoặc exception khác)
@@ -84,7 +150,7 @@ const createScheduleException = async (data) => {
             timeSlotId: targetTimeSlotId,
             classRoomId: parseInt(targetRoomId),
             statusId: { in: [2, 3] }, // Đã phân phòng hoặc đang hoạt động
-            id: { not: classScheduleId } // Loại trừ lịch hiện tại
+            ...(classScheduleId ? { id: { not: classScheduleId } } : {}) // Loại trừ lịch hiện tại nếu có
           }
         });
 
@@ -125,7 +191,8 @@ const createScheduleException = async (data) => {
               }
             ],
             requestStatusId: 2, // Chỉ kiểm tra exception đã duyệt
-            id: { not: existingException?.id || -1 } // Loại trừ exception hiện tại nếu có
+            // Loại trừ exception hiện tại nếu có (chỉ khi update, không phải create)
+            ...(existingException && existingException.id ? { id: { not: existingException.id } } : {})
           },
           include: {
             classSchedule: {
@@ -161,17 +228,18 @@ const createScheduleException = async (data) => {
     const newException = await prisma.scheduleRequest.create({
       data: {
         requestTypeId: requestTypeId,
-        classScheduleId: classScheduleId,
+        classScheduleId: isFinalExam ? null : classScheduleId, // Thi cuối kỳ không có classScheduleId
+        classId: isFinalExam ? parseInt(classId) : null, // Thi cuối kỳ có classId
         requesterId: requesterId,
         requestDate: new Date(),
-        timeSlotId: schedule.timeSlotId,
+        timeSlotId: isFinalExam ? parseInt(newTimeSlotId) : (schedule ? parseInt(schedule.timeSlotId) : null), // Thi cuối kỳ dùng newTimeSlotId
         exceptionDate: new Date(exceptionDate),
-        exceptionType: exceptionType,
-        newTimeSlotId: newTimeSlotId || null,
-        newClassRoomId: newClassRoomId || null,
+        exceptionType: isFinalExam ? 'exam' : exceptionType, // Thi cuối kỳ dùng exceptionType = 'exam'
+        newTimeSlotId: newTimeSlotId ? parseInt(newTimeSlotId) : null,
+        newClassRoomId: newClassRoomId ? parseInt(newClassRoomId) : null,
         movedToDate: newDate ? new Date(newDate) : null,
-        movedToTimeSlotId: newTimeSlotId || null,
-        movedToClassRoomId: newClassRoomId || null,
+        movedToTimeSlotId: newTimeSlotId ? parseInt(newTimeSlotId) : null,
+        movedToClassRoomId: newClassRoomId ? parseInt(newClassRoomId) : null,
         substituteTeacherId: substituteTeacherId || null,
         reason: reason,
         requestStatusId: 2, // Auto-approved for admin (Đã duyệt)
@@ -180,7 +248,7 @@ const createScheduleException = async (data) => {
         note: note || null
       },
       include: {
-        classSchedule: {
+        classSchedule: isFinalExam ? undefined : {
           include: {
             class: true,
             teacher: {
@@ -192,6 +260,16 @@ const createScheduleException = async (data) => {
             timeSlot: true
           }
         },
+        class: isFinalExam ? {
+          include: {
+            teacher: {
+              include: {
+                user: true
+              }
+            },
+            department: true
+          }
+        } : undefined,
         RequestStatus: true,
         requester: true
       }
@@ -201,14 +279,21 @@ const createScheduleException = async (data) => {
     const relatedUserIds = [];
     try {
       // Thêm teacher
-      if (schedule.teacher?.user?.id) {
-        relatedUserIds.push(schedule.teacher.user.id);
+      if (isFinalExam) {
+        if (classInfo.teacher?.user?.id) {
+          relatedUserIds.push(classInfo.teacher.user.id);
+        }
+      } else {
+        if (schedule.teacher?.user?.id) {
+          relatedUserIds.push(schedule.teacher.user.id);
+        }
       }
 
       // Lấy students của class
+      const targetClassId = isFinalExam ? parseInt(classId) : schedule.classId;
       const classStudents = await prisma.classStudent.findMany({
         where: {
-          classId: schedule.classId
+          classId: targetClassId
         },
         include: {
           student: {
@@ -262,13 +347,15 @@ const createScheduleException = async (data) => {
         await SocketClient.emitScheduleExceptionUpdated({
           exceptionId: newException.id,
           classScheduleId: newException.classScheduleId,
+          classId: isFinalExam ? parseInt(classId) : null, // Thêm classId cho thi cuối kỳ
           weekStartDate: weekStartDate,
           userIds: relatedUserIds
         });
       }
       
-      // Nếu có movedToDate, cũng emit cho tuần đó
-      if (movedToDate) {
+      // Với thi cuối kỳ, exceptionDate chính là ngày thi, không có movedToDate
+      // Nếu có movedToDate (cho moved/exam), cũng emit cho tuần đó
+      if (movedToDate && !isFinalExam) {
         const date = new Date(movedToDate);
         const dayOfWeek = date.getDay();
         const startOfWeek = new Date(date);
@@ -278,6 +365,7 @@ const createScheduleException = async (data) => {
         await SocketClient.emitScheduleExceptionUpdated({
           exceptionId: newException.id,
           classScheduleId: newException.classScheduleId,
+          classId: null,
           weekStartDate: weekStartDate,
           userIds: relatedUserIds
         });
@@ -300,7 +388,7 @@ const getScheduleExceptions = async (params) => {
 
   try {
     const whereConditions = {
-      requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9] } // Lấy tất cả loại ngoại lệ (ID 3-9)
+      requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9, 10] } // Lấy tất cả loại ngoại lệ (ID 3-10, bao gồm thi cuối kỳ)
     };
 
     if (scheduleId) {
@@ -329,6 +417,16 @@ const getScheduleExceptions = async (params) => {
             },
             classRoom: true,
             timeSlot: true
+          }
+        },
+        class: {
+          include: {
+            teacher: {
+              include: {
+                user: true
+              }
+            },
+            department: true
           }
         },
         RequestStatus: true,
@@ -364,43 +462,52 @@ const getScheduleExceptions = async (params) => {
     ]);
 
     // Format dữ liệu để trả về frontend
-    const formattedExceptions = exceptions.map(exception => ({
-      id: exception.id,
-      classScheduleId: exception.classScheduleId,
-      className: exception.classSchedule?.class?.className || 'Chưa có tên lớp',
-      classCode: exception.classSchedule?.class?.code || 'Chưa có mã lớp',
-      teacherName: exception.classSchedule?.teacher?.user?.fullName || 'Chưa có tên giảng viên',
-      roomName: exception.classSchedule?.classRoom?.name || 'Chưa phân phòng',
-      roomCode: exception.classSchedule?.classRoom?.code || '',
-      slotName: exception.classSchedule?.timeSlot?.slotName || 'Chưa có tiết',
-      startTime: exception.classSchedule?.timeSlot?.startTime ? exception.classSchedule.timeSlot.startTime.toTimeString().slice(0, 5) : '00:00',
-      endTime: exception.classSchedule?.timeSlot?.endTime ? exception.classSchedule.timeSlot.endTime.toTimeString().slice(0, 5) : '00:00',
-      exceptionDate: exception.exceptionDate ? exception.exceptionDate.toISOString().split('T')[0] : '',
-      exceptionType: exception.exceptionType || 'cancelled',
-      // Thông tin chuyển đến (cho moved/exam)
-      newTimeSlotId: exception.newTimeSlotId || exception.movedToTimeSlotId,
-      newTimeSlotName: exception.movedToTimeSlot?.slotName || exception.newTimeSlot?.slotName,
-      newTimeSlotStart: exception.movedToTimeSlot?.startTime ? exception.movedToTimeSlot.startTime.toTimeString().slice(0, 5) : 
-                        exception.newTimeSlot?.startTime ? exception.newTimeSlot.startTime.toTimeString().slice(0, 5) : null,
-      newTimeSlotEnd: exception.movedToTimeSlot?.endTime ? exception.movedToTimeSlot.endTime.toTimeString().slice(0, 5) : 
-                      exception.newTimeSlot?.endTime ? exception.newTimeSlot.endTime.toTimeString().slice(0, 5) : null,
-      newClassRoomId: exception.newClassRoomId || exception.movedToClassRoomId,
-      newClassRoomName: exception.movedToClassRoom?.name || exception.newClassRoom?.name,
-      newClassRoomCode: exception.movedToClassRoom?.code || exception.newClassRoom?.code,
-      newDate: exception.movedToDate ? exception.movedToDate.toISOString().split('T')[0] : exception.newDate ? exception.newDate.toISOString().split('T')[0] : null,
-      // Thông tin giảng viên thay thế (cho substitute)
-      substituteTeacherId: exception.substituteTeacherId,
-      substituteTeacherName: exception.substituteTeacher?.user?.fullName,
-      substituteTeacherCode: exception.substituteTeacher?.teacherCode,
-      reason: exception.reason || '',
-      note: exception.note || '',
-      requestStatusId: exception.requestStatusId,
-      statusName: exception.RequestStatus?.name || 'Chưa xác định',
-      requestTypeName: exception.RequestType?.name || 'Chưa xác định',
-      requesterName: exception.requester?.fullName || 'Chưa xác định',
-      createdAt: exception.createdAt ? exception.createdAt.toISOString() : '',
-      updatedAt: exception.updatedAt ? exception.updatedAt.toISOString() : ''
-    }));
+    const formattedExceptions = exceptions.map(exception => {
+      const isFinalExam = exception.requestTypeId === 10 && !exception.classScheduleId;
+      const classInfo = isFinalExam ? exception.class : exception.classSchedule?.class;
+      const teacherInfo = isFinalExam ? exception.class?.teacher : exception.classSchedule?.teacher;
+      const timeSlotInfo = isFinalExam ? exception.newTimeSlot : exception.classSchedule?.timeSlot;
+      const roomInfo = isFinalExam ? exception.newClassRoom : exception.classSchedule?.classRoom;
+      
+      return {
+        id: exception.id,
+        classScheduleId: exception.classScheduleId,
+        classId: exception.classId, // Thêm classId cho thi cuối kỳ
+        className: classInfo?.className || 'Chưa có tên lớp',
+        classCode: classInfo?.code || 'Chưa có mã lớp',
+        teacherName: teacherInfo?.user?.fullName || 'Chưa có tên giảng viên',
+        roomName: isFinalExam ? (exception.newClassRoom?.name || 'Chưa phân phòng') : (exception.classSchedule?.classRoom?.name || 'Chưa phân phòng'),
+        roomCode: isFinalExam ? (exception.newClassRoom?.code || '') : (exception.classSchedule?.classRoom?.code || ''),
+        slotName: timeSlotInfo?.slotName || 'Chưa có tiết',
+        startTime: timeSlotInfo?.startTime ? timeSlotInfo.startTime.toTimeString().slice(0, 5) : '00:00',
+        endTime: timeSlotInfo?.endTime ? timeSlotInfo.endTime.toTimeString().slice(0, 5) : '00:00',
+        exceptionDate: exception.exceptionDate ? exception.exceptionDate.toISOString().split('T')[0] : '',
+        exceptionType: exception.exceptionType || 'cancelled',
+        // Thông tin chuyển đến (cho moved/exam/finalExam)
+        newTimeSlotId: exception.newTimeSlotId || exception.movedToTimeSlotId,
+        newTimeSlotName: exception.movedToTimeSlot?.slotName || exception.newTimeSlot?.slotName,
+        newTimeSlotStart: exception.movedToTimeSlot?.startTime ? exception.movedToTimeSlot.startTime.toTimeString().slice(0, 5) : 
+                          exception.newTimeSlot?.startTime ? exception.newTimeSlot.startTime.toTimeString().slice(0, 5) : null,
+        newTimeSlotEnd: exception.movedToTimeSlot?.endTime ? exception.movedToTimeSlot.endTime.toTimeString().slice(0, 5) : 
+                        exception.newTimeSlot?.endTime ? exception.newTimeSlot.endTime.toTimeString().slice(0, 5) : null,
+        newClassRoomId: exception.newClassRoomId || exception.movedToClassRoomId,
+        newClassRoomName: exception.movedToClassRoom?.name || exception.newClassRoom?.name,
+        newClassRoomCode: exception.movedToClassRoom?.code || exception.newClassRoom?.code,
+        newDate: exception.movedToDate ? exception.movedToDate.toISOString().split('T')[0] : exception.newDate ? exception.newDate.toISOString().split('T')[0] : null,
+        // Thông tin giảng viên thay thế (cho substitute)
+        substituteTeacherId: exception.substituteTeacherId,
+        substituteTeacherName: exception.substituteTeacher?.user?.fullName,
+        substituteTeacherCode: exception.substituteTeacher?.teacherCode,
+        reason: exception.reason || '',
+        note: exception.note || '',
+        requestStatusId: exception.requestStatusId,
+        statusName: exception.RequestStatus?.name || 'Chưa xác định',
+        requestTypeName: exception.RequestType?.name || 'Chưa xác định',
+        requesterName: exception.requester?.fullName || 'Chưa xác định',
+        createdAt: exception.createdAt ? exception.createdAt.toISOString() : '',
+        updatedAt: exception.updatedAt ? exception.updatedAt.toISOString() : ''
+      };
+    });
 
   // Nếu getAll=true, trả về tất cả không có pagination
   if (getAll) {
@@ -976,10 +1083,8 @@ const getAvailableSchedules = async (params) => {
         timeSlot: true,
         ClassRoomType: true 
       },
-      take: 5 // Chỉ lấy 5 records đầu để debug
+      take: 5
     });
-
-    console.log('Raw database data (first 5 records):', JSON.stringify(allSchedules, null, 2));
 
     const [schedules, total] = await Promise.all([
       prisma.classSchedule.findMany({

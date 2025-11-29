@@ -5,6 +5,7 @@ import api from '../../services/api';
 export interface ScheduleException {
   id: number;
   classScheduleId: number;
+  classId?: number; // Cho thi cuối kỳ
   className: string;
   classCode: string;
   teacherName: string;
@@ -14,8 +15,8 @@ export interface ScheduleException {
   startTime: string;
   endTime: string;
   exceptionDate: string;
-  exceptionType: 'cancelled' | 'exam' | 'moved' | 'substitute';
-  // Thông tin chuyển đến (cho moved/exam)
+  exceptionType: 'cancelled' | 'exam' | 'moved' | 'substitute' | 'finalExam';
+  // Thông tin chuyển đến (cho moved/exam/finalExam)
   newTimeSlotId?: number;
   newTimeSlotName?: string;
   newTimeSlotStart?: string;
@@ -64,8 +65,9 @@ export interface AvailableSchedule {
 
 export interface CreateScheduleExceptionData {
   classScheduleId: number;
+  classId?: number; // Cho thi cuối kỳ
   exceptionDate: string;
-  exceptionType: 'cancelled' | 'exam' | 'moved' | 'substitute';
+  exceptionType: 'cancelled' | 'exam' | 'moved' | 'substitute' | 'finalExam';
   newTimeSlotId?: number;
   newClassRoomId?: number;
   newDate?: string;

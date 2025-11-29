@@ -3,7 +3,8 @@ const scheduleExceptionService = require('../services/scheduleException.service'
 const createScheduleException = async (req, res) => {
     try {
         const { 
-            classScheduleId, 
+            classScheduleId,
+            classId, // Thêm classId cho thi cuối kỳ
             exceptionDate, 
             exceptionType, 
             requestTypeId,
@@ -18,6 +19,7 @@ const createScheduleException = async (req, res) => {
 
         const result = await scheduleExceptionService.createScheduleException({
             classScheduleId,
+            classId,
             exceptionDate,
             exceptionType,
             requestTypeId,
