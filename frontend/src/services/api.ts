@@ -48,7 +48,6 @@ export const authService = {
   // Đăng nhập với identifier (admin: userId, teacher: teacherCode, student: studentCode, hoặc username) và password
   login: async (identifier: string, password: string): Promise<ApiResponse<any>> => {
     try {
-      console.log('Gọi API login với:', { identifier, password });
       const response = await api.post('/auth/login', { identifier, password });
 
       if (response.data.success) {

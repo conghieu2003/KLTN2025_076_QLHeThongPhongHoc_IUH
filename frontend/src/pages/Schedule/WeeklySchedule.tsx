@@ -549,10 +549,11 @@ const WeeklySchedule = memo(() => {
       case 3: return '#e8f5e8';
       case 4: return '#f8d7da';
       case 5: return '#f8d7da';
-      case 6: return '#fff3cd';
+      case 6: return '#fff3cd'; // Thi
       case 7: return '#ffeaa7';
       case 8: return '#d1ecf1';
       case 9: return '#a8e6cf';
+      case 10: return '#fff3cd'; // Thi cuối kỳ (cùng màu với thi)
       default: return '#f8f9fa';
     }
   };

@@ -168,7 +168,7 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
          scheduleRequests: {
            where: {
              requestStatusId: 2, // Chỉ lấy các yêu cầu đã được phê duyệt (admin tạo hoặc đã xử lý)
-             requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9] } // Lấy tất cả loại ngoại lệ (ID 3-9)
+             requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9, 10] } // Lấy tất cả loại ngoại lệ (ID 3-10, bao gồm thi cuối kỳ)
            },
            include: {
              RequestType: true,

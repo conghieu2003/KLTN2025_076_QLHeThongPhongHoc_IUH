@@ -32,11 +32,13 @@ INSERT INTO RequestType (name) VALUES
 (N'Đang hoạt động'),   -- active
 (N'Đã hủy'),          -- cancelled
 (N'Tạm ngưng'),       -- paused
-(N'Thi'),             -- exam
+(N'Thi'),             -- exam (thi giữa kỳ)
 -- Loại yêu cầu thay đổi
 (N'Đổi phòng'),
 (N'Đổi lịch'),
-(N'Đổi giáo viên');
+(N'Đổi giáo viên'),
+(N'Thi cuối kỳ'),     -- final exam (ID 10)
+(N'Thi cuối kỳ');     -- final exam
 
 -- =====================================================
 -- 4. DỮ LIỆU TRẠNG THÁI YÊU CẦU

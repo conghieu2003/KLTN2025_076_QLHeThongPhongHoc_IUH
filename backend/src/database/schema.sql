@@ -303,8 +303,9 @@ CREATE TABLE ClassSchedule (
 -- =====================================================
 CREATE TABLE ScheduleRequest (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID yêu cầu
-    requestTypeId INT NOT NULL, -- ID loại yêu cầu (1: Đổi phòng, 2: Đổi lịch, 3: Tạm ngưng, 4: Thi, 5: Đổi giáo viên)
-    classScheduleId INT NULL, -- ID lịch học (NULL nếu là yêu cầu phòng độc lập)
+    requestTypeId INT NOT NULL, -- ID loại yêu cầu (1: Đổi phòng, 2: Đổi lịch, 3: Tạm ngưng, 4: Thi, 5: Đổi giáo viên, 10: Thi cuối kỳ)
+    classScheduleId INT NULL, -- ID lịch học (NULL nếu là yêu cầu phòng độc lập hoặc thi cuối kỳ)
+    classId INT NULL, -- ID lớp học (cho thi cuối kỳ - RequestType 10)
     classRoomId INT NULL, -- ID phòng yêu cầu (cho room_request)
     requesterId INT NOT NULL, -- ID người gửi yêu cầu
     requestDate DATE NOT NULL, -- Ngày gửi yêu cầu
@@ -332,6 +333,7 @@ CREATE TABLE ScheduleRequest (
     createdAt DATETIME DEFAULT GETDATE(), -- Thời gian tạo
     updatedAt DATETIME DEFAULT GETDATE(), -- Thời gian cập nhật
     FOREIGN KEY (classScheduleId) REFERENCES ClassSchedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (classId) REFERENCES Class(id) ON DELETE NO ACTION,
     FOREIGN KEY (classRoomId) REFERENCES ClassRoom(id),
     FOREIGN KEY (oldClassRoomId) REFERENCES ClassRoom(id),
     FOREIGN KEY (newClassRoomId) REFERENCES ClassRoom(id),
@@ -402,7 +404,7 @@ WHERE statusId IN (2, 3); -- Chỉ áp dụng cho lịch đã phân phòng và �
 
 -- ScheduleRequest
 ALTER TABLE ScheduleRequest
-ADD CONSTRAINT CK_ScheduleRequest_Type CHECK (requestTypeId BETWEEN 1 AND 9);
+ADD CONSTRAINT CK_ScheduleRequest_Type CHECK (requestTypeId BETWEEN 1 AND 10);
 
 ALTER TABLE ScheduleRequest
 ADD CONSTRAINT CK_ScheduleRequest_Status CHECK (requestStatusId BETWEEN 1 AND 3);

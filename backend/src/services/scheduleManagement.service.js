@@ -32,39 +32,55 @@ class ScheduleManagementService {
         orderBy: { createdAt: 'desc' }
       });
 
-      return classes.map(cls => {
+      // Lọc chỉ lấy lớp đã có phòng (có ít nhất 1 schedule với statusId = 2 hoặc 3 VÀ có classRoomId)
+      const classesWithRooms = classes.filter(cls => {
+        return cls.classSchedules.some(schedule => 
+          (schedule.statusId === 2 || schedule.statusId === 3) && schedule.classRoomId !== null
+        );
+      });
+
+      return classesWithRooms.map(cls => {
          // Xác định trạng thái lớp: chỉ khi TẤT CẢ lịch học đều có phòng mới coi là "Đã phân phòng"
          const allSchedulesAssigned = cls.classSchedules.length > 0 && cls.classSchedules.every(schedule => schedule.statusId === 2);
          const classStatusId = allSchedulesAssigned ? 2 : 1;
+         
+         // Lọc chỉ lấy schedules đã có phòng (statusId = 2 hoặc 3 VÀ có classRoomId)
+         const assignedSchedules = cls.classSchedules.filter(schedule => 
+           (schedule.statusId === 2 || schedule.statusId === 3) && schedule.classRoomId !== null
+         );
         
         return {
           id: cls.id.toString(),
           classId: cls.id,
-          className: cls.className,
+          className: cls.className || 'Chưa có tên',
+          code: cls.code || cls.subjectCode || `CLASS${cls.id}`, // Fallback nếu code không có
           subjectCode: cls.subjectCode,
           subjectName: cls.subjectName,
-          teacherName: cls.teacher.user.fullName,
-          departmentName: cls.department.name,
+          teacherName: cls.teacher?.user?.fullName || 'Chưa xác định',
+          departmentName: cls.department?.name || 'Chưa xác định',
+          department: cls.department,
           majorName: cls.major?.name || 'Chưa xác định',
           maxStudents: cls.maxStudents,
           classRoomTypeId: cls.classRoomTypeId,
           classRoomTypeName: cls.ClassRoomType?.name || 'Chưa xác định',
           departmentId: cls.departmentId,
           statusId: classStatusId, // Trả về trực tiếp RequestType ID
-          schedules: cls.classSchedules.map(schedule => ({
-            id: schedule.id,
-            dayOfWeek: schedule.dayOfWeek,
-            dayName: this.getDayName(schedule.dayOfWeek),
-            timeSlot: schedule.timeSlot.slotName,
-            roomId: schedule.classRoomId,
-            roomName: schedule.classRoom?.name || null,
-            roomCode: schedule.classRoom?.code || null,
-            classRoomTypeId: schedule.classRoomTypeId,
-            classRoomTypeName: schedule.ClassRoomType?.name || 'Chưa xác định',
-            practiceGroup: schedule.practiceGroup,
-            statusId: schedule.statusId,
-            statusName: this.getStatusName(schedule.statusId)
-          }))
+          schedules: assignedSchedules
+            .filter(schedule => schedule.classRoomId !== null) // Chỉ lấy schedule đã có phòng
+            .map(schedule => ({
+              id: schedule.id,
+              dayOfWeek: schedule.dayOfWeek,
+              dayName: this.getDayName(schedule.dayOfWeek),
+              timeSlot: schedule.timeSlot.slotName,
+              roomId: schedule.classRoomId,
+              roomName: schedule.classRoom?.name || null,
+              roomCode: schedule.classRoom?.code || null,
+              classRoomTypeId: schedule.classRoomTypeId,
+              classRoomTypeName: schedule.ClassRoomType?.name || 'Chưa xác định',
+              practiceGroup: schedule.practiceGroup,
+              statusId: schedule.statusId,
+              statusName: this.getStatusName(schedule.statusId)
+            }))
         };
       });
     } catch (error) {
@@ -214,6 +230,7 @@ class ScheduleManagementService {
   // 2. GÁN PHÒNG CHO LỊCH HỌC
   // =====================================================
   
+  // Gán phòng cho lịch học
   async assignRoomToSchedule(scheduleId, roomId, assignedBy) {
     try {
       
@@ -377,7 +394,7 @@ class ScheduleManagementService {
     }
   }
 
-  // Hủy gán phòng
+  // Hủy gán phòng cho lịch học
   async unassignRoomFromSchedule(scheduleId) {
     try {
       // Get schedule info before update
@@ -667,7 +684,7 @@ class ScheduleManagementService {
           scheduleRequests: {
             where: {
               requestStatusId: 2, // Chỉ lấy các yêu cầu đã được phê duyệt
-              requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9] } // Lấy tất cả loại ngoại lệ (ID 3-9)
+              requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9, 10] } // Lấy tất cả loại ngoại lệ (ID 3-10, bao gồm thi cuối kỳ)
             },
             include: {
               RequestType: true,
@@ -694,27 +711,43 @@ class ScheduleManagementService {
       // QUERY THÊM: Lấy các exceptions có movedToDate trong tuần này
       // nhưng schedule gốc không nằm trong điều kiện filter
       // (Ví dụ: Thi ngày 17/12/2025 nhưng lớp học kết thúc 15/12/2025)
+      // VÀ các exception thi cuối kỳ (RequestType 10) không có classScheduleId
       // =====================================================
       
       const standaloneExceptions = await prisma.scheduleRequest.findMany({
         where: {
-          exceptionType: { in: ['exam', 'moved'] },
-          movedToDate: {
-            gte: startDate,
-            lte: endDate
-          },
-          requestStatusId: 2, // Chỉ lấy exceptions đã được phê duyệt
-          // Áp dụng filters giống như schedules
-          ...(filters.classId && {
-            classSchedule: {
-              classId: parseInt(filters.classId)
+          OR: [
+            {
+              // Exception có movedToDate trong tuần này
+              exceptionType: { in: ['exam', 'moved'] },
+              movedToDate: {
+                gte: startDate,
+                lte: endDate
+              },
+              requestStatusId: 2,
+              // Áp dụng filters giống như schedules
+              ...(filters.classId && {
+                classSchedule: {
+                  classId: parseInt(filters.classId)
+                }
+              }),
+              ...(filters.teacherId && {
+                classSchedule: {
+                  teacherId: parseInt(filters.teacherId)
+                }
+              })
+            },
+            {
+              // Exception thi cuối kỳ (RequestType 10) - không có classScheduleId
+              requestTypeId: 10,
+              exceptionDate: {
+                gte: startDate,
+                lte: endDate
+              },
+              requestStatusId: 2,
+              classScheduleId: null // Thi cuối kỳ không có classScheduleId
             }
-          }),
-          ...(filters.teacherId && {
-            classSchedule: {
-              teacherId: parseInt(filters.teacherId)
-            }
-          })
+          ]
         },
         include: {
           classSchedule: {
@@ -742,6 +775,19 @@ class ScheduleManagementService {
               ClassRoomType: true
             }
           },
+          class: {
+            include: {
+              teacher: {
+                include: {
+                  user: true,
+                  department: true
+                }
+              },
+              department: true,
+              major: true,
+              ClassRoomType: true
+            }
+          },
           RequestType: true,
           RequestStatus: true,
           movedToTimeSlot: true,
@@ -758,6 +804,33 @@ class ScheduleManagementService {
 
       // Lọc thêm theo department nếu có filter (vì không thể filter trực tiếp trong where)
       const filteredStandaloneExceptions = standaloneExceptions.filter(exception => {
+        // Thi cuối kỳ (RequestType 10) không có classSchedule, có class
+        if (exception.requestTypeId === 10 && !exception.classScheduleId) {
+          if (!exception.class) return false;
+          
+          // Apply department filter if exists
+          if (filters.departmentId) {
+            return exception.class.departmentId === parseInt(filters.departmentId);
+          }
+          
+          // Apply classId filter if exists
+          if (filters.classId) {
+            return exception.class.id === parseInt(filters.classId);
+          }
+          
+          // Role-based filtering for final exam exceptions
+          if (userRole === 'teacher' && userId) {
+            const teacher = exception.class.teacher;
+            return teacher && teacher.userId === parseInt(userId);
+          } else if (userRole === 'student' && userId) {
+            // Cần check xem student có trong lớp không
+            // (Tạm thời bỏ qua, cần implement nếu cần thiết)
+            return true;
+          }
+          
+          return true;
+        }
+        
         if (!exception.classSchedule) return false;
         
         // Apply department filter if exists
@@ -950,14 +1023,84 @@ class ScheduleManagementService {
       // =====================================================
       
       filteredStandaloneExceptions.forEach(exception => {
+        // Xử lý thi cuối kỳ (RequestType 10) không có classSchedule
+        if (exception.requestTypeId === 10 && !exception.classScheduleId && exception.class) {
+          const classInfo = exception.class;
+          const exceptionDate = new Date(exception.exceptionDate);
+          const exceptionDayJS = exceptionDate.getDay(); // 0=CN, 1=T2, ..., 6=T7
+          const exceptionDayOfWeek = exceptionDayJS === 0 ? 1 : exceptionDayJS + 1; // Convert to 1=CN, 2=T2, ..., 7=T7
+          
+          const timeSlot = exception.newTimeSlot || exception.movedToTimeSlot;
+          const room = exception.newClassRoom || exception.movedToClassRoom;
+          
+          if (!timeSlot) {
+            return;
+          }
+          
+          const shift = this.getShiftFromTimeSlot(timeSlot.shift);
+          
+          // Tạo virtual schedule cho thi cuối kỳ
+          weeklySchedules.push({
+            id: 200000 + exception.id, // ID ảo để tránh trùng
+            classId: classInfo.id,
+            className: classInfo.className,
+            classCode: classInfo.code,
+            subjectCode: classInfo.subjectCode,
+            subjectName: classInfo.subjectName,
+            teacherId: classInfo.teacherId,
+            teacherName: classInfo.teacher?.user?.fullName || 'Chưa xác định',
+            teacherCode: classInfo.teacher?.teacherCode || '',
+            roomId: room ? room.id : null,
+            roomName: room ? room.name : 'Chưa xác định',
+            roomCode: room ? room.code : '',
+            roomType: room ? (room.ClassRoomType?.name || 'Chưa xác định') : (classInfo.ClassRoomType?.name || 'Chưa xác định'),
+            dayOfWeek: exceptionDayOfWeek,
+            dayName: this.getDayName(exceptionDayOfWeek),
+            timeSlot: timeSlot.slotName,
+            timeRange: `${timeSlot.startTime}-${timeSlot.endTime}`,
+            startTime: timeSlot.startTime,
+            endTime: timeSlot.endTime,
+            shift: shift.key,
+            shiftName: shift.name,
+            type: this.getScheduleType(classInfo.classRoomTypeId),
+            status: exception.RequestType.name,
+            statusId: exception.requestTypeId,
+            weekPattern: 'weekly',
+            startWeek: 1,
+            endWeek: 1,
+            practiceGroup: null,
+            maxStudents: classInfo.maxStudents,
+            departmentId: classInfo.departmentId,
+            departmentName: classInfo.department?.name || 'Chưa xác định',
+            majorId: classInfo.majorId,
+            majorName: classInfo.major?.name || 'Chưa xác định',
+            timeSlotOrder: this.getTimeSlotOrder(timeSlot.shift),
+            assignedAt: exception.approvedAt,
+            note: 'Thi cuối kỳ',
+            // Thông tin ngoại lệ
+            exceptionDate: exception.exceptionDate,
+            exceptionType: exception.exceptionType,
+            exceptionReason: exception.reason,
+            exceptionStatus: exception.RequestStatus.name,
+            requestTypeId: exception.requestTypeId,
+            isStandaloneException: true, // Đánh dấu đây là exception độc lập (thi cuối kỳ)
+            isMovedSchedule: false
+          });
+          return;
+        }
+        
         const schedule = exception.classSchedule;
         
         // Bỏ qua nếu schedule đã được xử lý ở trên
-        if (processedScheduleIds.has(schedule.id)) {
+        if (schedule && processedScheduleIds.has(schedule.id)) {
           return;
         }
         
         // Chỉ xử lý exceptions có movedToDate trong tuần này
+        if (!exception.movedToDate) {
+          return;
+        }
+        
         const movedDate = new Date(exception.movedToDate);
         const movedDayJS = movedDate.getDay(); // 0=CN, 1=T2, ..., 6=T7
         const movedToDayOfWeek = movedDayJS === 0 ? 1 : movedDayJS + 1; // Convert to 1=CN, 2=T2, ..., 7=T7
@@ -965,13 +1108,39 @@ class ScheduleManagementService {
         const movedTimeSlot = exception.movedToTimeSlot || exception.newTimeSlot;
         const movedRoom = exception.movedToClassRoom || exception.newClassRoom;
         const substituteTeacher = exception.substituteTeacher;
-        const originalTimeSlot = schedule.timeSlot;
         
-        if (!originalTimeSlot) {
+        // Nếu không có movedTimeSlot, không thể hiển thị
+        if (!movedTimeSlot) {
           return;
         }
         
-        const movedShift = movedTimeSlot ? this.getShiftFromTimeSlot(movedTimeSlot.shift) : this.getShiftFromTimeSlot(originalTimeSlot.shift);
+        // Nếu có schedule, lấy thông tin từ schedule
+        // Nếu không có schedule (phòng đã tạm ngưng), cần lấy thông tin từ exception hoặc class
+        let classInfo, teacherInfo, originalTimeSlot, classRoomTypeId;
+        
+        if (schedule) {
+          classInfo = schedule.class;
+          teacherInfo = schedule.class.teacher;
+          originalTimeSlot = schedule.timeSlot;
+          classRoomTypeId = schedule.classRoomTypeId;
+        } else if (exception.class) {
+          // Trường hợp exception không có schedule (có thể là phòng đã tạm ngưng)
+          classInfo = exception.class;
+          teacherInfo = exception.class.teacher;
+          originalTimeSlot = null; // Không có schedule gốc
+          classRoomTypeId = exception.class.classRoomTypeId;
+        } else {
+          // Không có thông tin để hiển thị
+          return;
+        }
+        
+        if (!classInfo) {
+          return;
+        }
+        
+        const movedShift = movedTimeSlot ? this.getShiftFromTimeSlot(movedTimeSlot.shift) : 
+                          (originalTimeSlot ? this.getShiftFromTimeSlot(originalTimeSlot.shift) : 
+                          this.getShiftFromTimeSlot(movedTimeSlot.shift));
         
         // Tạo virtual schedule cho standalone exception
         weeklySchedules.push({
