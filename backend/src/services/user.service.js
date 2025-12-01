@@ -249,12 +249,20 @@ class UserService {
                     
                     // Tự động gán giá trị mặc định cho teacher (KHÔNG có academicYear)
                     const enrollmentDate = userData.enrollmentDate ? new Date(userData.enrollmentDate) : new Date();
-                    const enrollmentDateStr = enrollmentDate.toISOString().slice(0, 10);
                     
-                    await tx.$executeRawUnsafe(
-                        `INSERT INTO AcademicProfile (userId, role, campus, trainingType, degreeLevel, academicYear, enrollmentDate, classCode, title)
-                         VALUES (${user.id}, 'teacher', 'Cơ sở 1 Hồ Chí Minh', 'Chính Quy', 'Thạc sĩ', NULL, '${enrollmentDateStr}', ${classCode ? `'${classCode}'` : 'NULL'}, ${title ? `'${title}'` : `'Giảng viên'`})`
-                    );
+                    await tx.academicProfile.create({
+                        data: {
+                            userId: user.id,
+                            role: 'teacher',
+                            campus: 'Cơ sở 1 Hồ Chí Minh',
+                            trainingType: 'Chính Quy',
+                            degreeLevel: 'Thạc sĩ',
+                            academicYear: null,
+                            enrollmentDate: enrollmentDate,
+                            classCode: classCode || null,
+                            title: title || 'Giảng viên'
+                        }
+                    });
                 } else if (role === 'student') {
                     await tx.student.create({
                         data: {
@@ -269,12 +277,20 @@ class UserService {
                     const currentYear = new Date().getFullYear();
                     const academicYear = `${currentYear}-${currentYear + 1}`;
                     const enrollmentDate = new Date(); // Ngày tạo user
-                    const enrollmentDateStr = enrollmentDate.toISOString().slice(0, 10);
                     
-                    await tx.$executeRawUnsafe(
-                        `INSERT INTO AcademicProfile (userId, role, campus, trainingType, degreeLevel, academicYear, enrollmentDate, classCode, title)
-                         VALUES (${user.id}, 'student', 'Cơ sở 1 Hồ Chí Minh', 'Chính Quy', 'Đại Học', '${academicYear}', '${enrollmentDateStr}', ${classCode ? `'${classCode}'` : 'NULL'}, NULL)`
-                    );
+                    await tx.academicProfile.create({
+                        data: {
+                            userId: user.id,
+                            role: 'student',
+                            campus: 'Cơ sở 1 Hồ Chí Minh',
+                            trainingType: 'Chính Quy',
+                            degreeLevel: 'Đại Học',
+                            academicYear: academicYear,
+                            enrollmentDate: enrollmentDate,
+                            classCode: classCode || null,
+                            title: null
+                        }
+                    });
                 }
 
                 return { account, user };
@@ -313,6 +329,68 @@ class UserService {
             };
         } catch (error) {
             throw new Error(`Lỗi tạo tài khoản: ${error.message}`);
+        }
+    }
+
+    async sendEmailToUser({ userId, subject, content, includeCredentials = false }) {
+        try {
+            // Lấy thông tin user
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                include: {
+                    account: true,
+                    teacher: true,
+                    student: true
+                }
+            });
+
+            if (!user) {
+                throw new Error('Không tìm thấy người dùng');
+            }
+
+            if (!user.email) {
+                throw new Error('Người dùng không có email');
+            }
+
+            // Xác định role và thông tin đăng nhập
+            const role = user.account.role;
+            let username = null;
+            let password = null;
+
+            if (includeCredentials) {
+                // Lấy thông tin đăng nhập từ database
+                if (role === 'teacher' && user.teacher) {
+                    username = user.teacher.teacherCode;
+                } else if (role === 'student' && user.student) {
+                    username = user.student.studentCode;
+                }
+                
+                // Mật khẩu mặc định (có thể thay đổi logic này)
+                password = '123456';
+            }
+
+            // Gửi email
+            await emailService.sendManualEmail({
+                to: user.email,
+                subject,
+                content,
+                fullName: user.fullName,
+                role,
+                username,
+                password
+            });
+
+            return {
+                success: true,
+                message: `Email đã được gửi thành công đến ${user.email}`,
+                data: {
+                    recipient: user.fullName,
+                    email: user.email,
+                    subject
+                }
+            };
+        } catch (error) {
+            throw new Error(`Lỗi gửi email: ${error.message}`);
         }
     }
 

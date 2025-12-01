@@ -80,6 +80,33 @@ class UserController {
             });
         }
     }
+
+    async sendEmail(req, res) {
+        try {
+            const { userId, subject, content, includeCredentials } = req.body;
+            
+            if (!userId || !subject || !content) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Thiếu thông tin bắt buộc: userId, subject, content'
+                });
+            }
+
+            const result = await userService.sendEmailToUser({
+                userId: parseInt(userId),
+                subject,
+                content,
+                includeCredentials: includeCredentials || false
+            });
+
+            return res.status(200).json(result);
+        } catch (error) {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 }
 
 module.exports = new UserController();

@@ -42,7 +42,7 @@ const config = {
             return this.database.url;
         }
 
-        return `sqlserver://${this.database.host}:${this.database.port};database=${this.database.name};user=${this.database.user};password=${this.database.password};encrypt=${this.database.encrypt};trustServerCertificate=${this.database.trustServerCertificate};connection_limit=${this.database.connectionLimit};pool_timeout=${this.database.poolTimeout}`;
+        return `sqlserver://${this.database.host}:${this.database.port};database=${this.database.name};user=${this.database.user};password=${this.database.password};encrypt=${this.database.encrypt};trustServerCertificate=${this.database.trustServerCertificate};connection_limit=${this.database.connectionLimit};pool_timeout=${this.database.poolTimeout};charset=utf8`;
     }
 };
 

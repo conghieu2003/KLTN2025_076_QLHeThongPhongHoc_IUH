@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { authService } from '../../services/api';
+import { Box, Grid } from '@mui/material';
 
 // Interface cho menu item
 interface MenuItem {
@@ -16,7 +17,13 @@ interface MenuConfig {
   [key: string]: MenuItem[];
 }
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+  isMobile?: boolean;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = false }) => {
   const userRole = authService.getUserRole() || 'student'; // Default to student if no role
   const location = useLocation();
   
@@ -30,6 +37,13 @@ const Sidebar: React.FC = () => {
       newExpandedMenus.add(menuKey);
     }
     setExpandedMenus(newExpandedMenus);
+  };
+
+  // Close sidebar on mobile when clicking a link
+  const handleLinkClick = () => {
+    if (isMobile && onClose) {
+      onClose();
+    }
   };
 
   const isMenuExpanded = (menuKey: string) => expandedMenus.has(menuKey);
@@ -55,17 +69,22 @@ const Sidebar: React.FC = () => {
         path: '/rooms',
         icon: 'fas fa-door-open',
         children: [
-          { id: 'all', name: 'Danh sách phòng', path: '/rooms', icon: 'fas fa-list' },
-          { id: 'request-form', name: 'Yêu cầu xin/đổi phòng', path: '/rooms/requests', icon: 'fas fa-exchange-alt' },
+          { id: 'all', name: 'Hệ thống phòng học', path: '/rooms', icon: 'fas fa-building' },
+          { id: 'available-rooms', name: 'Danh sách phòng học', path: '/rooms/available', icon: 'fas fa-search' },
           { id: 'request-list', name: 'Danh sách yêu cầu', path: '/rooms/requests/list', icon: 'fas fa-clipboard-list' },
-          { id: 'room-scheduling', name: 'Sắp xếp phòng học', path: '/rooms/scheduling', icon: 'fas fa-calendar-check' }
+          { id: 'room-scheduling', name: 'Sắp xếp phòng học', path: '/rooms/scheduling', icon: 'fas fa-calendar-check' },
+          
         ]
       },
       {
         id: 'schedules',
         name: 'Quản lý lịch học',
         path: '/schedules',
-        icon: 'fas fa-calendar-alt'
+        icon: 'fas fa-calendar-alt',
+        children: [
+          { id: 'weekly-schedule', name: 'Lịch học theo tuần', path: '/schedule/weekly', icon: 'fas fa-calendar-week' },
+          { id: 'schedule-management', name: 'Quản lý ngoại lệ lịch học', path: '/schedule/management', icon: 'fas fa-exclamation-triangle' }
+        ]
       }
     ],
     teacher: [
@@ -79,7 +98,10 @@ const Sidebar: React.FC = () => {
         id: 'schedule',
         name: 'Lịch dạy',
         path: '/schedule',
-        icon: 'fas fa-calendar-alt'
+        icon: 'fas fa-calendar-alt',
+        children: [
+          { id: 'weekly-schedule', name: 'Lịch dạy theo tuần', path: '/schedule/weekly', icon: 'fas fa-calendar-week' }
+        ]
       },
       {
         id: 'room-requests',
@@ -105,7 +127,10 @@ const Sidebar: React.FC = () => {
         id: 'schedule',
         name: 'Lịch học',
         path: '/schedule',
-        icon: 'fas fa-calendar-alt'
+        icon: 'fas fa-calendar-alt',
+        children: [
+          { id: 'weekly-schedule', name: 'Lịch học theo tuần', path: '/schedule/weekly', icon: 'fas fa-calendar-week' }
+        ]
       },
       {
         id: 'profile',
@@ -159,6 +184,7 @@ const Sidebar: React.FC = () => {
                   <Link
                     key={subItem.id}
                     to={subItem.path}
+                    onClick={handleLinkClick}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -187,7 +213,8 @@ const Sidebar: React.FC = () => {
     return (
       <li key={item.id} style={{ margin: 0 }}>
         <Link 
-          to={item.path} 
+          to={item.path}
+          onClick={handleLinkClick}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -222,40 +249,58 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div style={{
-      width: '250px',
-      minWidth: '250px',
-      maxWidth: '250px',
-      backgroundColor: '#2C3E50',
-      color: '#fff',
-      height: '100%',
-      overflowY: 'auto' as const,
-      boxShadow: '2px 0 5px rgba(0, 0, 0, 0.1)',
-      flexShrink: 0, // Không cho phép co lại
-      position: 'relative' // Cố định vị trí
-    }}>
-      <div style={{
-        padding: '20px',
-        borderBottom: '1px solid #34495e',
-        textAlign: 'center' as const
-      }}>
-        <h3 style={{
-          margin: 0,
-          color: '#fff',
-          fontSize: '18px',
-          fontWeight: 600
-        }}>Quản lý phòng học</h3>
-      </div>
-      <nav>
-        <ul style={{
-          listStyle: 'none',
-          padding: 0,
-          margin: 0
-        }}>
+    <Grid
+      container
+      direction="column"
+      sx={{
+        width: { xs: '280px', sm: '260px', md: '250px' },
+        minWidth: { xs: '280px', sm: '260px', md: '250px' },
+        maxWidth: { xs: '280px', sm: '260px', md: '250px' },
+        backgroundColor: '#2C3E50',
+        color: '#fff',
+        height: {
+          xs: isMobile ? 'calc(100vh - 56px)' : 'calc(100vh - 56px)',
+          sm: isMobile ? 'calc(100vh - 56px)' : 'calc(100vh - 56px)',
+          md: 'calc(100vh - 50px)'
+        },
+        overflowY: 'auto',
+        boxShadow: '2px 0 5px rgba(0, 0, 0, 0.1)',
+        flexShrink: 0,
+        position: 'fixed',
+        top: {
+          xs: isMobile ? '56px' : '56px',
+          sm: isMobile ? '56px' : '56px',
+          md: '50px'
+        },
+        bottom: 0,
+        left: isMobile ? (open ? 0 : '-100%') : 0,
+        zIndex: isMobile ? 1250 : 1200,
+        transform: isMobile 
+          ? (open ? 'translateX(0)' : 'translateX(-100%)') 
+          : 'translateX(0)',
+        transition: isMobile 
+          ? 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out' 
+          : 'none',
+        opacity: isMobile ? (open ? 1 : 0) : 1,
+        visibility: isMobile && !open ? 'hidden' : 'visible',
+        willChange: isMobile ? 'transform, opacity' : 'auto'
+      }}
+    >
+      <Grid container component="nav" direction="column" size={12}>
+        <Grid
+          component="ul"
+          size={12}
+          sx={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            width: '100%'
+          }}
+        >
           {renderMenuItems()}
-        </ul>
-      </nav>
-    </div>
+        </Grid>
+      </Grid>
+    </Grid>
   );
 };
 

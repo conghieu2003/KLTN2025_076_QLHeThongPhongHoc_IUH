@@ -9,6 +9,11 @@ export interface User {
   teacherCode?: string | null;
   studentCode?: string | null;
   isActive: boolean;
+  // Additional profile fields
+  avatar?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  address?: string;
   // Backend compatibility fields
   accountId?: number;
   status?: string;

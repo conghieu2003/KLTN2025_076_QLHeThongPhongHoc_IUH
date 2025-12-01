@@ -17,7 +17,39 @@ USE ClassroomManagement;
 GO
 
 -- =====================================================
--- 1. BẢNG KHOA/PHÒNG BAN
+-- 1. BẢNG TRẠNG THÁI HỌC VẤN
+-- =====================================================
+CREATE TABLE AcademicStatus (
+    id INT IDENTITY(1,1) PRIMARY KEY, -- ID trạng thái học vấn
+    name NVARCHAR(255) NOT NULL -- Tên trạng thái: Đang học, Đã tốt nghiệp, Bỏ học
+);
+
+-- =====================================================
+-- 2. BẢNG LOẠI PHÒNG/LỚP
+-- =====================================================
+CREATE TABLE ClassRoomType (
+    id INT IDENTITY(1,1) PRIMARY KEY, -- ID loại phòng/lớp
+    name NVARCHAR(255) NOT NULL -- Tên loại: Lý thuyết, Thực hành, Online
+);
+
+-- =====================================================
+-- 3. BẢNG LOẠI YÊU CẦU
+-- =====================================================
+CREATE TABLE RequestType (
+    id INT IDENTITY(1,1) PRIMARY KEY, -- ID loại yêu cầu
+    name NVARCHAR(255) NOT NULL -- Tên loại: Đổi phòng, Đổi lịch, Tạm ngưng, Thi, Đổi giáo viên
+);
+
+-- =====================================================
+-- 4. BẢNG TRẠNG THÁI YÊU CẦU
+-- =====================================================
+CREATE TABLE RequestStatus (
+    id INT IDENTITY(1,1) PRIMARY KEY, -- ID trạng thái yêu cầu
+    name NVARCHAR(255) NOT NULL -- Tên trạng thái: Chờ xử lý, Hoàn thành, Từ chối
+);
+
+-- =====================================================
+-- 5. BẢNG KHOA/PHÒNG BAN
 -- =====================================================
 CREATE TABLE Department (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID khoa
@@ -28,7 +60,7 @@ CREATE TABLE Department (
 );
 
 -- =====================================================
--- 2. BẢNG CHUYÊN NGÀNH
+-- 6. BẢNG CHUYÊN NGÀNH
 -- =====================================================
 CREATE TABLE Major (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID chuyên ngành
@@ -41,7 +73,7 @@ CREATE TABLE Major (
 );
 
 -- =====================================================
--- 3. BẢNG TÀI KHOẢN
+-- 7. BẢNG TÀI KHOẢN
 -- =====================================================
 CREATE TABLE Account (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID tài khoản
@@ -54,7 +86,7 @@ CREATE TABLE Account (
 );
 
 -- =====================================================
--- 4. BẢNG NGƯỜI DÙNG
+-- 8. BẢNG NGƯỜI DÙNG
 -- =====================================================
 CREATE TABLE [User] (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID người dùng
@@ -72,7 +104,7 @@ CREATE TABLE [User] (
 );
 
 -- =====================================================
--- 5. BẢNG THÔNG TIN CÁ NHÂN MỞ RỘNG
+-- 9. BẢNG THÔNG TIN CÁ NHÂN MỞ RỘNG
 -- =====================================================
 CREATE TABLE PersonalProfile (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID thông tin cá nhân
@@ -92,7 +124,7 @@ CREATE TABLE PersonalProfile (
 );
 
 -- =====================================================
--- 6. BẢNG THÔNG TIN GIA ĐÌNH
+-- 10. BẢNG THÔNG TIN GIA ĐÌNH
 -- =====================================================
 CREATE TABLE FamilyInfo (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID thông tin gia đình
@@ -109,7 +141,7 @@ CREATE TABLE FamilyInfo (
 );
 
 -- =====================================================
--- 7. BẢNG THÔNG TIN HỌC VẤN
+-- 11. BẢNG THÔNG TIN HỌC VẤN
 -- =====================================================
 CREATE TABLE AcademicProfile (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID thông tin học vấn
@@ -128,7 +160,7 @@ CREATE TABLE AcademicProfile (
 );
 
 -- =====================================================
--- 8. BẢNG GIẢNG VIÊN
+-- 12. BẢNG GIẢNG VIÊN
 -- =====================================================
 CREATE TABLE Teacher (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID giảng viên
@@ -144,7 +176,7 @@ CREATE TABLE Teacher (
 );
 
 -- =====================================================
--- 9. BẢNG SINH VIÊN
+-- 13. BẢNG SINH VIÊN
 -- =====================================================
 CREATE TABLE Student (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID sinh viên
@@ -160,7 +192,7 @@ CREATE TABLE Student (
 );
 
 -- =====================================================
--- 10. BẢNG LỚP HỌC
+-- 14. BẢNG LỚP HỌC
 -- =====================================================
 CREATE TABLE Class (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID lớp học
@@ -178,32 +210,34 @@ CREATE TABLE Class (
     totalWeeks INT NOT NULL, -- Tổng số tuần học
     startDate DATE NOT NULL, -- Ngày bắt đầu khóa học
     endDate DATE NOT NULL, -- Ngày kết thúc khóa học
-    classType NVARCHAR(50) NOT NULL DEFAULT 'theory', -- Loại lớp: 'theory', 'practice', 'mixed'
+    classRoomTypeId INT NOT NULL, -- ID loại phòng/lớp (1: Lý thuyết, 2: Thực hành, 3: Online)
     description NVARCHAR(MAX), -- Mô tả lớp học
     createdAt DATETIME DEFAULT GETDATE(), -- Thời gian tạo
     updatedAt DATETIME DEFAULT GETDATE(), -- Thời gian cập nhật
     FOREIGN KEY (teacherId) REFERENCES Teacher(id),
     FOREIGN KEY (departmentId) REFERENCES Department(id),
-    FOREIGN KEY (majorId) REFERENCES Major(id)
+    FOREIGN KEY (majorId) REFERENCES Major(id),
+    FOREIGN KEY (classRoomTypeId) REFERENCES ClassRoomType(id)
 );
 
 -- =====================================================
--- 11. BẢNG SINH VIÊN TRONG LỚP
+-- 15. BẢNG SINH VIÊN TRONG LỚP
 -- =====================================================
 CREATE TABLE ClassStudent (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID sinh viên trong lớp
     classId INT NOT NULL, -- ID lớp học
     studentId INT NOT NULL, -- ID sinh viên
     groupNumber INT, -- Số nhóm thực hành (NULL nếu là lớp lý thuyết)
-    status NVARCHAR(50) NOT NULL DEFAULT 'active', -- Trạng thái: 'active', 'inactive', 'dropped'
+    academicStatusId INT NOT NULL DEFAULT 1, -- ID trạng thái học vấn (1: Đang học, 2: Đã tốt nghiệp, 3: Bỏ học)
     joinedAt DATETIME DEFAULT GETDATE(), -- Thời gian tham gia lớp
     FOREIGN KEY (classId) REFERENCES Class(id) ON DELETE CASCADE,
     FOREIGN KEY (studentId) REFERENCES Student(id) ON DELETE CASCADE,
+    FOREIGN KEY (academicStatusId) REFERENCES AcademicStatus(id),
     UNIQUE(classId, studentId) -- Một sinh viên chỉ có thể ở trong một lớp một lần
 );
 
 -- =====================================================
--- 12. BẢNG PHÒNG HỌC
+-- 16. BẢNG PHÒNG HỌC
 -- =====================================================
 CREATE TABLE ClassRoom (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID phòng học
@@ -213,28 +247,29 @@ CREATE TABLE ClassRoom (
     building NVARCHAR(255) NOT NULL, -- Tòa nhà (VD: A, H, D, B)
     floor INT NOT NULL, -- Tầng
     campus NVARCHAR(255) NULL, -- Cơ sở
-    type NVARCHAR(50) NOT NULL, -- Loại phòng: 'lecture', 'lab', 'seminar', 'online'
+    classRoomTypeId INT NOT NULL, -- ID loại phòng (1: Lý thuyết, 2: Thực hành, 3: Online)
     departmentId INT NULL, -- ID khoa chủ quản phòng học (NULL = phòng chung)
     isAvailable BIT NOT NULL DEFAULT 1, -- Phòng có sẵn sàng sử dụng không
     description NVARCHAR(MAX), -- Mô tả phòng
     createdAt DATETIME DEFAULT GETDATE(), -- Thời gian tạo
     updatedAt DATETIME DEFAULT GETDATE(), -- Thời gian cập nhật
-    FOREIGN KEY (departmentId) REFERENCES Department(id)
+    FOREIGN KEY (departmentId) REFERENCES Department(id),
+    FOREIGN KEY (classRoomTypeId) REFERENCES ClassRoomType(id)
 );
 
 -- =====================================================
--- 13. BẢNG KHUNG GIỜ HỌC
+-- 17. BẢNG KHUNG GIỜ HỌC
 -- =====================================================
 CREATE TABLE TimeSlot (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID tiết học
     slotName NVARCHAR(50) NOT NULL, -- Tên tiết (VD: 'Tiết 1-3', 'Tiết 4-6', 'Tiết 7-9')
     startTime TIME NOT NULL, -- Giờ bắt đầu
     endTime TIME NOT NULL, -- Giờ kết thúc
-    shift NVARCHAR(50) NOT NULL -- Ca học: 'morning', 'afternoon', 'evening'
+    shift INT NOT NULL -- Ca học: 1 (Sáng), 2 (Chiều), 3 (Tối)
 );
 
 -- =====================================================
--- 14. BẢNG LỊCH HỌC VÀ PHÂN PHÒNG
+-- 18. BẢNG LỊCH HỌC VÀ PHÂN PHÒNG
 -- =====================================================
 CREATE TABLE ClassSchedule (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID lịch học
@@ -243,10 +278,12 @@ CREATE TABLE ClassSchedule (
     classRoomId INT NULL, -- ID phòng học (NULL nếu chưa được phân phòng)
     dayOfWeek INT NOT NULL, -- Ngày trong tuần (1: Chủ nhật, 2: Thứ 2, ..., 7: Thứ 7)
     timeSlotId INT NOT NULL, -- ID tiết học (CỐ ĐỊNH - Admin không thay đổi)
+    classRoomTypeId INT NOT NULL, -- ID loại phòng/lớp (1: Lý thuyết, 2: Thực hành, 3: Online)
+    practiceGroup INT NULL, -- Số nhóm thực hành (NULL nếu là lý thuyết)
     weekPattern NVARCHAR(50) NOT NULL DEFAULT 'weekly', -- Mẫu tuần: 'weekly', 'biweekly', 'specific'
     startWeek INT NOT NULL, -- Tuần bắt đầu
     endWeek INT NOT NULL, -- Tuần kết thúc
-    status NVARCHAR(50) NOT NULL DEFAULT 'pending', -- Trạng thái: 'pending', 'assigned', 'active', 'cancelled', 'paused', 'exam'
+    statusId INT NOT NULL DEFAULT 1, -- ID trạng thái lịch học (1: Chờ phân phòng, 2: Đã phân phòng, 3: Đang hoạt động, 4: Đã hủy, 5: Tạm ngưng, 6: Thi)
     assignedBy INT NULL, -- ID admin phân phòng (NULL nếu chưa phân)
     assignedAt DATETIME NULL, -- Thời gian phân phòng
     note NVARCHAR(MAX), -- Ghi chú
@@ -256,16 +293,19 @@ CREATE TABLE ClassSchedule (
     FOREIGN KEY (teacherId) REFERENCES Teacher(id),
     FOREIGN KEY (classRoomId) REFERENCES ClassRoom(id),
     FOREIGN KEY (timeSlotId) REFERENCES TimeSlot(id),
-    FOREIGN KEY (assignedBy) REFERENCES [User](id)
+    FOREIGN KEY (classRoomTypeId) REFERENCES ClassRoomType(id),
+    FOREIGN KEY (assignedBy) REFERENCES [User](id),
+    FOREIGN KEY (statusId) REFERENCES RequestType(id)
 );
 
 -- =====================================================
--- 15. BẢNG YÊU CẦU THAY ĐỔI LỊCH HỌC (Gộp RoomRequest + ScheduleChange)
+-- 19. BẢNG YÊU CẦU THAY ĐỔI LỊCH HỌC (Gộp RoomRequest + ScheduleChange)
 -- =====================================================
 CREATE TABLE ScheduleRequest (
     id INT IDENTITY(1,1) PRIMARY KEY, -- ID yêu cầu
-    requestType NVARCHAR(50) NOT NULL, -- Loại yêu cầu: 'room_request', 'schedule_change', 'exception'
-    classScheduleId INT NULL, -- ID lịch học (NULL nếu là yêu cầu phòng độc lập)
+    requestTypeId INT NOT NULL, -- ID loại yêu cầu (1: Đổi phòng, 2: Đổi lịch, 3: Tạm ngưng, 4: Thi, 5: Đổi giáo viên, 10: Thi cuối kỳ)
+    classScheduleId INT NULL, -- ID lịch học (NULL nếu là yêu cầu phòng độc lập hoặc thi cuối kỳ)
+    classId INT NULL, -- ID lớp học (cho thi cuối kỳ - RequestType 10)
     classRoomId INT NULL, -- ID phòng yêu cầu (cho room_request)
     requesterId INT NOT NULL, -- ID người gửi yêu cầu
     requestDate DATE NOT NULL, -- Ngày gửi yêu cầu
@@ -281,17 +321,19 @@ CREATE TABLE ScheduleRequest (
     exceptionType NVARCHAR(50) NULL, -- Loại ngoại lệ: 'cancelled', 'exam', 'moved', 'substitute'
     movedToDate DATE NULL, -- Ngày chuyển đến (nếu type = 'moved')
     movedToTimeSlotId INT NULL, -- ID tiết chuyển đến (nếu type = 'moved')
+    movedToDayOfWeek INT NULL, -- Thứ trong tuần muốn đổi (1: Chủ nhật, 2: Thứ 2, ..., 7: Thứ 7)
     movedToClassRoomId INT NULL, -- ID phòng chuyển đến (nếu type = 'moved')
     substituteTeacherId INT NULL, -- ID giảng viên thay thế (nếu type = 'substitute')
     -- Thông tin chung
     reason NVARCHAR(MAX) NOT NULL, -- Lý do yêu cầu
     approvedBy INT NULL, -- ID admin phê duyệt
-    status NVARCHAR(50) NOT NULL DEFAULT 'pending', -- Trạng thái: 'pending', 'approved', 'rejected'
+    requestStatusId INT NOT NULL DEFAULT 1, -- ID trạng thái yêu cầu (1: Chờ xử lý, 2: Hoàn thành, 3: Từ chối)
     approvedAt DATETIME NULL, -- Thời gian phê duyệt
     note NVARCHAR(MAX), -- Ghi chú của admin
     createdAt DATETIME DEFAULT GETDATE(), -- Thời gian tạo
     updatedAt DATETIME DEFAULT GETDATE(), -- Thời gian cập nhật
     FOREIGN KEY (classScheduleId) REFERENCES ClassSchedule(id) ON DELETE CASCADE,
+    FOREIGN KEY (classId) REFERENCES Class(id) ON DELETE NO ACTION,
     FOREIGN KEY (classRoomId) REFERENCES ClassRoom(id),
     FOREIGN KEY (oldClassRoomId) REFERENCES ClassRoom(id),
     FOREIGN KEY (newClassRoomId) REFERENCES ClassRoom(id),
@@ -301,7 +343,9 @@ CREATE TABLE ScheduleRequest (
     FOREIGN KEY (movedToClassRoomId) REFERENCES ClassRoom(id),
     FOREIGN KEY (substituteTeacherId) REFERENCES Teacher(id),
     FOREIGN KEY (requesterId) REFERENCES [User](id),
-    FOREIGN KEY (approvedBy) REFERENCES [User](id)
+    FOREIGN KEY (approvedBy) REFERENCES [User](id),
+    FOREIGN KEY (requestTypeId) REFERENCES RequestType(id),
+    FOREIGN KEY (requestStatusId) REFERENCES RequestStatus(id)
 );
 
 -- =====================================================
@@ -312,20 +356,17 @@ CREATE TABLE ScheduleRequest (
 ALTER TABLE Class
 ADD CONSTRAINT CK_Class_Dates CHECK (startDate <= endDate);
 
-ALTER TABLE Class
-ADD CONSTRAINT CK_Class_Type CHECK (classType IN ('theory', 'practice', 'mixed'));
-
--- ClassStudent: ràng buộc trạng thái
+-- ClassStudent: ràng buộc trạng thái học vấn
 ALTER TABLE ClassStudent
-ADD CONSTRAINT CK_ClassStudent_Status CHECK (status IN ('active', 'inactive', 'dropped'));
+ADD CONSTRAINT CK_ClassStudent_AcademicStatus CHECK (academicStatusId BETWEEN 1 AND 3);
 
 -- ClassRoom: loại phòng hợp lệ
 ALTER TABLE ClassRoom
-ADD CONSTRAINT CK_ClassRoom_Type CHECK (type IN ('lecture', 'lab', 'seminar', 'online'));
+ADD CONSTRAINT CK_ClassRoom_Type CHECK (classRoomTypeId BETWEEN 1 AND 3);
 
 -- TimeSlot: ca học hợp lệ và thời gian kết thúc > thời gian bắt đầu
 ALTER TABLE TimeSlot
-ADD CONSTRAINT CK_TimeSlot_Shift CHECK (shift IN ('morning', 'afternoon', 'evening'));
+ADD CONSTRAINT CK_TimeSlot_Shift CHECK (shift BETWEEN 1 AND 3);
 
 ALTER TABLE TimeSlot
 ADD CONSTRAINT CK_TimeSlot_Time CHECK (startTime < endTime);
@@ -334,30 +375,41 @@ ADD CONSTRAINT CK_TimeSlot_Time CHECK (startTime < endTime);
 ALTER TABLE ClassSchedule
 ADD CONSTRAINT CK_ClassSchedule_DayOfWeek CHECK (dayOfWeek BETWEEN 1 AND 7);
 
+-- Trạng thái lịch học phải là 1-6 (các trạng thái lịch học trong RequestType)
 ALTER TABLE ClassSchedule
-ADD CONSTRAINT CK_ClassSchedule_Status CHECK (status IN ('pending', 'assigned', 'active', 'cancelled', 'paused', 'exam'));
+ADD CONSTRAINT CK_ClassSchedule_StatusId CHECK (statusId BETWEEN 1 AND 6);
 
 ALTER TABLE ClassSchedule
 ADD CONSTRAINT CK_ClassSchedule_Weeks CHECK (startWeek <= endWeek);
 
+-- Ràng buộc loại phòng/lớp: 1 = Lý thuyết, 2 = Thực hành, 3 = Online
+ALTER TABLE ClassSchedule
+ADD CONSTRAINT CK_ClassSchedule_ClassRoomType CHECK (classRoomTypeId BETWEEN 1 AND 3);
+
+-- Ràng buộc nhóm thực hành: NULL nếu là lý thuyết, 1-99 nếu là thực hành
+ALTER TABLE ClassSchedule
+ADD CONSTRAINT CK_ClassSchedule_PracticeGroup CHECK (
+    (classRoomTypeId = 1 AND practiceGroup IS NULL) OR 
+    (classRoomTypeId = 2 AND practiceGroup IS NOT NULL AND practiceGroup BETWEEN 1 AND 99) OR
+    (classRoomTypeId = 3 AND practiceGroup IS NULL)
+);
+
 -- Tránh trùng lịch: phòng học không thể bị double-book trong cùng ngày/ca
-CREATE UNIQUE INDEX UQ_ClassSchedule_Room_Time ON ClassSchedule (dayOfWeek, timeSlotId, classRoomId) WHERE classRoomId IS NOT NULL;
+CREATE UNIQUE INDEX UQ_ClassSchedule_Room_Time ON ClassSchedule (dayOfWeek, timeSlotId, classRoomId) 
+WHERE classRoomId IS NOT NULL AND statusId IN (2, 3); -- Chỉ áp dụng cho lịch đã phân phòng và đang hoạt động
 
 -- Tránh trùng lịch: giảng viên không thể dạy 2 nơi cùng ca/ngày
-CREATE UNIQUE INDEX UQ_ClassSchedule_Teacher_Time ON ClassSchedule (dayOfWeek, timeSlotId, teacherId);
+CREATE UNIQUE INDEX UQ_ClassSchedule_Teacher_Time ON ClassSchedule (dayOfWeek, timeSlotId, teacherId)
+WHERE statusId IN (2, 3); -- Chỉ áp dụng cho lịch đã phân phòng và đang hoạt động
 
 -- ScheduleRequest
 ALTER TABLE ScheduleRequest
-ADD CONSTRAINT CK_ScheduleRequest_Type CHECK (requestType IN ('room_request', 'schedule_change', 'exception'));
+ADD CONSTRAINT CK_ScheduleRequest_Type CHECK (requestTypeId BETWEEN 1 AND 10);
 
 ALTER TABLE ScheduleRequest
-ADD CONSTRAINT CK_ScheduleRequest_ChangeType CHECK (changeType IN ('room_change', 'time_change', 'both', 'exception') OR changeType IS NULL);
-
+ADD CONSTRAINT CK_ScheduleRequest_Status CHECK (requestStatusId BETWEEN 1 AND 3);
 ALTER TABLE ScheduleRequest
-ADD CONSTRAINT CK_ScheduleRequest_ExceptionType CHECK (exceptionType IN ('cancelled', 'exam', 'moved', 'substitute') OR exceptionType IS NULL);
-
-ALTER TABLE ScheduleRequest
-ADD CONSTRAINT CK_ScheduleRequest_Status CHECK (status IN ('pending', 'approved', 'rejected'));
+ADD CONSTRAINT CK_ScheduleRequest_DayOfWeek CHECK (movedToDayOfWeek BETWEEN 1 AND 7);
 
 -- =====================================================
 -- END OF SCHEMA

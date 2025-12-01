@@ -1,10 +1,11 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { User, ApiResponse } from '../types';
 
-export const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL;
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -47,7 +48,6 @@ export const authService = {
   // Đăng nhập với identifier (admin: userId, teacher: teacherCode, student: studentCode, hoặc username) và password
   login: async (identifier: string, password: string): Promise<ApiResponse<any>> => {
     try {
-      console.log('Gọi API login với:', { identifier, password });
       const response = await api.post('/auth/login', { identifier, password });
 
       if (response.data.success) {
@@ -84,19 +84,20 @@ export const authService = {
         };
       }
 
-      // Nếu không có phản hồi từ server
-      if (error.code === 'ECONNABORTED') {
+      // Xử lý timeout
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         return {
           success: false,
-          message: 'Kết nối đến server quá thời gian chờ',
+          message: 'Server đang khởi động, vui lòng thử lại sau vài giây...',
           errorCode: 'TIMEOUT_ERROR'
         };
       }
 
-      if (!error.response) {
+      // Xử lý network error
+      if (error.code === 'ERR_NETWORK' || !error.response) {
         return {
           success: false,
-          message: 'Không thể kết nối đến server',
+          message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.',
           errorCode: 'CONNECTION_ERROR'
         };
       }
@@ -150,12 +151,40 @@ export const authService = {
   },
 
   // Đổi mật khẩu
-  changePassword: async (passwordData: { currentPassword: string; newPassword: string }): Promise<any> => {
+  changePassword: async (passwordData: { oldPassword: string; newPassword: string }): Promise<any> => {
     try {
       const response = await api.post('/auth/change-password', passwordData);
       return response.data;
     } catch (error) {
       console.error('Change password error:', error);
+      throw error;
+    }
+  },
+
+  // Quên mật khẩu
+  forgotPassword: async (identifier: string): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.post('/auth/forgot-password', { identifier });
+      return response.data;
+    } catch (error: any) {
+      console.error('Forgot password error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+
+  // Đặt lại mật khẩu
+  resetPassword: async (passwordData: { token: string; newPassword: string; confirmPassword: string }): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.post('/auth/reset-password', passwordData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Reset password error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
       throw error;
     }
   },
@@ -262,13 +291,13 @@ export const roomService = {
     return response.data;
   },
 
-  getTimeSlots: async (): Promise<any> => {
-    const response = await api.get('/rooms/time-slots');
+  getTeachers: async (): Promise<any> => {
+    const response = await api.get('/rooms/teachers');
     return response.data;
   },
 
-  getTeachers: async (): Promise<any> => {
-    const response = await api.get('/rooms/teachers');
+  getTimeSlots: async (): Promise<any> => {
+    const response = await api.get('/rooms/time-slots');
     return response.data;
   },
 
@@ -278,8 +307,21 @@ export const roomService = {
     return response.data;
   },
 
-  getScheduleRequests: async (): Promise<any> => {
-    const response = await api.get('/schedule-requests');
+  getScheduleRequests: async (filters?: {
+    status?: number;
+    requestType?: number;
+    requesterId?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<any> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status.toString());
+    if (filters?.requestType) params.append('requestType', filters.requestType.toString());
+    if (filters?.requesterId) params.append('requesterId', filters.requesterId.toString());
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const response = await api.get(`/schedule-requests?${params.toString()}`);
     return response.data;
   },
 
@@ -288,19 +330,67 @@ export const roomService = {
     return response.data;
   },
 
-  getAvailableRoomsForRequest: async (filters: any = {}): Promise<any> => {
-    const response = await api.get('/rooms/available-for-request', { params: filters });
+  getClassScheduleById: async (scheduleId: number): Promise<any> => {
+    const response = await api.get(`/rooms/schedule/${scheduleId}`);
     return response.data;
   },
 
-  updateScheduleRequestStatus: async (requestId: number, status: string, note?: string): Promise<any> => {
-    const response = await api.put(`/schedule-requests/${requestId}/status`, { status, note });
+  getScheduleRequestById: async (requestId: number): Promise<any> => {
+    const response = await api.get(`/schedule-requests/${requestId}`);
     return response.data;
   },
 
-  updateScheduleRequestRoom: async (requestId: number, newRoomId: number): Promise<any> => {
-    const response = await api.put(`/schedule-requests/${requestId}/room`, { newRoomId });
+  updateScheduleRequestStatus: async (requestId: number, status: number, note?: string, selectedRoomId?: string): Promise<any> => {
+    const response = await api.put(`/schedule-requests/${requestId}/status`, { status, note, selectedRoomId });
     return response.data;
+  },
+
+  getSchedulesByTimeSlotAndDate: async (timeSlotId: number, dayOfWeek: number, date?: string): Promise<any> => {
+    try {
+      const params: any = {
+        timeSlotId,
+        dayOfWeek
+      };
+      
+      // Thêm date parameter nếu có
+      if (date) {
+        params.date = date;
+      }
+      
+      const response = await api.get('/rooms/schedules/by-time-slot', { params });
+      return { success: true, data: response.data.data };
+    } catch (error: any) {
+      console.error('Error getting schedules:', error);
+      return { success: false, data: [] };
+    }
+  },
+
+  // API mới: Lấy phòng available cho ngoại lệ (bao gồm phòng trống do ngoại lệ khác)
+  getAvailableRoomsForException: async (
+    timeSlotId: number, 
+    dayOfWeek: number, 
+    date: string,
+    capacity?: number,
+    classRoomTypeId?: string,
+    departmentId?: string
+  ): Promise<any> => {
+    try {
+      const params: any = {
+        timeSlotId,
+        dayOfWeek,
+        date
+      };
+      
+      if (capacity) params.capacity = capacity;
+      if (classRoomTypeId) params.classRoomTypeId = classRoomTypeId;
+      if (departmentId) params.departmentId = departmentId;
+      
+      const response = await api.get('/rooms/available-for-exception', { params });
+      return { success: true, data: response.data.data, message: response.data.message };
+    } catch (error: any) {
+      console.error('Error getting available rooms for exception:', error);
+      return { success: false, data: { normalRooms: [], freedRooms: [], occupiedRooms: [], totalAvailable: 0 } };
+    }
   },
 };
 
@@ -359,6 +449,19 @@ export const userService = {
       throw error;
     }
   },
+
+  sendEmail: async (emailData: { userId: number; subject: string; content: string; includeCredentials: boolean }): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.post('/users/send-email', emailData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Send email error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
 };
 
 // Schedule Management Service (Gộp tất cả logic sắp xếp phòng)
@@ -400,6 +503,19 @@ export const scheduleManagementService = {
 
   getRequestTypes: async (): Promise<any> => {
     const response = await api.get('/schedule-management/request-types');
+    return response.data;
+  },
+
+  // Lấy lịch học theo tuần
+  getWeeklySchedule: async (weekStartDate: string, filters: any = {}): Promise<any> => {
+    const params = new URLSearchParams();
+    params.append('weekStartDate', weekStartDate);
+
+    if (filters.departmentId) params.append('departmentId', filters.departmentId.toString());
+    if (filters.classId) params.append('classId', filters.classId.toString());
+    if (filters.teacherId) params.append('teacherId', filters.teacherId.toString());
+
+    const response = await api.get(`/schedule-management/weekly-schedule?${params.toString()}`);
     return response.data;
   },
 
@@ -597,6 +713,143 @@ export const enhancedScheduleService = {
       console.error('Error printing schedule:', error);
       throw error;
     }
+  }
+};
+
+// Profile Service
+export const profileService = {
+  getProfile: async (): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.get('/profile');
+      return response.data;
+    } catch (error: any) {
+      console.error('Get profile error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+
+  getProfileById: async (userId: number): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.get(`/profile/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Get profile by ID error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+
+  updatePersonalProfile: async (personalData: any): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.put('/profile/personal', personalData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Update personal profile error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+
+  updateFamilyInfo: async (familyData: any): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.put('/profile/family', familyData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Update family info error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+
+  updateAcademicProfile: async (academicData: any): Promise<ApiResponse<any>> => {
+    try {
+      const response = await api.put('/profile/academic', academicData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Update academic profile error:', error);
+      if (error.response && error.response.data) {
+        return error.response.data;
+      }
+      throw error;
+    }
+  },
+};
+
+// Schedule Exception Service
+export const scheduleExceptionService = {
+  // Lấy danh sách ngoại lệ lịch học
+  getScheduleExceptions: async (): Promise<any> => {
+    const response = await api.get('/schedule-exceptions');
+    return response.data;
+  },
+
+  // Lấy danh sách lịch học có thể tạo ngoại lệ
+  getAvailableSchedules: async (): Promise<any> => {
+    const response = await api.get('/schedule-exceptions/available/schedules');
+    return response.data;
+  },
+
+  // Tạo ngoại lệ lịch học
+  createScheduleException: async (data: any): Promise<any> => {
+    const response = await api.post('/schedule-exceptions', data);
+    return response.data;
+  },
+
+  // Cập nhật ngoại lệ lịch học
+  updateScheduleException: async (id: number, data: any): Promise<any> => {
+    const response = await api.put(`/schedule-exceptions/${id}`, data);
+    return response.data;
+  },
+
+  // Xóa ngoại lệ lịch học
+  deleteScheduleException: async (id: number): Promise<any> => {
+    const response = await api.delete(`/schedule-exceptions/${id}`);
+    return response.data;
+  },
+
+  // Lấy thông tin ngoại lệ theo ID
+  getScheduleExceptionById: async (id: number): Promise<any> => {
+    const response = await api.get(`/schedule-exceptions/${id}`);
+    return response.data;
+  },
+
+  // Lấy danh sách khoa
+  getDepartments: async (): Promise<any> => {
+    const response = await api.get('/departments');
+    return response.data;
+  },
+
+  // Lấy danh sách tiết học
+  getTimeSlots: async (): Promise<any> => {
+    const response = await api.get('/rooms/time-slots');
+    return response.data;
+  },
+
+  // Lấy danh sách phòng học
+  getRooms: async (): Promise<any> => {
+    const response = await api.get('/rooms');
+    return response.data;
+  },
+
+  // Lấy danh sách giảng viên
+  getTeachers: async (): Promise<any> => {
+    const response = await api.get('/teachers');
+    return response.data;
+  },
+
+  // Lấy danh sách loại ngoại lệ (RequestType)
+  getRequestTypes: async (): Promise<any> => {
+    const response = await api.get('/rooms/request-types');
+    return response.data;
   }
 };
 

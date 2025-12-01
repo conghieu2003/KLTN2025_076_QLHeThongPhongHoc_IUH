@@ -1,6 +1,7 @@
 require('dotenv').config();
 const app = require('./app');
 const prisma = require('./config/db.config');
+const { exec } = require('child_process');
 
 const PORT = process.env.PORT || 5000;
 
@@ -20,7 +21,32 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log(`🎉 Server đang chạy trên cổng ${PORT}`);
             console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-            console.log(`📚 API docs: http://localhost:${PORT}/api`);
+            const swaggerUrl = `http://localhost:${PORT}/api-docs`;
+            console.log(`📚 Swagger API docs: ${swaggerUrl}`);
+            
+            // Tự động mở Swagger UI trong browser (chỉ trong development)
+            if (process.env.NODE_ENV !== 'production') {
+                setTimeout(() => {
+                    const platform = process.platform;
+                    let command;
+                    
+                    if (platform === 'win32') {
+                        command = `start ${swaggerUrl}`;
+                    } else if (platform === 'darwin') {
+                        command = `open ${swaggerUrl}`;
+                    } else {
+                        command = `xdg-open ${swaggerUrl}`;
+                    }
+                    
+                    exec(command, (error) => {
+                        if (error) {
+                            console.log(`💡 Mở trình duyệt thủ công tại: ${swaggerUrl}`);
+                        } else {
+                            console.log(`🌐 Đã mở Swagger UI trong trình duyệt`);
+                        }
+                    });
+                }, 1000); // Đợi 1 giây để server sẵn sàng
+            }
         });
     } catch (error) {
         console.error('❌ Không thể kết nối đến database:', error);

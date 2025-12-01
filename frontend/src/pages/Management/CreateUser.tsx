@@ -4,7 +4,17 @@ import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
 import { fetchFormInit, fetchMajors, createUserThunk } from '../../redux/slices/userSlice';
-import { Box, Typography, Button, TextField, MenuItem } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  Button, 
+  TextField, 
+  MenuItem, 
+  Grid, 
+  useTheme, 
+  useMediaQuery,
+  Paper 
+} from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -30,9 +40,12 @@ interface CreateUserForm {
 
 const CreateUser = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  
 	const [submitting, setSubmitting] = useState<boolean>(false);
-    const dispatch = useDispatch<AppDispatch>();
-    	const { previewCode, previewUsername, departments, majors, defaultValues } = useSelector((s: RootState) => s.user);
+  const dispatch = useDispatch<AppDispatch>();
+  const { previewCode, previewUsername, departments, majors, defaultValues } = useSelector((s: RootState) => s.user);
 	const [form, setForm] = useState<CreateUserForm>({
     fullName: '',
     email: '',
@@ -126,100 +139,438 @@ const CreateUser = () => {
 
   return (
 		<LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
-			<Box sx={{ p: 3 }}>
-				<Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>Tạo người dùng</Typography>
-				{/* Group: Personal info (top) */}
-				<Box sx={{ mb: 3 }}>
-					<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Thông tin cá nhân</Typography>
-					<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(220px, 1fr))', gap: 2 }}>
-						<TextField fullWidth required label="Họ và tên" value={form.fullName} onChange={(e: any) => setForm((p) => ({ ...p, fullName: e.target.value }))} />
-						<TextField fullWidth required type="email" label="Email" value={form.email} onChange={(e: any) => setForm((p) => ({ ...p, email: e.target.value }))} />
-						<TextField fullWidth label="Số điện thoại" value={form.phone} onChange={(e: any) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-						<TextField fullWidth label="Địa chỉ" value={form.address} onChange={(e: any) => setForm((p) => ({ ...p, address: e.target.value }))} />
-						<TextField select fullWidth label="Giới tính" value={form.gender || ''} onChange={(e: any) => setForm((p) => ({ ...p, gender: e.target.value as any }))}>
-							<MenuItem value="male">Nam</MenuItem>
-							<MenuItem value="female">Nữ</MenuItem>
-							<MenuItem value="other">Khác</MenuItem>
-						</TextField>
-						<DatePicker
-							label="Ngày sinh"
-							value={form.dateOfBirth}
-							onChange={(newValue) => setForm((p) => ({ ...p, dateOfBirth: newValue }))}
-							slotProps={{
-								textField: {
-									fullWidth: true,
-									size: 'medium',
-									sx: {
-										'& .MuiOutlinedInput-root': {
-											'& fieldset': {
-												borderColor: 'rgba(0, 0, 0, 0.23)',
-											},
-											'&:hover fieldset': {
-												borderColor: 'rgba(0, 0, 0, 0.87)',
-											},
-											'&.Mui-focused fieldset': {
-												borderColor: 'primary.main',
+			<Box sx={{ 
+        p: { xs: 1.5, sm: 2, md: 3 },
+        pb: { xs: 4, sm: 3, md: 3 },
+        minHeight: { xs: 'calc(100vh - 56px)', sm: 'calc(100vh - 64px)', md: 'auto' }
+      }}>
+				<Typography 
+          variant={isMobile ? 'h6' : 'h5'} 
+          sx={{ 
+            mb: { xs: 1.5, sm: 2 }, 
+            fontWeight: 600,
+            fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' }
+          }}
+        >
+          Tạo người dùng
+        </Typography>
+				
+        {/* Group: Personal info (top) */}
+				<Paper sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, mb: { xs: 2, sm: 2.5, md: 3 }, boxShadow: 1 }}>
+					<Typography 
+            variant={isMobile ? 'body1' : 'subtitle1'} 
+            sx={{ 
+              fontWeight: 600, 
+              mb: { xs: 1.25, sm: 1.5 },
+              fontSize: { xs: '0.9rem', sm: '1rem', md: '1.125rem' }
+            }}
+          >
+            Thông tin cá nhân
+          </Typography>
+					<Grid container spacing={{ xs: 1.5, sm: 2 }}>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                required 
+                label="Họ và tên" 
+                value={form.fullName} 
+                onChange={(e: any) => setForm((p) => ({ ...p, fullName: e.target.value }))}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                required 
+                type="email" 
+                label="Email" 
+                value={form.email} 
+                onChange={(e: any) => setForm((p) => ({ ...p, email: e.target.value }))}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                label="Số điện thoại" 
+                value={form.phone} 
+                onChange={(e: any) => setForm((p) => ({ ...p, phone: e.target.value }))}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                label="Địa chỉ" 
+                value={form.address} 
+                onChange={(e: any) => setForm((p) => ({ ...p, address: e.target.value }))}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                select 
+                fullWidth 
+                label="Giới tính" 
+                value={form.gender || ''} 
+                onChange={(e: any) => setForm((p) => ({ ...p, gender: e.target.value as any }))}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              >
+								<MenuItem value="male" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Nam</MenuItem>
+								<MenuItem value="female" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Nữ</MenuItem>
+								<MenuItem value="other" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Khác</MenuItem>
+							</TextField>
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<DatePicker
+								label="Ngày sinh"
+								value={form.dateOfBirth}
+								onChange={(newValue) => setForm((p) => ({ ...p, dateOfBirth: newValue }))}
+								slotProps={{
+									textField: {
+										fullWidth: true,
+										size: isMobile ? 'small' : 'medium',
+										sx: {
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+											'& .MuiOutlinedInput-root': {
+												'& fieldset': {
+													borderColor: 'rgba(0, 0, 0, 0.23)',
+												},
+												'&:hover fieldset': {
+													borderColor: 'rgba(0, 0, 0, 0.87)',
+												},
+												'&.Mui-focused fieldset': {
+													borderColor: 'primary.main',
+												},
 											},
 										},
 									},
-								},
-							}}
-							format="DD/MM/YYYY"
-							disableFuture
-							maxDate={dayjs().subtract(16, 'year')} // Tối thiểu 16 tuổi
-							minDate={dayjs().subtract(100, 'year')} // Tối đa 100 tuổi
-						/>
-					</Box>
-				</Box>
+								}}
+								format="DD/MM/YYYY"
+								disableFuture
+								maxDate={dayjs().subtract(16, 'year')} // Tối thiểu 16 tuổi
+								minDate={dayjs().subtract(100, 'year')} // Tối đa 100 tuổi
+							/>
+						</Grid>
+					</Grid>
+				</Paper>
 
 				{/* Group: Account & Role (bottom) */}
-				<Box>
-					<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Thông tin tài khoản & vai trò</Typography>
-					<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(220px, 1fr))', gap: 2 }}>
-						<TextField select fullWidth required label="Vai trò" value={form.role} onChange={(e: any) => handleRoleChange(e.target.value as any)}>
-							<MenuItem value="teacher">Giảng viên</MenuItem>
-							<MenuItem value="student">Sinh viên</MenuItem>
-						</TextField>
-						<TextField fullWidth disabled label={form.role === 'teacher' ? 'Mã giảng viên' : 'Mã sinh viên'} value={previewCode || ''} />
-						<TextField fullWidth disabled label="Mật khẩu ban đầu" value={'123456'} />
-						<TextField fullWidth disabled label="Username (hiển thị)" value={previewUsername || previewCode || ''} />
-						<TextField select fullWidth label={form.role === 'teacher' ? 'Khoa/Bộ môn' : 'Khoa'} value={form.departmentId || ''} onChange={(e: any) => setForm((p) => ({ ...p, departmentId: Number(e.target.value) }))}>
-							{(departments || []).map((d) => (
-								<MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
-							))}
-						</TextField>
-						{form.role === 'student' && (
-							<TextField select fullWidth label="Chuyên ngành" value={form.majorId || ''} onChange={(e: any) => setForm((p) => ({ ...p, majorId: Number(e.target.value) }))} disabled={!form.departmentId}>
-								{(majors || []).map((m) => (
-									<MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+				<Paper sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, mb: { xs: 2, sm: 2.5, md: 3 }, boxShadow: 1 }}>
+					<Typography 
+            variant={isMobile ? 'body1' : 'subtitle1'} 
+            sx={{ 
+              fontWeight: 600, 
+              mb: { xs: 1.25, sm: 1.5 },
+              fontSize: { xs: '0.9rem', sm: '1rem', md: '1.125rem' }
+            }}
+          >
+            Thông tin tài khoản & vai trò
+          </Typography>
+					<Grid container spacing={{ xs: 1.5, sm: 2 }}>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                select 
+                fullWidth 
+                required 
+                label="Vai trò" 
+                value={form.role} 
+                onChange={(e: any) => handleRoleChange(e.target.value as any)}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              >
+								<MenuItem value="teacher" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Giảng viên</MenuItem>
+								<MenuItem value="student" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Sinh viên</MenuItem>
+							</TextField>
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                disabled 
+                label={form.role === 'teacher' ? 'Mã giảng viên' : 'Mã sinh viên'} 
+                value={previewCode || ''}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                disabled 
+                label="Mật khẩu ban đầu" 
+                value={'123456'}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                disabled 
+                label="Username (hiển thị)" 
+                value={previewUsername || previewCode || ''}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                select 
+                fullWidth 
+                label={form.role === 'teacher' ? 'Khoa/Bộ môn' : 'Khoa'} 
+                value={form.departmentId || ''} 
+                onChange={(e: any) => setForm((p) => ({ ...p, departmentId: Number(e.target.value) }))}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              >
+								{(departments || []).map((d) => (
+									<MenuItem key={d.id} value={d.id} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{d.name}</MenuItem>
 								))}
 							</TextField>
-						)}
-						<TextField fullWidth label="Cơ sở" value={defaultValues.campus || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
-						<TextField fullWidth label="Hình thức đào tạo" value={defaultValues.trainingType || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
-						<TextField fullWidth label="Bậc/Trình độ" value={defaultValues.degreeLevel || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
+						</Grid>
 						{form.role === 'student' && (
-							<TextField fullWidth label="Niên khóa" value={defaultValues.academicYear || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
+							<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+								<TextField 
+                  select 
+                  fullWidth 
+                  label="Chuyên ngành" 
+                  value={form.majorId || ''} 
+                  onChange={(e: any) => setForm((p) => ({ ...p, majorId: Number(e.target.value) }))} 
+                  disabled={!form.departmentId}
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }
+                  }}
+                >
+									{(majors || []).map((m) => (
+										<MenuItem key={m.id} value={m.id} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>{m.name}</MenuItem>
+									))}
+								</TextField>
+							</Grid>
+						)}
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                label="Cơ sở" 
+                value={defaultValues.campus || ''} 
+                InputProps={{ readOnly: true }} 
+                size={isMobile ? 'small' : 'medium'}
+                sx={{ 
+                  '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }} 
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                label="Hình thức đào tạo" 
+                value={defaultValues.trainingType || ''} 
+                InputProps={{ readOnly: true }} 
+                size={isMobile ? 'small' : 'medium'}
+                sx={{ 
+                  '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }} 
+              />
+						</Grid>
+						<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+							<TextField 
+                fullWidth 
+                label="Bậc/Trình độ" 
+                value={defaultValues.degreeLevel || ''} 
+                InputProps={{ readOnly: true }} 
+                size={isMobile ? 'small' : 'medium'}
+                sx={{ 
+                  '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                  '& .MuiInputBase-root': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }} 
+              />
+						</Grid>
+						{form.role === 'student' && (
+							<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+								<TextField 
+                  fullWidth 
+                  label="Niên khóa" 
+                  value={defaultValues.academicYear || ''} 
+                  InputProps={{ readOnly: true }} 
+                  size={isMobile ? 'small' : 'medium'}
+                  sx={{ 
+                    '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                    '& .MuiInputBase-root': {
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }
+                  }} 
+                />
+							</Grid>
 						)}
 						{form.role === 'student' && (
 							<>
-								<TextField fullWidth label="Ngày nhập học" value={defaultValues.enrollmentDate || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
-								<TextField fullWidth label="Lớp danh nghĩa" value={form.classCode || ''} onChange={(e: any) => setForm((p) => ({ ...p, classCode: e.target.value }))} />
+								<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+									<TextField 
+                    fullWidth 
+                    label="Ngày nhập học" 
+                    value={defaultValues.enrollmentDate || ''} 
+                    InputProps={{ readOnly: true }} 
+                    size={isMobile ? 'small' : 'medium'}
+                    sx={{ 
+                      '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                      '& .MuiInputBase-root': {
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }
+                    }} 
+                  />
+								</Grid>
+								<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+									<TextField 
+                    fullWidth 
+                    label="Lớp danh nghĩa" 
+                    value={form.classCode || ''} 
+                    onChange={(e: any) => setForm((p) => ({ ...p, classCode: e.target.value }))}
+                    size={isMobile ? 'small' : 'medium'}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }
+                    }}
+                  />
+								</Grid>
 							</>
 						)}
 						{form.role === 'teacher' && (
 							<>
-								<TextField fullWidth label="Ngày vào trường" value={defaultValues.enrollmentDate || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
-								<TextField fullWidth label="Học hàm/Học vị" value={defaultValues.title || ''} InputProps={{ readOnly: true }} sx={{ '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' } }} />
-          </>
-        )}
-					</Box>
-				</Box>
+								<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+									<TextField 
+                    fullWidth 
+                    label="Ngày vào trường" 
+                    value={defaultValues.enrollmentDate || ''} 
+                    InputProps={{ readOnly: true }} 
+                    size={isMobile ? 'small' : 'medium'}
+                    sx={{ 
+                      '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                      '& .MuiInputBase-root': {
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }
+                    }} 
+                  />
+								</Grid>
+								<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+									<TextField 
+                    fullWidth 
+                    label="Học hàm/Học vị" 
+                    value={defaultValues.title || ''} 
+                    InputProps={{ readOnly: true }} 
+                    size={isMobile ? 'small' : 'medium'}
+                    sx={{ 
+                      '& .MuiInputBase-input': { backgroundColor: '#f5f5f5' },
+                      '& .MuiInputBase-root': {
+                        fontSize: { xs: '0.875rem', sm: '1rem' }
+                      }
+                    }} 
+                  />
+								</Grid>
+							</>
+						)}
+					</Grid>
+				</Paper>
 
-				<Box sx={{ mt: 3, display: 'flex', gap: 1 }}>
-					<Button variant="outlined" onClick={() => navigate('/users')}>Hủy</Button>
-					<Button variant="contained" onClick={handleSubmit} disabled={submitting}>Tạo tài khoản</Button>
-				</Box>
+				<Paper sx={{ 
+          p: { xs: 2, sm: 2.5, md: 2.5 }, 
+          mt: { xs: 2.5, sm: 3, md: 3 },
+          mb: { xs: 0, sm: 0, md: 0 },
+          boxShadow: { xs: 2, sm: 1, md: 1 },
+          position: 'relative',
+          zIndex: 1
+        }}>
+					<Grid container spacing={{ xs: 1.5, sm: 2 }} alignItems="center">
+						<Grid size={{ xs: 6, sm: 'auto' }}>
+							<Button 
+                variant="outlined" 
+                onClick={() => navigate('/users')}
+                fullWidth
+                size={isMobile ? 'medium' : 'large'}
+                sx={{
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  py: { xs: 1.25, sm: 1.5 },
+                  fontWeight: { xs: 600, sm: 500 },
+                  minWidth: { sm: 120 }
+                }}
+              >
+                Hủy
+              </Button>
+						</Grid>
+						<Grid size={{ xs: 6, sm: 'auto' }}>
+							<Button 
+                variant="contained" 
+                onClick={handleSubmit} 
+                disabled={submitting}
+                fullWidth
+                size={isMobile ? 'medium' : 'large'}
+                sx={{
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  py: { xs: 1.25, sm: 1.5 },
+                  fontWeight: { xs: 600, sm: 500 },
+                  minWidth: { sm: 160 }
+                }}
+              >
+                Tạo tài khoản
+              </Button>
+						</Grid>
+					</Grid>
+				</Paper>
 			</Box>
 		</LocalizationProvider>
   );

@@ -1,346 +1,214 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  Button,
-  IconButton,
-  Tooltip,
-  Card,
-  CardContent,
-  Container,
-  Chip,
-  Paper,
-  Stack,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField
-} from '@mui/material';
-import {
-  DataGrid,
-  GridColDef,
-  GridToolbar,
-  useGridApiRef
-} from '@mui/x-data-grid';
-import {
-  Refresh as RefreshIcon,
-  Schedule as ScheduleIcon,
-  Room as RoomIcon,
-  Person as PersonIcon,
-  Class as ClassIcon,
-  CalendarToday as CalendarIcon,
-  AccessTime as TimeIcon,
-  CheckCircle as ApproveIcon,
-  Cancel as RejectIcon,
-  Edit as EditIcon,
-} from '@mui/icons-material';
+import React, { useEffect, useMemo, useCallback, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Chip, Paper, FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { toast } from 'react-toastify'; 
+import { GridColDef, GridToolbar, useGridApiRef } from '@mui/x-data-grid';
+import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
+import { Refresh as RefreshIcon, Schedule as ScheduleIcon, Room as RoomIcon, Person as PersonIcon, Class as ClassIcon, CalendarToday as CalendarIcon, Assignment as AssignmentIcon, AutoAwesome as AutoAssignIcon } from '@mui/icons-material';
+import { RootState, AppDispatch } from '../../redux/store';
+import { loadAllData, loadAvailableRooms, loadRoomsByDepartmentAndType, assignRoomToSchedule, setSelectedDepartment, setSelectedClass, setSelectedTeacher, setSelectedStatus, setError, openAssignDialog, closeAssignDialog, setSelectedRoom, updateScheduleFromSocket, updateStatsFromSocket} from '../../redux/slices/roomSchedulingSlice';
+import { scheduleManagementService } from '../../services/api';
+import { initSocket, getSocket } from '../../utils/socket';
+import type { ScheduleData } from '../../redux/slices/roomSchedulingSlice';
 
-// Sample data for room scheduling - Classes that need room assignment
-const sampleSchedules = [
-  {
-    id: 1,
-    classId: 1,
-    className: 'Lập trình cơ bản',
-    subjectCode: 'NMLT',
-    teacherId: 1,
-    teacherName: 'Nguyễn Văn Giáo',
-    roomId: null,
-    roomName: null,
-    timeSlotId: 1,
-    timeSlot: 'Tiết 1-3 (07:00-09:30)',
-    dayOfWeek: 3,
-    dayName: 'Thứ 3',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'pending' as const,
-    capacity: 100,
-    enrolledStudents: 85,
-    utilization: 0
-  },
-  {
-    id: 2,
-    classId: 2,
-    className: 'Cơ sở dữ liệu',
-    subjectCode: 'CSDL',
-    teacherId: 2,
-    teacherName: 'Trần Thị Dạy',
-    roomId: null,
-    roomName: null,
-    timeSlotId: 2,
-    timeSlot: 'Tiết 4-6 (09:45-12:15)',
-    dayOfWeek: 2,
-    dayName: 'Thứ 2',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'pending' as const,
-    capacity: 150,
-    enrolledStudents: 120,
-    utilization: 0
-  },
-  {
-    id: 3,
-    classId: 3,
-    className: 'Cấu trúc dữ liệu và giải thuật',
-    subjectCode: 'CTDL',
-    teacherId: 3,
-    teacherName: 'Lê Thị Minh',
-    roomId: null,
-    roomName: null,
-    timeSlotId: 3,
-    timeSlot: 'Tiết 7-9 (13:00-15:30)',
-    dayOfWeek: 4,
-    dayName: 'Thứ 4',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'pending' as const,
-    capacity: 30,
-    enrolledStudents: 25,
-    utilization: 0
-  },
-  {
-    id: 4,
-    classId: 4,
-    className: 'Lập trình Web',
-    subjectCode: 'LTW',
-    teacherId: 4,
-    teacherName: 'Phạm Văn Học',
-    roomId: null,
-    roomName: null,
-    timeSlotId: 4,
-    timeSlot: 'Tiết 10-12 (15:45-18:15)',
-    dayOfWeek: 6,
-    dayName: 'Thứ 6',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'pending' as const,
-    capacity: 30,
-    enrolledStudents: 28,
-    utilization: 0
-  },
-  {
-    id: 5,
-    classId: 5,
-    className: 'Lập trình hướng đối tượng',
-    subjectCode: 'OOP',
-    teacherId: 5,
-    teacherName: 'Hoàng Thị Giảng',
-    roomId: null,
-    roomName: null,
-    timeSlotId: 1,
-    timeSlot: 'Tiết 1-3 (07:00-09:30)',
-    dayOfWeek: 5,
-    dayName: 'Thứ 5',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'pending' as const,
-    capacity: 120,
-    enrolledStudents: 95,
-    utilization: 0
-  },
-  {
-    id: 6,
-    classId: 6,
-    className: 'Mạng máy tính',
-    subjectCode: 'MMT',
-    teacherId: 6,
-    teacherName: 'Võ Thị Mạng',
-    roomId: 1,
-    roomName: 'LT101 - Phòng lý thuyết 101',
-    timeSlotId: 2,
-    timeSlot: 'Tiết 4-6 (09:45-12:15)',
-    dayOfWeek: 3,
-    dayName: 'Thứ 3',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'scheduled' as const,
-    capacity: 100,
-    enrolledStudents: 80,
-    utilization: 80
-  },
-  {
-    id: 7,
-    classId: 7,
-    className: 'Hệ điều hành',
-    subjectCode: 'HDH',
-    teacherId: 7,
-    teacherName: 'Đặng Văn Hệ',
-    roomId: 2,
-    roomName: 'LT201 - Phòng lý thuyết 201',
-    timeSlotId: 3,
-    timeSlot: 'Tiết 7-9 (13:00-15:30)',
-    dayOfWeek: 4,
-    dayName: 'Thứ 4',
-    week: 1,
-    semester: 'HK1-2024',
-    status: 'scheduled' as const,
-    capacity: 150,
-    enrolledStudents: 120,
-    utilization: 80
-  }
-];
-
-const sampleRooms = [
-  { id: 1, name: 'LT101 - Phòng lý thuyết 101', type: 'theory', capacity: 100, building: 'Tòa H', floor: 1 },
-  { id: 2, name: 'LT201 - Phòng lý thuyết 201', type: 'theory', capacity: 150, building: 'Tòa H', floor: 2 },
-  { id: 3, name: 'TH101 - Phòng thực hành 101', type: 'lab', capacity: 30, building: 'Tòa H', floor: 1 },
-  { id: 4, name: 'TH102 - Phòng thực hành 102', type: 'lab', capacity: 30, building: 'Tòa H', floor: 1 },
-  { id: 5, name: 'LT301 - Phòng lý thuyết 301', type: 'theory', capacity: 120, building: 'Tòa H', floor: 3 }
-];
-
-const sampleTimeSlots = [
-  { id: 1, name: 'Tiết 1-3', time: '07:00-09:30', shift: 'morning' },
-  { id: 2, name: 'Tiết 4-6', time: '09:45-12:15', shift: 'morning' },
-  { id: 3, name: 'Tiết 7-9', time: '13:00-15:30', shift: 'afternoon' },
-  { id: 4, name: 'Tiết 10-12', time: '15:45-18:15', shift: 'afternoon' },
-  { id: 5, name: 'Tiết 13-15', time: '18:30-21:00', shift: 'evening' }
-];
-
-interface Schedule {
-  id: number;
-  classId: number;
-  className: string;
-  subjectCode: string;
-  teacherId: number;
-  teacherName: string;
-  roomId: number | null;
-  roomName: string | null;
-  timeSlotId: number;
-  timeSlot: string;
-  dayOfWeek: number;
-  dayName: string;
-  week: number;
-  semester: string;
-  status: 'scheduled' | 'pending' | 'conflict';
-  capacity: number;
-  enrolledStudents: number;
-  utilization: number;
-}
-
-const RoomScheduling = () => {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [rooms] = useState(sampleRooms);
-  const [timeSlots] = useState(sampleTimeSlots);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [filterWeek, setFilterWeek] = useState('all');
-  const [filterDay, setFilterDay] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+const RoomScheduling: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const dataGridRef = useGridApiRef();
-
-  useEffect(() => {
-    loadSchedules();
-  }, [refreshKey]);
-
-  const loadSchedules = async () => {
-    setLoading(true);
-    setError(null);
+  const { classes, departments, teachers, stats, requestTypes, availableRooms, selectedDepartment, selectedClass, selectedTeacher, selectedStatus, loading, refreshing, loadingRooms, error, assignDialogOpen, selectedSchedule, selectedRoom, isAssigning } = useSelector((state: RootState) => state.roomScheduling);
+  const [classDetailDialogOpen, setClassDetailDialogOpen] = React.useState(false);
+  const [selectedClassDetail, setSelectedClassDetail] = React.useState<any>(null);
+  const handleLoadAllData = useCallback(() => { dispatch(loadAllData());}, [dispatch]);
+  const handleAssignRoom = async () => {
+    if (!selectedSchedule || !selectedRoom) {
+      toast.warning('Vui lòng chọn phòng học');
+      return;
+    }
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSchedules(sampleSchedules as Schedule[]);
-    } catch (err) {
-      setError('Không thể tải lịch sắp xếp phòng');
-      console.error('Error loading schedules:', err);
-    } finally {
-      setLoading(false);
+      await dispatch(assignRoomToSchedule({ 
+        scheduleId: selectedSchedule.scheduleId.toString(), 
+        roomId: selectedRoom 
+      })).unwrap();
+      
+      toast.success('Gán phòng thành công');
+      dispatch(closeAssignDialog());
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Có lỗi xảy ra khi gán phòng';
+      toast.error(errorMessage);
+    }
+  };
+  const handleAutoAssign = async (classId: number) => {
+    try {
+      const classData = classes.find(c => c.classId === classId);
+      if (classData && classData.schedules) {
+        let successCount = 0; 
+        const pendingSchedules = classData.schedules.filter(schedule => schedule.statusId === 1);
+        for (const schedule of pendingSchedules) {
+          const roomsResponse = await scheduleManagementService.getAvailableRoomsForSchedule(schedule.scheduleId.toString());
+          if (roomsResponse.data && roomsResponse.data.length > 0) {
+            await scheduleManagementService.assignRoomToSchedule(schedule.scheduleId.toString(), roomsResponse.data[0].id.toString());
+            successCount++;
+          }
+        }
+        
+        if (successCount > 0) {
+          toast.success(`Tự động gán phòng thành công: ${successCount} lịch học`);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error auto assigning:', err);
+      const errorMessage = err.response?.data?.message || 'Lỗi tự động gán phòng';
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
     }
   };
 
-  const handleRefresh = () => {
-    setRefreshKey(prev => prev + 1);
-  };
-
-  const handleEditSchedule = (schedule: Schedule) => {
-    setSelectedSchedule(schedule);
-    setEditDialogOpen(true);
-  };
-
-  const handleSaveEdit = () => {
-    if (selectedSchedule) {
-      // Update the schedule in the state
-      setSchedules(prevSchedules => 
-        prevSchedules.map(schedule => 
-          schedule.id === selectedSchedule.id ? selectedSchedule : schedule
-        )
-      );
-    }
-    setEditDialogOpen(false);
-    setSelectedSchedule(null);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled': return 'success';
-      case 'pending': return 'warning';
-      case 'conflict': return 'error';
-      default: return 'default';
+  const handleOpenAssignDialog = (schedule: ScheduleData) => {
+    dispatch(openAssignDialog(schedule));
+    
+    // Clear previous room selection
+    dispatch(setSelectedRoom(''));
+    
+    // Tìm thông tin lớp học để lấy departmentId
+    const classInfo = classes.find(c => c.classId === schedule.classId);
+    if (classInfo) {
+      const department = departments.find(d => d.name === classInfo.departmentName);
+      if (department) {
+        dispatch(loadRoomsByDepartmentAndType({
+          departmentId: department.id.toString(),
+          classRoomTypeId: schedule.classRoomTypeId.toString()
+        }));
+      } else {
+        dispatch(loadAvailableRooms(schedule.scheduleId.toString()));
+      }
+    } else {
+      dispatch(loadAvailableRooms(schedule.scheduleId.toString()));
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'scheduled': return 'Đã sắp xếp';
-      case 'pending': return 'Chưa sắp xếp';
-      case 'conflict': return 'Xung đột';
-      default: return status;
+  const handleRowDoubleClick = (params: any) => {
+    const row = params.row;
+    const classInfo = classes.find(c => c.classId === row.classId);
+    if (classInfo) {
+      setSelectedClassDetail(classInfo);
+      setClassDetailDialogOpen(true);
     }
   };
 
-
-  // Filter schedules
-  const filteredSchedules = useMemo(() => {
-    return schedules.filter(schedule => {
-      if (filterWeek !== 'all' && schedule.week.toString() !== filterWeek) return false;
-      if (filterDay !== 'all' && schedule.dayOfWeek.toString() !== filterDay) return false;
-      if (filterStatus !== 'all' && schedule.status !== filterStatus) return false;
-      return true;
+  //lọc lớp học dựa trên các bộ lọc đã chọn
+  const filteredClasses = useMemo(() => {
+    return classes.filter(cls => {
+      const department = departments.find(d => d.name === cls.departmentName);
+      const departmentMatch = !selectedDepartment || (department && department.id.toString() === selectedDepartment);
+      
+      const teacher = teachers.find(t => t.fullName === cls.teacherName);
+      const teacherMatch = !selectedTeacher || (teacher && teacher.id.toString() === selectedTeacher);
+      
+      let teacherDepartmentMatch = true;
+      if (selectedDepartment && teacher) {
+        teacherDepartmentMatch = !!(teacher.departmentId && teacher.departmentId.toString() === selectedDepartment);
+      }
+      
+      const classMatch = !selectedClass || cls.classId.toString() === selectedClass;
+      const statusMatch = !selectedStatus || cls.statusId.toString() === selectedStatus;
+      
+      return departmentMatch && classMatch && teacherMatch && teacherDepartmentMatch && statusMatch;
     });
-  }, [schedules, filterWeek, filterDay, filterStatus]);
+  }, [classes, departments, teachers, selectedDepartment, selectedClass, selectedTeacher, selectedStatus]);
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const total = schedules.length;
-    const scheduled = schedules.filter(s => s.status === 'scheduled' && s.roomId).length;
-    const pending = schedules.filter(s => s.status === 'pending' || !s.roomId).length;
-    const conflicts = schedules.filter(s => s.status === 'conflict').length;
-    const scheduledSchedules = schedules.filter(s => s.roomId);
-    const avgUtilization = scheduledSchedules.length > 0 
-      ? Math.round(scheduledSchedules.reduce((sum, s) => sum + s.utilization, 0) / scheduledSchedules.length)
-      : 0;
+  //lọc lớp học dựa trên khoa đã chọn
+  const filteredClassesForDropdown = useMemo(() => {
+    if (!selectedDepartment) return classes;
+    
+    const selectedDept = departments.find(d => d.id.toString() === selectedDepartment);
+    if (!selectedDept) return classes;
+    
+    return classes.filter(cls => cls.departmentName === selectedDept.name);
+  }, [classes, departments, selectedDepartment]);
 
-    return { total, scheduled, pending, conflicts, avgUtilization };
-  }, [schedules]);
+  //lọc giảng viên dựa trên khoa đã chọn
+  const filteredTeachersForDropdown = useMemo(() => {
+    if (!selectedDepartment) return teachers;
+    
+    return teachers.filter(teacher => 
+      teacher.departmentId && teacher.departmentId.toString() === selectedDepartment
+    );
+  }, [teachers, selectedDepartment]);
 
-  // DataGrid columns
+  //chuyển đổi lịch học thành dữ liệu cho DataGrid
+  const scheduleRows = useMemo(() => {
+    const rows: any[] = [];
+    
+      filteredClasses.forEach(cls => {
+        cls.schedules.forEach((schedule: ScheduleData) => {
+        rows.push({
+          id: `${cls.id}-${schedule.id}`,
+          classId: cls.classId,
+          className: cls.className,
+          subjectCode: cls.subjectCode,
+          teacherName: cls.teacherName,
+          departmentName: cls.departmentName,
+          scheduleId: schedule.id,
+          dayOfWeek: schedule.dayOfWeek,
+          dayName: schedule.dayName,
+          timeSlot: schedule.timeSlot,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          weekPattern: schedule.weekPattern,
+          startWeek: schedule.startWeek,
+          endWeek: schedule.endWeek,
+          note: schedule.note,
+          status: schedule.statusId, 
+          maxStudents: cls.maxStudents,
+          classRoomTypeId: schedule.classRoomTypeId,
+          classRoomTypeName: schedule.classRoomTypeName,
+          practiceGroup: schedule.practiceGroup,
+          roomId: schedule.roomId,
+          roomName: schedule.roomName,
+          roomCode: schedule.roomCode
+        });
+      });
+    });
+    
+    return rows;
+  }, [filteredClasses]);
+
+  //cột của DataGrid
   const columns: GridColDef[] = [
     {
-      field: 'id',
-      headerName: 'ID',
-      width: 60,
-      filterable: true,
-      sortable: true
-    },
-    {
       field: 'className',
-      headerName: 'Lớp học',
-      width: 200,
-      filterable: true,
-      sortable: true,
+      headerName: 'Tên lớp học',
+      ...(isMobile || isTablet ? { 
+        flex: 1.5, 
+        minWidth: 180
+      } : { 
+        flex: 1,
+        minWidth: 180
+      }),
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <ClassIcon color="secondary" sx={{ fontSize: 16 }} />
-          <Typography variant="body2" sx={{ fontWeight: 'medium', fontSize: '0.75rem', lineHeight: 1.2 }}>
+        <Box>
+          <Typography 
+            variant="body2" 
+            fontWeight="bold" 
+            sx={{ 
+              wordBreak: 'break-word',
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
+            }}
+          >
             {params.value}
+          </Typography>
+          <Typography 
+            variant="caption" 
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.75rem' } }}
+          >
+            {params.row.subjectCode}
           </Typography>
         </Box>
       )
@@ -348,551 +216,1330 @@ const RoomScheduling = () => {
     {
       field: 'teacherName',
       headerName: 'Giảng viên',
-      width: 150,
-      filterable: true,
-      sortable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 1.2, 
+        minWidth: 120
+      } : { 
+        flex: 0.8,
+        minWidth: 120
+      }),
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <PersonIcon color="primary" sx={{ fontSize: 16 }} />
-          <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
-            {params.value}
-          </Typography>
-        </Box>
-      )
-    },
-    {
-      field: 'roomName',
-      headerName: 'Phòng học',
-      width: 180,
-      filterable: true,
-      sortable: true,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <RoomIcon color={params.value ? "info" : "disabled"} sx={{ fontSize: 16 }} />
+        <Box display="flex" alignItems="flex-start" gap={1} sx={{ width: '100%' }}>
+          <PersonIcon 
+            fontSize="small" 
+            color="primary" 
+            sx={{ 
+              mt: 0.5, 
+              flexShrink: 0,
+              fontSize: { xs: 12, sm: 14, md: 16 }
+            }} 
+          />
           <Typography 
             variant="body2" 
             sx={{ 
-              fontSize: '0.75rem', 
-              lineHeight: 1.2,
-              color: params.value ? 'text.primary' : 'text.secondary',
-              fontStyle: params.value ? 'normal' : 'italic'
+              wordBreak: 'break-word', 
+              whiteSpace: 'normal',
+              lineHeight: 1.4,
+              width: '100%',
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
             }}
           >
-            {params.value || 'Chưa sắp xếp'}
+            {params.value}
           </Typography>
         </Box>
       )
     },
     {
-      field: 'timeSlot',
-      headerName: 'Tiết học',
-      width: 150,
-      filterable: true,
-      sortable: true,
+      field: 'departmentName',
+      headerName: 'Khoa',
+      ...(isMobile || isTablet ? { 
+        flex: 1.2, 
+        minWidth: 150
+      } : { 
+        flex: 0.8,
+        minWidth: 150
+      }),
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <TimeIcon color="action" sx={{ fontSize: 16 }} />
-          <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
-            {params.value}
-          </Typography>
-        </Box>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            wordBreak: 'break-word', 
+            whiteSpace: 'normal',
+            lineHeight: 1.4,
+            width: '100%',
+            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
+          }}
+        >
+          {params.value}
+        </Typography>
       )
     },
     {
       field: 'dayName',
       headerName: 'Thứ',
-      width: 80,
-      filterable: true,
-      sortable: true,
+      ...(isMobile || isTablet ? { 
+        flex: 0.6, 
+        minWidth: 100
+      } : { 
+        flex: 0.5,
+        minWidth: 100
+      }),
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <CalendarIcon color="secondary" sx={{ fontSize: 16 }} />
-          <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
+        <Chip 
+          label={params.value} 
+          size="small" 
+          color="primary" 
+          variant="outlined"
+          sx={{
+            whiteSpace: 'normal',
+            height: 'auto',
+            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+            '& .MuiChip-label': {
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              padding: { xs: '2px 6px', sm: '3px 7px', md: '4px 8px' }
+            }
+          }}
+        />
+      )
+    },
+    {
+      field: 'timeSlot',
+      headerName: 'Tiết học',
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 120
+      } : { 
+        flex: 0.8,
+        minWidth: 120
+      }),
+      headerAlign: 'left',
+      align: 'left',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => (
+        <Box>
+          <Typography 
+            variant="body2"
+            sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' } }}
+          >
             {params.value}
+          </Typography>
+          <Typography 
+            variant="caption" 
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.75rem' } }}
+          >
+            {params.row.startTime} - {params.row.endTime}
           </Typography>
         </Box>
       )
     },
     {
-      field: 'utilization',
-      headerName: 'Sử dụng',
-      width: 100,
-      filterable: true,
-      sortable: true,
+      field: 'classRoomTypeName',
+      headerName: 'Phòng/lớp',
+      ...(isMobile || isTablet ? { 
+        flex: 0.8, 
+        minWidth: 120
+      } : { 
+        flex: 0.6,
+        minWidth: 120
+      }),
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
       renderCell: (params) => (
-        <Box sx={{ textAlign: 'center' }}>
-          {params.row.roomId ? (
-            <>
-              <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.2 }}>
-                {params.value}%
-              </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
-                {params.row.enrolledStudents}/{params.row.capacity}
-              </Typography>
-            </>
-          ) : (
-            <Typography variant="body2" sx={{ fontSize: '0.75rem', lineHeight: 1.2, color: 'text.secondary', fontStyle: 'italic' }}>
-              Chưa sắp xếp
-            </Typography>
-          )}
-        </Box>
+        <Chip 
+          label={params.value} 
+          size="small" 
+          color={params.row.classRoomTypeId === 1 ? 'primary' : params.row.classRoomTypeId === 2 ? 'secondary' : 'default'} 
+          variant="outlined"
+          sx={{
+            whiteSpace: 'normal',
+            height: 'auto',
+            fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+            '& .MuiChip-label': {
+              whiteSpace: 'normal',
+              lineHeight: 1.2,
+              padding: { xs: '2px 6px', sm: '3px 7px', md: '4px 8px' }
+            }
+          }}
+        />
       )
+    },
+    {
+      field: 'practiceGroup',
+      headerName: 'Nhóm TH',
+      ...(isMobile || isTablet ? { 
+        flex: 0.6, 
+        minWidth: 100
+      } : { 
+        flex: 0.5,
+        minWidth: 100
+      }),
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => {
+        if (params.row.classRoomTypeId === 2 && params.value) {
+          return (
+            <Chip 
+              label={`Nhóm ${params.value}`} 
+              size="small" 
+              color="secondary" 
+              variant="filled"
+              sx={{
+                whiteSpace: 'normal',
+                height: 'auto',
+                fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                '& .MuiChip-label': {
+                  whiteSpace: 'normal',
+                  lineHeight: 1.2,
+                  padding: { xs: '2px 6px', sm: '3px 7px', md: '4px 8px' }
+                }
+              }}
+            />
+          );
+        }
+        return (
+          <Typography 
+            variant="body2" 
+            color="text.secondary"
+            sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' } }}
+          >
+            -
+          </Typography>
+        );
+      }
+    },
+    {
+      field: 'maxStudents',
+      headerName: 'Số SV',
+      ...(isMobile || isTablet ? { 
+        flex: 0.5, 
+        minWidth: 70
+      } : { 
+        flex: 0.4,
+        minWidth: 70
+      }),
+      type: 'number',
+      align: 'center',
+      headerAlign: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => {
+        if (params.row.classRoomTypeId === 2) {
+          return (
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' } }}
+            >
+              -
+            </Typography>
+          );
+        }
+        return (
+          <Typography 
+            variant="body2"
+            sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' } }}
+          >
+            {params.value}
+          </Typography>
+        );
+      }
     },
     {
       field: 'status',
       headerName: 'Trạng thái',
-      width: 120,
-      filterable: true,
-      sortable: true,
-      renderCell: (params) => (
-        <Chip
-          label={getStatusText(params.value)}
-          color={getStatusColor(params.value) as any}
-          size="small"
-          variant="filled"
-          sx={{ fontSize: '0.7rem', height: 24 }}
-        />
-      )
+      ...(isMobile || isTablet ? { 
+        flex: 1, 
+        minWidth: 120
+      } : { 
+        flex: 0.8,
+        minWidth: 120
+      }),
+      headerAlign: 'center',
+      align: 'center',
+      disableColumnMenu: isMobile,
+      renderCell: (params) => {
+        const statusType = requestTypes.find(type => type.id === params.value);
+        
+        if (statusType) {
+          let color: 'warning' | 'success' | 'default' = 'default';
+          if (statusType.id === 1) color = 'warning'; 
+          else if (statusType.id === 2) color = 'success'; 
+          
+          return (
+            <Chip 
+              label={statusType.name} 
+              size="small" 
+              color={color}
+              variant="filled"
+              sx={{ 
+                whiteSpace: 'normal',
+                height: 'auto',
+                fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                '& .MuiChip-label': {
+                  whiteSpace: 'normal',
+                  lineHeight: 1.2,
+                  padding: { xs: '2px 6px', sm: '3px 7px', md: '4px 8px' }
+                }
+              }}
+            />
+          );
+        }
+        
+        return (
+          <Chip 
+            label="Không xác định" 
+            size="small" 
+            color="default"
+            variant="filled"
+            sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+          />
+        );
+      }
     },
     {
       field: 'actions',
       headerName: 'Thao tác',
-      width: 100,
+      ...(isMobile || isTablet ? { 
+        flex: 0.8, 
+        minWidth: 90
+      } : { 
+        width: 120
+      }),
       sortable: false,
-      filterable: false,
+      align: 'center',
+      headerAlign: 'center',
+      disableColumnMenu: true,
       renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Chỉnh sửa lịch">
+        <Box display="flex" gap={0.5} justifyContent="center">
+          <Tooltip title="Gán phòng">
             <IconButton
               size="small"
-              onClick={() => handleEditSchedule(params.row)}
               color="primary"
-              sx={{ padding: 0.5 }}
+              onClick={() => handleOpenAssignDialog(params.row)}
+              sx={{ padding: { xs: 0.25, sm: 0.5 } }}
             >
-              <EditIcon sx={{ fontSize: 16 }} />
+              <AssignmentIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
             </IconButton>
           </Tooltip>
-        </Stack>
+          <Tooltip title="Tự động gán phòng">
+            <IconButton
+              size="small"
+              color="secondary"
+              onClick={() => handleAutoAssign(params.row.classId)}
+              sx={{ padding: { xs: 0.25, sm: 0.5 } }}
+            >
+              <AutoAssignIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
       )
     }
-  ];
+  ];  
+  const { user } = useSelector((state: RootState) => state.auth);
+  const socketInitialized = useRef(false);
+  useEffect(() => {
+    if (!socketInitialized.current && user?.id) {
+      const socket = getSocket() || initSocket(user.id);
+      socketInitialized.current = true;
+      const handleRoomAssigned = (data: any) => {
+        dispatch(updateScheduleFromSocket(data));
+        
+        if (selectedSchedule?.scheduleId === data.scheduleId) {
+          dispatch(closeAssignDialog());
+        }
+      };
+      const handleRoomUnassigned = (data: any) => {
+        dispatch(updateScheduleFromSocket(data));
+      };
+      const handleStatsUpdated = (stats: any) => {
+        dispatch(updateStatsFromSocket(stats));
+      };
+      const handleScheduleUpdated = (data: any) => {
+        dispatch(updateScheduleFromSocket(data));
+      };
+      socket.on('room-assigned', handleRoomAssigned);
+      socket.on('room-unassigned', handleRoomUnassigned);
+      socket.on('stats-updated', handleStatsUpdated);
+      socket.on('schedule-updated', handleScheduleUpdated);
 
-  if (loading && schedules.length === 0) {
+      return () => {
+        socket.off('room-assigned', handleRoomAssigned);
+        socket.off('room-unassigned', handleRoomUnassigned);
+        socket.off('stats-updated', handleStatsUpdated);
+        socket.off('schedule-updated', handleScheduleUpdated);
+        
+        socketInitialized.current = false;
+      };
+    }
+  }, [dispatch, user?.id, selectedSchedule]);
+
+  useEffect(() => {
+    handleLoadAllData();
+  }, [handleLoadAllData]);
+
+  if (loading) {
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
-        height="400px"
-        flexDirection="column"
-      >
-        <CircularProgress size={60} thickness={4} />
-        <Typography variant="h6" sx={{ mt: 3, color: 'text.secondary' }}>
-          Đang tải lịch sắp xếp phòng...
-        </Typography>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
       </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Card>
-          <CardContent>
-            <Alert severity="error" sx={{ mb: 2 }}>
-              <Typography variant="h6">Không thể tải lịch sắp xếp phòng</Typography>
-              <Typography>{error}</Typography>
-            </Alert>
-            <Button 
-              variant="contained" 
-              onClick={handleRefresh}
-              startIcon={<RefreshIcon />}
-              sx={{ mt: 2 }}
-            >
-              Thử lại
-            </Button>
-          </CardContent>
-        </Card>
-      </Container>
     );
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
-      {/* Header Card */}
-      <Card sx={{ mb: 3, boxShadow: 3 }}>
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
-            <Typography variant="h4" component="h1" sx={{ 
-              color: 'primary.main', 
+    <Box
+      sx={{ 
+        p: { xs: 1, sm: 1.5, md: 3 },
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+        overflowY: 'hidden',
+        position: 'relative',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        pb: { xs: 2, sm: 3, md: 4 }
+      }}
+    >
+      {/* Header */}
+      <Grid container spacing={2} alignItems="center" justifyContent="space-between" sx={{ mb: { xs: 1.5, sm: 2, md: 2.5 }, flexShrink: 0 }}>
+        <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flex: 1, minWidth: 0 }}>
+          <Typography 
+            variant="h4" 
+            component="h1" 
+            sx={{ 
+              color: 'primary.main',
               fontWeight: 'bold',
-              fontSize: { xs: '1.5rem', md: '2rem' }
-            }}>
-              Sắp xếp phòng học
-            </Typography>
-            
-            <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-              <Tooltip title="Làm mới dữ liệu">
-                <IconButton 
-                  onClick={handleRefresh}
-                  color="primary"
-                  sx={{ 
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: 'primary.dark'
-                    }
-                  }}
-                >
-                  <RefreshIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
+              fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
+              wordBreak: 'break-word',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+          >
+            Sắp xếp phòng học
+          </Typography>
+        </Grid>
+        <Grid size={{ xs: 'auto', sm: 'auto', md: 'auto' }} sx={{ flexShrink: 0 }}>
+          <Tooltip title="Làm mới dữ liệu">
+            <IconButton
+              onClick={handleLoadAllData}
+              disabled={loading}
+              color="primary"
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: 'primary.dark'
+                }
+              }}
+            >
+              <RefreshIcon fontSize={isMobile ? "small" : "medium"} />
+            </IconButton>
+          </Tooltip>
+        </Grid>
+      </Grid>
 
-      {/* Statistics Cards */}
-      <Box sx={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: 2, 
-        mb: 3 
-      }}>
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Tổng lớp học
-                </Typography>
-                <Typography variant="h5" component="div" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.total}
-                </Typography>
-              </Box>
-              <ScheduleIcon sx={{ fontSize: 28, color: 'primary.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+      {/* Error Messages */}
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: { xs: 1.5, sm: 2 },
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+          }} 
+          onClose={() => dispatch(setError(null))}
+        >
+          {error}
+        </Alert>
+      )}
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Đã sắp xếp
-                </Typography>
-                <Typography variant="h5" component="div" color="success.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.scheduled}
-                </Typography>
-              </Box>
-              <ApproveIcon sx={{ fontSize: 28, color: 'success.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+      {isAssigning && (
+        <Alert 
+          severity="info" 
+          sx={{ 
+            mb: { xs: 1.5, sm: 2 },
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+          }}
+        >
+          Đang cập nhật trạng thái gán phòng...
+        </Alert>
+      )}
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Chưa sắp xếp
-                </Typography>
-                <Typography variant="h5" component="div" color="warning.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.pending}
-                </Typography>
-              </Box>
-              <ScheduleIcon sx={{ fontSize: 28, color: 'warning.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+      {refreshing && (
+        <Alert 
+          severity="info" 
+          sx={{ 
+            mb: { xs: 1.5, sm: 2 },
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+          }}
+        >
+          Đang cập nhật dữ liệu...
+        </Alert>
+      )}
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Xung đột
-                </Typography>
-                <Typography variant="h5" component="div" color="error.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.conflicts}
-                </Typography>
-              </Box>
-              <RejectIcon sx={{ fontSize: 28, color: 'error.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
+      {loadingRooms && assignDialogOpen && (
+        <Alert 
+          severity="info" 
+          sx={{ 
+            mb: { xs: 1.5, sm: 2 },
+            fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+          }}
+        >
+          Đang tải danh sách phòng...
+        </Alert>
+      )}
 
-        <Card sx={{ 
-          height: 120, 
-          minWidth: 150,
-          maxWidth: 250,
-          flex: '0 0 auto'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography color="textSecondary" gutterBottom variant="body2" sx={{ fontSize: '0.65rem' }}>
-                  Sử dụng TB
-                </Typography>
-                <Typography variant="h5" component="div" color="info.main" sx={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                  {stats.avgUtilization}%
-                </Typography>
-              </Box>
-              <RoomIcon sx={{ fontSize: 28, color: 'info.main' }} />
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
+        {/* Statistics Cards */}
+        {stats && (
+          <Grid 
+            container 
+            spacing={{ xs: 0.75, sm: 1, md: 1.5 }} 
+            sx={{ 
+              mb: { xs: 1.5, sm: 2, md: 2.5 },
+              flexShrink: 0,
+              justifyContent: 'center'
+            }}
+          >
+            <Grid size={{ xs: 3, sm: 4, md: 2 }}>
+              <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+                <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                  <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                    <Grid size={{ xs: 12 }}>
+                      <ClassIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'primary.main' }} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        color="textSecondary" 
+                        variant="body2" 
+                        sx={{ 
+                          fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                          lineHeight: 1.1
+                        }}
+                      >
+                        Tổng số lớp
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        variant="h6" 
+                        component="div" 
+                        sx={{ 
+                          fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                          fontWeight: 'bold',
+                          lineHeight: 1.1
+                        }}
+                      >
+                        {stats.totalClasses}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 3, sm: 4, md: 2 }}>
+              <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+                <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                  <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                    <Grid size={{ xs: 12 }}>
+                      <ScheduleIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'warning.main' }} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        color="textSecondary" 
+                        variant="body2" 
+                        sx={{ 
+                          fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                          lineHeight: 1.1
+                        }}
+                      >
+                        Chờ phân phòng
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        variant="h6" 
+                        component="div" 
+                        color="warning.main" 
+                        sx={{ 
+                          fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                          fontWeight: 'bold',
+                          lineHeight: 1.1
+                        }}
+                      >
+                        {stats.pendingClasses}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 3, sm: 4, md: 2 }}>
+              <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+                <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                  <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                    <Grid size={{ xs: 12 }}>
+                      <RoomIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'success.main' }} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        color="textSecondary" 
+                        variant="body2" 
+                        sx={{ 
+                          fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                          lineHeight: 1.1
+                        }}
+                      >
+                        Đã phân phòng
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        variant="h6" 
+                        component="div" 
+                        color="success.main" 
+                        sx={{ 
+                          fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                          fontWeight: 'bold',
+                          lineHeight: 1.1
+                        }}
+                      >
+                        {stats.assignedClasses}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid size={{ xs: 3, sm: 4, md: 2 }}>
+              <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
+                <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
+                  <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
+                    <Grid size={{ xs: 12 }}>
+                      <CalendarIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'info.main' }} />
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        color="textSecondary" 
+                        variant="body2" 
+                        sx={{ 
+                          fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
+                          lineHeight: 1.1
+                        }}
+                      >
+                        Tỷ lệ phân phòng
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12 }}>
+                      <Typography 
+                        variant="h6" 
+                        component="div" 
+                        color="info.main" 
+                        sx={{ 
+                          fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
+                          fontWeight: 'bold',
+                          lineHeight: 1.1
+                        }}
+                      >
+                        {stats.assignmentRate}%
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        )}
 
       {/* Filters */}
-      <Card sx={{ mb: 3, boxShadow: 2 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
+        <Paper sx={{ p: { xs: 1, sm: 1.5, md: 2 }, mb: { xs: 1.5, sm: 2, md: 2.5 }, flexShrink: 0 }}>
+          <Typography 
+            variant="h6" 
+            gutterBottom
+            sx={{
+              fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+              mb: { xs: 1, sm: 1.5 }
+            }}
+          >
             Bộ lọc
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Tuần</InputLabel>
-                <Select
-                  value={filterWeek}
-                  onChange={(e) => setFilterWeek(e.target.value)}
-                  label="Tuần"
+          <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <FormControl 
+                fullWidth 
+                size={isMobile ? "small" : "medium"}
+              >
+                <InputLabel 
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                 >
-                  <MenuItem value="all">Tất cả</MenuItem>
-                  <MenuItem value="1">Tuần 1</MenuItem>
-                  <MenuItem value="2">Tuần 2</MenuItem>
-                  <MenuItem value="3">Tuần 3</MenuItem>
-                  <MenuItem value="4">Tuần 4</MenuItem>
+                  Khoa
+                </InputLabel>
+                <Select
+                  value={selectedDepartment}
+                  label="Khoa"
+                  onChange={(e) => {
+                    dispatch(setSelectedDepartment(e.target.value));
+                    // Reset các filter khác khi thay đổi khoa
+                    dispatch(setSelectedClass(''));
+                    dispatch(setSelectedTeacher(''));
+                  }}
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                >
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                      {dept.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
-            </Box>
-            <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Thứ</InputLabel>
-                <Select
-                  value={filterDay}
-                  onChange={(e) => setFilterDay(e.target.value)}
-                  label="Thứ"
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <FormControl 
+                fullWidth 
+                size={isMobile ? "small" : "medium"}
+              >
+                <InputLabel 
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                 >
-                  <MenuItem value="all">Tất cả</MenuItem>
-                  <MenuItem value="2">Thứ 2</MenuItem>
-                  <MenuItem value="3">Thứ 3</MenuItem>
-                  <MenuItem value="4">Thứ 4</MenuItem>
-                  <MenuItem value="5">Thứ 5</MenuItem>
-                  <MenuItem value="6">Thứ 6</MenuItem>
+                  Lớp học
+                </InputLabel>
+                <Select
+                  value={selectedClass}
+                  label="Lớp học"
+                  onChange={(e) => dispatch(setSelectedClass(e.target.value))}
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                >
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
+                  {filteredClassesForDropdown.map((cls) => (
+                    <MenuItem key={cls.classId} value={cls.classId.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                      {cls.className} ({cls.subjectCode})
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
-            </Box>
-            <Box sx={{ flex: '1 1 200px', minWidth: 200 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Trạng thái</InputLabel>
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <FormControl 
+                fullWidth 
+                size={isMobile ? "small" : "medium"}
+              >
+                <InputLabel 
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                >
+                  Giảng viên
+                </InputLabel>
                 <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
+                  value={selectedTeacher}
+                  label="Giảng viên"
+                  onChange={(e) => dispatch(setSelectedTeacher(e.target.value))}
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                >
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
+                  {filteredTeachersForDropdown.map((teacher) => (
+                    <MenuItem key={teacher.id} value={teacher.id.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                      {teacher.fullName} ({teacher.teacherCode})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+              <FormControl 
+                fullWidth 
+                size={isMobile ? "small" : "medium"}
+              >
+                <InputLabel 
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                >
+                  Trạng thái
+                </InputLabel>
+                <Select
+                  value={selectedStatus}
                   label="Trạng thái"
+                  onChange={(e) => dispatch(setSelectedStatus(e.target.value))}
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                 >
-                  <MenuItem value="all">Tất cả</MenuItem>
-                  <MenuItem value="scheduled">Đã sắp xếp</MenuItem>
-                  <MenuItem value="pending">Chưa sắp xếp</MenuItem>
-                  <MenuItem value="conflict">Xung đột</MenuItem>
+                  <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
+                  {requestTypes.map(type => (
+                    <MenuItem key={type.id} value={type.id.toString()} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                      {type.name}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
+            </Grid>
+          </Grid>
+        </Paper>
 
-      {/* DataGrid */}
-       <Paper sx={{ 
-         height: 600, 
-         minWidth: 1200
-       }}>
-        <DataGrid
-          apiRef={dataGridRef}
-          rows={filteredSchedules}
-          columns={columns}
-          getRowId={(row) => row.id}
-          loading={loading}
-          pageSizeOptions={[10, 25, 50, 100]}
-          initialState={{
-            pagination: {
-              paginationModel: { page: 0, pageSize: 25 },
-            },
-          }}
-          disableRowSelectionOnClick
-          disableColumnFilter
-          disableColumnMenu={false}
-          disableColumnResize={false}
-          autoPageSize={false}
-           sx={{
-             minWidth: 1200,
-             height: 600,
-             '& .MuiDataGrid-columnHeader:last-child': {
-               display: 'none',
-             },
-             '& .MuiDataGrid-cell:last-child': {
-               display: 'none',
-             },
-             '& .MuiDataGrid-columnHeaders': {
-               backgroundColor: 'primary.main',
-               color: 'black',
-               '& .MuiDataGrid-columnHeaderTitle': {
-                 color: 'black',
-                 fontWeight: 'bold',
-               },
-             },
-             '& .MuiDataGrid-cell': {
-               fontSize: '0.75rem',
-             },
-             '& .MuiDataGrid-row': {
-               minHeight: '60px',
-             },
-           }}
-          slots={{
-            toolbar: GridToolbar,
-          }}
-          slotProps={{
-            toolbar: {
-              showQuickFilter: false,
-            },
-          }}
-          density="comfortable"
-          checkboxSelection={false}
-          disableColumnSelector={false}
-          disableDensitySelector={false}
-        />
-      </Paper>
+        {/* Data Grid */}
+        <Paper sx={{ 
+          flex: 1,
+          minHeight: 0,
+          maxHeight: '100%',
+          width: '100%', 
+          maxWidth: '100%',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <StyledDataGrid
+            apiRef={dataGridRef}
+            rows={scheduleRows}
+            columns={columns}
+            pageSizeOptions={[10, 25, 50]}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 5 } }
+            }}
+            disableRowSelectionOnClick
+            disableColumnFilter={isMobile}
+            disableColumnMenu={isMobile}
+            disableColumnResize={isMobile || isTablet}
+            columnHeaderHeight={isMobile ? 48 : isTablet ? 52 : 56}
+            getRowHeight={() => 'auto'}
+            isMobile={isMobile}
+            isTablet={isTablet}
+            onRowDoubleClick={handleRowDoubleClick}
+            slots={{
+              toolbar: isMobile ? undefined : GridToolbar,
+            }}
+          />
+        </Paper>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Chỉnh sửa lịch sắp xếp phòng</DialogTitle>
-        <DialogContent>
+      {/* Assign Room Dialog */}
+      <Dialog 
+        open={assignDialogOpen} 
+        onClose={() => dispatch(closeAssignDialog())} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+            pb: { xs: 1, sm: 1.5 }
+          }}
+        >
+          Gán phòng cho lịch học
           {selectedSchedule && (
-            <Box sx={{ pt: 2 }}>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
-                  <TextField
-                    fullWidth
-                    label="Lớp học"
-                    value={selectedSchedule.className}
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+            >
+              {selectedSchedule.dayName} - {selectedSchedule.timeSlot}
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+          <FormControl 
+            fullWidth 
+            size={isMobile ? "small" : "medium"}
+            sx={{ mt: { xs: 1, sm: 1.5, md: 2 } }}
+          >
+            <InputLabel
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+            >
+              Chọn phòng
+            </InputLabel>
+            {loadingRooms ? (
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  py: { xs: 2, sm: 2.5, md: 3 },
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 1,
+                  backgroundColor: '#f5f5f5'
+                }}
+              >
+                <CircularProgress size={isMobile ? 20 : 24} sx={{ mr: 2 }} />
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                >
+                  Đang tải danh sách phòng...
+                </Typography>
+              </Box>
+            ) : (
+              <Select
+                value={selectedRoom}
+                label="Chọn phòng"
+                onChange={(e) => dispatch(setSelectedRoom(e.target.value))}
+                disabled={loadingRooms}
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+              >
+                {availableRooms.length === 0 ? (
+                  <MenuItem 
                     disabled
-                    size="small"
-                  />
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
-                  <TextField
-                    fullWidth
-                    label="Giảng viên"
-                    value={selectedSchedule.teacherName}
-                    disabled
-                    size="small"
-                  />
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Phòng học</InputLabel>
-                    <Select
-                      value={selectedSchedule.roomId || ''}
-                      label="Phòng học"
-                      onChange={(e) => {
-                        const roomId = e.target.value as number;
-                        const selectedRoom = rooms.find(r => r.id === roomId);
-                        setSelectedSchedule(prev => prev ? {
-                          ...prev,
-                          roomId: roomId || null,
-                          roomName: selectedRoom?.name || null,
-                          status: roomId ? 'scheduled' : 'pending'
-                        } : null);
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                  >
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary" 
+                      sx={{ 
+                        fontStyle: 'italic',
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' }
                       }}
                     >
-                      <MenuItem value="">
-                        <em>Chưa sắp xếp</em>
+                      Không có phòng phù hợp
+                    </Typography>
+                  </MenuItem>
+                ) : (
+                  availableRooms.map((room) => {
+                    const hasConflict = !room.isAvailable;
+                    return (
+                      <MenuItem 
+                        key={room.id} 
+                        value={room.id}
+                        disabled={hasConflict}
+                        sx={{ 
+                          opacity: hasConflict ? 0.5 : 1,
+                          backgroundColor: hasConflict ? '#ffebee' : 'transparent',
+                          fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                        }}
+                      >
+                        <Box sx={{ width: '100%' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                            <Typography 
+                              variant="body1" 
+                              fontWeight="bold"
+                              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                            >
+                              {room.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <Chip 
+                                label={room.type} 
+                                size="small" 
+                                color={room.type === 'Lý thuyết' ? 'primary' : 'secondary'} 
+                                variant="outlined"
+                                sx={{ 
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                  height: { xs: 18, sm: 20, md: 24 }
+                                }}
+                              />
+                              {hasConflict && (
+                                <Chip 
+                                  label="Đã sử dụng" 
+                                  size="small" 
+                                  color="error" 
+                                  variant="filled"
+                                  sx={{ 
+                                    fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                    height: { xs: 18, sm: 20, md: 24 }
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{ 
+                              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                              wordBreak: 'break-word',
+                              whiteSpace: 'normal',
+                              mt: 0.5
+                            }}
+                          >
+                            {room.code} - {room.capacity} chỗ - {room.building} tầng {room.floor}
+                          </Typography>
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{ 
+                              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                              wordBreak: 'break-word',
+                              whiteSpace: 'normal'
+                            }}
+                          >
+                            {room.department} {room.isSameDepartment && '✓'}
+                          </Typography>
+                          {hasConflict && room.conflictInfo && (
+                            <Typography 
+                              variant="caption" 
+                              color="error"
+                              sx={{ 
+                                fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                wordBreak: 'break-word',
+                                whiteSpace: 'normal',
+                                display: 'block',
+                                mt: 0.5
+                              }}
+                            >
+                              ⚠️ Đã được sử dụng bởi {room.conflictInfo.className} ({room.conflictInfo.teacherName}) 
+                              trong khung giờ {room.conflictInfo.time}
+                            </Typography>
+                          )}
+                        </Box>
                       </MenuItem>
-                      {rooms.map((room) => (
-                        <MenuItem key={room.id} value={room.id}>
-                          {room.name} - {room.capacity} chỗ
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Tiết học</InputLabel>
-                    <Select
-                      value={selectedSchedule.timeSlotId}
-                      label="Tiết học"
-                    >
-                      {timeSlots.map((slot) => (
-                        <MenuItem key={slot.id} value={slot.id}>
-                          {slot.name} - {slot.time}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Thứ</InputLabel>
-                    <Select
-                      value={selectedSchedule.dayOfWeek}
-                      label="Thứ"
-                    >
-                      <MenuItem value={2}>Thứ 2</MenuItem>
-                      <MenuItem value={3}>Thứ 3</MenuItem>
-                      <MenuItem value={4}>Thứ 4</MenuItem>
-                      <MenuItem value={5}>Thứ 5</MenuItem>
-                      <MenuItem value={6}>Thứ 6</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-                <Box sx={{ flex: '1 1 300px', minWidth: 300 }}>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Trạng thái</InputLabel>
-                    <Select
-                      value={selectedSchedule.status}
-                      label="Trạng thái"
-                    >
-                      <MenuItem value="scheduled">Đã sắp xếp</MenuItem>
-                      <MenuItem value="pending">Chưa sắp xếp</MenuItem>
-                      <MenuItem value="conflict">Xung đột</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Box>
-              </Box>
-            </Box>
-          )}
+                    );
+                  })
+                )}
+              </Select>
+            )}
+          </FormControl>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Hủy</Button>
-          <Button onClick={handleSaveEdit} variant="contained">
-            Lưu thay đổi
+        <DialogActions sx={{ p: { xs: 1, sm: 1.5, md: 2 }, gap: { xs: 1, sm: 1.5 } }}>
+          <Button 
+            onClick={() => dispatch(closeAssignDialog())}
+            size={isMobile ? "medium" : "large"}
+            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+          >
+            Hủy
+          </Button>
+          <Button 
+            onClick={handleAssignRoom} 
+            variant="contained"
+            disabled={!selectedRoom || isAssigning || loadingRooms}
+            startIcon={isAssigning ? <CircularProgress size={isMobile ? 16 : 20} /> : <AssignmentIcon />}
+            size={isMobile ? "medium" : "large"}
+            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+          >
+            {isAssigning ? 'Đang gán phòng...' : loadingRooms ? 'Đang tải phòng...' : 'Gán phòng'}
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+
+      {/* Class Detail Dialog */}
+      <Dialog 
+        open={classDetailDialogOpen} 
+        onClose={() => setClassDetailDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+            pb: { xs: 1, sm: 1.5 }
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <ClassIcon color="primary" />
+            <Typography variant="h6" component="span">
+              Thông tin lớp học
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+          {selectedClassDetail && (
+            <Grid container spacing={2}>
+              {/* Thông tin cơ bản */}
+              <Grid size={{ xs: 12 }}>
+                <Paper sx={{ 
+                  p: 2, 
+                  bgcolor: 'primary.main', 
+                  color: 'white',
+                  background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
+                }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }, fontWeight: 'bold' }}>
+                    {selectedClassDetail.className}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }, opacity: 0.95 }}>
+                    Mã môn học: {selectedClassDetail.subjectCode}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Thông tin chi tiết */}
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <PersonIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Giảng viên
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.teacherName}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <RoomIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Khoa
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.departmentName}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <ClassIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Loại phòng
+                      </Typography>
+                    </Box>
+                    <Chip 
+                      label={selectedClassDetail.classRoomTypeName} 
+                      size="small" 
+                      color={selectedClassDetail.classRoomTypeId === 1 ? 'primary' : 'secondary'} 
+                      variant="outlined"
+                      sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <PersonIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Số lượng sinh viên
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.maxStudents} sinh viên
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <ScheduleIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Trạng thái
+                      </Typography>
+                    </Box>
+                    {(() => {
+                      const statusType = requestTypes.find(type => type.id === selectedClassDetail.statusId);
+                      if (statusType) {
+                        let color: 'warning' | 'success' | 'default' = 'default';
+                        if (statusType.id === 1) color = 'warning'; 
+                        else if (statusType.id === 2) color = 'success';
+                        return (
+                          <Chip 
+                            label={statusType.name} 
+                            size="small" 
+                            color={color}
+                            variant="filled"
+                            sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                          />
+                        );
+                      }
+                      return (
+                        <Chip 
+                          label="Không xác định" 
+                          size="small" 
+                          color="default"
+                          variant="filled"
+                          sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                        />
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Danh sách lịch học */}
+              <Grid size={{ xs: 12 }}>
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                    mt: 2,
+                    mb: 1
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <CalendarIcon color="primary" />
+                    Danh sách lịch học
+                  </Box>
+                </Typography>
+                {selectedClassDetail.schedules && selectedClassDetail.schedules.length > 0 ? (
+                  <Grid container spacing={1.5}>
+                    {selectedClassDetail.schedules.map((schedule: ScheduleData, index: number) => (
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={schedule.id || index}>
+                        <Card 
+                          sx={{ 
+                            height: '100%',
+                            border: schedule.statusId === 1 ? '2px solid' : '1px solid',
+                            borderColor: schedule.statusId === 1 ? '#ff9800' : '#e0e0e0',
+                            bgcolor: schedule.statusId === 1 ? '#fff3e0' : 'background.paper',
+                            '&:hover': {
+                              boxShadow: 3,
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.2s ease-in-out'
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ p: { xs: 1, sm: 1.5 } }}>
+                            <Box display="flex" alignItems="center" gap={1} mb={1}>
+                              <Chip 
+                                label={schedule.dayName} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined"
+                                sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                              />
+                              <Chip 
+                                label={schedule.timeSlot} 
+                                size="small" 
+                                color="secondary" 
+                                variant="outlined"
+                                sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                              />
+                            </Box>
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary"
+                              sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' }, mb: 0.5 }}
+                            >
+                              {schedule.startTime} - {schedule.endTime}
+                            </Typography>
+                            {schedule.roomName ? (
+                              <Box 
+                                display="flex" 
+                                alignItems="center" 
+                                gap={0.5} 
+                                mt={1}
+                                sx={{
+                                  p: 1,
+                                  borderRadius: 1,
+                                  bgcolor: 'success.light',
+                                  border: '1px solid',
+                                  borderColor: 'success.main'
+                                }}
+                              >
+                                <RoomIcon fontSize="small" color="success" />
+                                <Typography 
+                                  variant="body2" 
+                                  fontWeight="bold"
+                                  color="success.dark"
+                                  sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' } }}
+                                >
+                                  {schedule.roomName}
+                                </Typography>
+                                {schedule.roomCode && (
+                                  <Typography 
+                                    variant="caption" 
+                                    color="success.dark"
+                                    sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, opacity: 0.8 }}
+                                  >
+                                    ({schedule.roomCode})
+                                  </Typography>
+                                )}
+                              </Box>
+                            ) : (
+                              <Box 
+                                display="flex" 
+                                alignItems="center" 
+                                gap={0.5} 
+                                mt={1}
+                                sx={{
+                                  p: 1,
+                                  borderRadius: 1,
+                                  bgcolor: '#fff3e0',
+                                  border: '1px solid',
+                                  borderColor: '#ff9800'
+                                }}
+                              >
+                                <RoomIcon fontSize="small" sx={{ color: '#f57c00' }} />
+                                <Typography 
+                                  variant="body2" 
+                                  fontWeight="bold"
+                                  sx={{ 
+                                    fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+                                    color: '#e65100'
+                                  }}
+                                >
+                                  Chưa gán phòng
+                                </Typography>
+                              </Box>
+                            )}
+                            {schedule.practiceGroup && (
+                              <Chip 
+                                label={`Nhóm TH: ${schedule.practiceGroup}`} 
+                                size="small" 
+                                color="secondary" 
+                                variant="filled"
+                                sx={{ 
+                                  mt: 1,
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }
+                                }}
+                              />
+                            )}
+                            {schedule.note && (
+                              <Typography 
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{ 
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                  display: 'block',
+                                  mt: 1,
+                                  fontStyle: 'italic'
+                                }}
+                              >
+                                Ghi chú: {schedule.note}
+                              </Typography>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Alert severity="info" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                    Lớp học này chưa có lịch học nào.
+                  </Alert>
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: { xs: 1, sm: 1.5, md: 2 }, gap: { xs: 1, sm: 1.5 } }}>
+          <Button 
+            onClick={() => setClassDetailDialogOpen(false)}
+            size={isMobile ? "medium" : "large"}
+            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+          >
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+    </Box>
   );
 };
 
