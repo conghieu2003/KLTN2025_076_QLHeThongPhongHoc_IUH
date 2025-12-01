@@ -32,22 +32,18 @@ class ScheduleManagementService {
         orderBy: { createdAt: 'desc' }
       });
 
-      // Lọc chỉ lấy lớp đã có phòng (có ít nhất 1 schedule với statusId = 2 hoặc 3 VÀ có classRoomId)
-      const classesWithRooms = classes.filter(cls => {
-        return cls.classSchedules.some(schedule => 
-          (schedule.statusId === 2 || schedule.statusId === 3) && schedule.classRoomId !== null
-        );
+      // Lọc chỉ lấy lớp có classSchedules (có lịch học)
+      const classesWithSchedules = classes.filter(cls => {
+        return cls.classSchedules && cls.classSchedules.length > 0;
       });
 
-      return classesWithRooms.map(cls => {
+      return classesWithSchedules.map(cls => {
          // Xác định trạng thái lớp: chỉ khi TẤT CẢ lịch học đều có phòng mới coi là "Đã phân phòng"
          const allSchedulesAssigned = cls.classSchedules.length > 0 && cls.classSchedules.every(schedule => schedule.statusId === 2);
          const classStatusId = allSchedulesAssigned ? 2 : 1;
          
-         // Lọc chỉ lấy schedules đã có phòng (statusId = 2 hoặc 3 VÀ có classRoomId)
-         const assignedSchedules = cls.classSchedules.filter(schedule => 
-           (schedule.statusId === 2 || schedule.statusId === 3) && schedule.classRoomId !== null
-         );
+         // Lấy TẤT CẢ schedules (bao gồm cả schedules chưa có phòng)
+         const allSchedules = cls.classSchedules;
         
         return {
           id: cls.id.toString(),
@@ -65,9 +61,7 @@ class ScheduleManagementService {
           classRoomTypeName: cls.ClassRoomType?.name || 'Chưa xác định',
           departmentId: cls.departmentId,
           statusId: classStatusId, // Trả về trực tiếp RequestType ID
-          schedules: assignedSchedules
-            .filter(schedule => schedule.classRoomId !== null) // Chỉ lấy schedule đã có phòng
-            .map(schedule => ({
+          schedules: allSchedules.map(schedule => ({
               id: schedule.id,
               dayOfWeek: schedule.dayOfWeek,
               dayName: this.getDayName(schedule.dayOfWeek),
