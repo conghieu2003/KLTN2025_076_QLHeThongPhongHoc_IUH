@@ -92,6 +92,23 @@ class SocketClient {
       console.error('[Socket Client] Lỗi khi gửi sự kiện schedule-exception-updated:', error.message);
     }
   }
+
+  /**
+   * Emit schedule request created event
+   * @param {Object} data - Schedule request data with userIds
+   */
+  static async emitScheduleRequestCreated(data) {
+    try {
+      await axios.post(`${SOCKET_SERVER_URL}/api/socket/schedule-request-created`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-backend-token': BACKEND_TOKEN
+        }
+      });
+    } catch (error) {
+      console.error('[Socket Client] Lỗi khi gửi sự kiện schedule-request-created:', error.message);
+    }
+  }
 }
 
 module.exports = SocketClient;

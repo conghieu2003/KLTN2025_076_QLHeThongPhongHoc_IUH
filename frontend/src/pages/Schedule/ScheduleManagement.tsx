@@ -27,16 +27,6 @@ interface TimeSlot {
   shift: string;
 }
 
-interface Room {
-  id: number;
-  code: string;
-  name: string;
-  capacity: number;
-  building: string;
-  floor: number;
-  type: string;
-}
-
 interface Teacher {
   id: number;
   name: string;
@@ -115,7 +105,6 @@ const ScheduleManagement = () => {
   // API data state
   const [departments, setDepartments] = useState<Department[]>([]);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [requestTypes, setRequestTypes] = useState<RequestType[]>([]);
   const [classes, setClasses] = useState<any[]>([]); // Danh sách lớp học cho thi cuối kỳ
@@ -145,10 +134,9 @@ const ScheduleManagement = () => {
         dispatch(getAvailableSchedules({}));
 
         // Load API data
-        const [departmentsRes, timeSlotsRes, roomsRes, teachersRes, requestTypesRes, classesRes] = await Promise.all([
+        const [departmentsRes, timeSlotsRes, teachersRes, requestTypesRes, classesRes] = await Promise.all([
           scheduleExceptionService.getDepartments(),
           scheduleExceptionService.getTimeSlots(),
-          scheduleExceptionService.getRooms(),
           scheduleExceptionService.getTeachers(),
           scheduleExceptionService.getRequestTypes(),
           scheduleManagementService.getClassesForScheduling() // Load classes cho thi cuối kỳ
@@ -159,9 +147,6 @@ const ScheduleManagement = () => {
         }
         if (timeSlotsRes.success) {
           setTimeSlots(timeSlotsRes.data || []);
-        }
-        if (roomsRes.success) {
-          setRooms(roomsRes.data || []);
         }
         if (teachersRes.success) {
           setTeachers(teachersRes.data || []);
@@ -190,7 +175,7 @@ const ScheduleManagement = () => {
     loadData();
   }, [dispatch]);
 
-  // Kiểm tra phòng available khi chọn ngày/tiết mới cho exception moved/exam/finalExam
+  // Kiểm tra phòng available khi chọn ngày/tiết mới cho exception moved/exam/finalExam - chỉ lấy phòng của khoa
   useEffect(() => {
     const checkAvailableRooms = async () => {
       const isFinalExam = formData.exceptionType === 'finalExam';
@@ -211,6 +196,54 @@ const ScheduleManagement = () => {
             return;
           }
           
+          // Lấy departmentId và classRoomTypeId từ lớp học đã chọn
+          let departmentId: number | undefined = undefined;
+          let classRoomTypeId: string | undefined = undefined;
+          let classMaxStudents: number | undefined = undefined;
+          
+          if (isFinalExam && formData.classId) {
+            const selectedClass = classes.find(c => {
+              const classId = c.classId || c.id;
+              return classId === formData.classId;
+            });
+            departmentId = selectedClass?.departmentId;
+            
+            // Lấy thông tin loại phòng từ schedule đầu tiên có phòng hoặc từ class
+            if (selectedClass) {
+              classMaxStudents = selectedClass.maxStudents;
+              
+              // Ưu tiên lấy từ classRoomTypeId của class
+              if (selectedClass.classRoomTypeId) {
+                classRoomTypeId = String(selectedClass.classRoomTypeId);
+              } else if (selectedClass.schedules && Array.isArray(selectedClass.schedules)) {
+                const firstScheduleWithRoom = selectedClass.schedules.find((s: any) => {
+                  const hasRoom = (s.roomId !== null && s.roomId !== undefined) || 
+                                 (s.classRoomId !== null && s.classRoomId !== undefined) ||
+                                 (s.roomName && s.roomName !== null);
+                  const hasValidStatus = s.statusId === 2 || s.statusId === 3;
+                  return hasRoom && hasValidStatus;
+                });
+                
+                if (firstScheduleWithRoom) {
+                  // Lấy loại phòng từ schedule
+                  classRoomTypeId = firstScheduleWithRoom.classRoomTypeId 
+                    ? String(firstScheduleWithRoom.classRoomTypeId)
+                    : (firstScheduleWithRoom.classRoomTypeName === 'Thực hành' ? '2' : '1');
+                }
+              }
+              
+              // Nếu vẫn chưa có, mặc định là lý thuyết
+              if (!classRoomTypeId) {
+                classRoomTypeId = '1';
+              }
+            }
+          } else if (formData.classScheduleId) {
+            const selectedSchedule = availableSchedules.find(s => s.id === formData.classScheduleId);
+            departmentId = selectedSchedule?.departmentId;
+            // Lấy loại phòng từ schedule
+            classRoomTypeId = selectedSchedule?.classType === 'practice' ? '2' : '1';
+          }
+          
           const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
           const dayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
           
@@ -221,10 +254,14 @@ const ScheduleManagement = () => {
             return;
           }
           
+          // Gọi API với departmentId và classRoomTypeId để lọc phòng theo khoa và loại phòng
           const response = await roomService.getAvailableRoomsForException(
             formData.newTimeSlotId,
             dayOfWeek,
-            formattedDate
+            formattedDate,
+            classMaxStudents, // capacity
+            classRoomTypeId, // classRoomTypeId - lý thuyết (1) hoặc thực hành (2)
+            departmentId ? String(departmentId) : undefined // departmentId
           );
 
           if (response.success && response.data) {
@@ -267,7 +304,7 @@ const ScheduleManagement = () => {
       };
 
       checkAvailableRooms();
-    }, [formData.exceptionType, formData.newDate, formData.exceptionDate, formData.newTimeSlotId]);
+    }, [formData.exceptionType, formData.newDate, formData.exceptionDate, formData.newTimeSlotId, formData.classScheduleId, formData.classId, availableSchedules, classes]);
 
   // Filter available schedules
   const filteredSchedules = useMemo(() => {
@@ -1249,8 +1286,14 @@ const ScheduleManagement = () => {
                       <InputLabel>Chọn lớp học</InputLabel>
                       <Select
                         value={
-                          formData.classId && classes.length > 0 && classes.find(c => c.id === formData.classId)
-                            ? String(formData.classId)
+                          formData.classId && classes.length > 0 
+                            ? (() => {
+                                const found = classes.find(c => {
+                                  const classId = c.classId || c.id;
+                                  return classId === formData.classId;
+                                });
+                                return found ? String(formData.classId) : '';
+                              })()
                             : ''
                         }
                         displayEmpty
@@ -1258,21 +1301,18 @@ const ScheduleManagement = () => {
                           if (!selected) {
                             return <em>-- Chọn lớp học --</em>;
                           }
-                          const selectedClass = classes.find(c => String(c.id) === selected);
+                          const selectedClass = classes.find(c => {
+                            const classId = c.classId || c.id;
+                            return String(classId) === selected;
+                          });
                           if (selectedClass) {
-                            // Lấy schedule đầu tiên có phòng để hiển thị
-                            const firstScheduleWithRoom = (selectedClass.schedules || []).find((s: any) => 
-                              (s.statusId === 2 || s.statusId === 3) && s.roomId !== null
-                            );
-                            if (firstScheduleWithRoom) {
-                              return `${selectedClass.className} - ${selectedClass.code || selectedClass.subjectCode || ''} | ${firstScheduleWithRoom.dayName} - ${firstScheduleWithRoom.timeSlot} | ${firstScheduleWithRoom.roomName || 'Chưa xác định'}`;
-                            }
                             return `${selectedClass.className} - ${selectedClass.code || selectedClass.subjectCode || ''}`;
                           }
                           return <em>-- Chọn lớp học --</em>;
                         }}
                         onChange={(e) => {
-                          const classId = e.target.value ? parseInt(String(e.target.value)) : undefined;
+                          const selectedValue = e.target.value;
+                          const classId = selectedValue ? parseInt(String(selectedValue)) : undefined;
                           setFormData(prev => ({ 
                             ...prev, 
                             classId: classId,
@@ -1286,31 +1326,51 @@ const ScheduleManagement = () => {
                         <MenuItem value="">
                           <em>-- Chọn lớp học --</em>
                         </MenuItem>
-                        {Array.isArray(classes) && classes.length > 0 ? (
-                          classes.flatMap(cls => {
-                            // Lấy tất cả schedules đã có phòng (statusId = 2 hoặc 3 VÀ có classRoomId)
-                            const schedulesWithRooms = (cls.schedules || []).filter((s: any) => 
-                              (s.statusId === 2 || s.statusId === 3) && s.roomId !== null
-                            );
-                            
-                            // Nếu không có schedule nào có phòng, không hiển thị lớp này
-                            if (schedulesWithRooms.length === 0) {
-                              return [];
-                            }
-                            
-                            // Hiển thị từng schedule có phòng như một MenuItem riêng
-                            // Format: "Tên lớp - Mã lớp | Thứ X - Tiết X | Phòng X"
-                            return schedulesWithRooms.map((schedule: any) => (
-                              <MenuItem key={`${cls.id}-${schedule.id}`} value={String(cls.id)}>
-                                {cls.className} - {cls.code || cls.subjectCode || ''} | {schedule.dayName} - {schedule.timeSlot} | {schedule.roomName || 'Chưa xác định'}
+                        {(() => {
+                          if (!Array.isArray(classes) || classes.length === 0) {
+                            return (
+                              <MenuItem disabled value="">
+                                <em>{Array.isArray(classes) && classes.length === 0 ? 'Đang tải danh sách lớp học...' : 'Không có lớp học'}</em>
                               </MenuItem>
-                            ));
-                          })
-                        ) : (
-                          <MenuItem disabled value="">
-                            <em>{Array.isArray(classes) && classes.length === 0 ? 'Đang tải danh sách lớp học...' : 'Không có lớp học'}</em>
-                          </MenuItem>
-                        )}
+                            );
+                          }
+                          
+                          // Lọc lớp có schedule đã có phòng
+                          const filteredClasses = classes.filter(cls => {
+                            const schedules = cls.schedules || [];
+                            if (schedules.length === 0) return false;
+                            
+                            // Kiểm tra xem có schedule nào có phòng không
+                            const schedulesWithRooms = schedules.filter((s: any) => {
+                              const hasRoom = (s.roomId !== null && s.roomId !== undefined) || 
+                                             (s.classRoomId !== null && s.classRoomId !== undefined) ||
+                                             (s.roomName && s.roomName !== null && s.roomName !== 'Chưa xác định');
+                              const hasValidStatus = s.statusId === 2 || s.statusId === 3;
+                              return hasRoom && hasValidStatus;
+                            });
+                            
+                            return schedulesWithRooms.length > 0;
+                          });
+                          
+                          if (filteredClasses.length === 0) {
+                            return (
+                              <MenuItem disabled value="">
+                                <em>Không có lớp học nào đã có phòng</em>
+                              </MenuItem>
+                            );
+                          }
+                          
+                          return filteredClasses.map(cls => {
+                            // Lấy classId (có thể là id hoặc classId)
+                            const classId = cls.classId || cls.id;
+                            const displayName = `${cls.className || 'Chưa có tên'} - ${cls.code || cls.subjectCode || ''}`;
+                            return (
+                              <MenuItem key={classId} value={String(classId)}>
+                                {displayName}
+                              </MenuItem>
+                            );
+                          });
+                        })()}
                       </Select>
                     </FormControl>
                   </Box>

@@ -18,6 +18,8 @@ const RoomScheduling: React.FC = () => {
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const dataGridRef = useGridApiRef();
   const { classes, departments, teachers, stats, requestTypes, availableRooms, selectedDepartment, selectedClass, selectedTeacher, selectedStatus, loading, refreshing, loadingRooms, error, assignDialogOpen, selectedSchedule, selectedRoom, isAssigning } = useSelector((state: RootState) => state.roomScheduling);
+  const [classDetailDialogOpen, setClassDetailDialogOpen] = React.useState(false);
+  const [selectedClassDetail, setSelectedClassDetail] = React.useState<any>(null);
   const handleLoadAllData = useCallback(() => { dispatch(loadAllData());}, [dispatch]);
   const handleAssignRoom = async () => {
     if (!selectedSchedule || !selectedRoom) {
@@ -84,6 +86,15 @@ const RoomScheduling: React.FC = () => {
       }
     } else {
       dispatch(loadAvailableRooms(schedule.scheduleId.toString()));
+    }
+  };
+
+  const handleRowDoubleClick = (params: any) => {
+    const row = params.row;
+    const classInfo = classes.find(c => c.classId === row.classId);
+    if (classInfo) {
+      setSelectedClassDetail(classInfo);
+      setClassDetailDialogOpen(true);
     }
   };
 
@@ -1006,6 +1017,7 @@ const RoomScheduling: React.FC = () => {
             getRowHeight={() => 'auto'}
             isMobile={isMobile}
             isTablet={isTablet}
+            onRowDoubleClick={handleRowDoubleClick}
             slots={{
               toolbar: isMobile ? undefined : GridToolbar,
             }}
@@ -1206,6 +1218,323 @@ const RoomScheduling: React.FC = () => {
             sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
           >
             {isAssigning ? 'Đang gán phòng...' : loadingRooms ? 'Đang tải phòng...' : 'Gán phòng'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Class Detail Dialog */}
+      <Dialog 
+        open={classDetailDialogOpen} 
+        onClose={() => setClassDetailDialogOpen(false)} 
+        maxWidth="md" 
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle
+          sx={{
+            fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+            pb: { xs: 1, sm: 1.5 }
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <ClassIcon color="primary" />
+            <Typography variant="h6" component="span">
+              Thông tin lớp học
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+          {selectedClassDetail && (
+            <Grid container spacing={2}>
+              {/* Thông tin cơ bản */}
+              <Grid size={{ xs: 12 }}>
+                <Paper sx={{ 
+                  p: 2, 
+                  bgcolor: 'primary.main', 
+                  color: 'white',
+                  background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)'
+                }}>
+                  <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' }, fontWeight: 'bold' }}>
+                    {selectedClassDetail.className}
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }, opacity: 0.95 }}>
+                    Mã môn học: {selectedClassDetail.subjectCode}
+                  </Typography>
+                </Paper>
+              </Grid>
+
+              {/* Thông tin chi tiết */}
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <PersonIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Giảng viên
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.teacherName}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <RoomIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Khoa
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.departmentName}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <ClassIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Loại phòng
+                      </Typography>
+                    </Box>
+                    <Chip 
+                      label={selectedClassDetail.classRoomTypeName} 
+                      size="small" 
+                      color={selectedClassDetail.classRoomTypeId === 1 ? 'primary' : 'secondary'} 
+                      variant="outlined"
+                      sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                    />
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <PersonIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Số lượng sinh viên
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.maxStudents} sinh viên
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <ScheduleIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Trạng thái
+                      </Typography>
+                    </Box>
+                    {(() => {
+                      const statusType = requestTypes.find(type => type.id === selectedClassDetail.statusId);
+                      if (statusType) {
+                        let color: 'warning' | 'success' | 'default' = 'default';
+                        if (statusType.id === 1) color = 'warning'; 
+                        else if (statusType.id === 2) color = 'success';
+                        return (
+                          <Chip 
+                            label={statusType.name} 
+                            size="small" 
+                            color={color}
+                            variant="filled"
+                            sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                          />
+                        );
+                      }
+                      return (
+                        <Chip 
+                          label="Không xác định" 
+                          size="small" 
+                          color="default"
+                          variant="filled"
+                          sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                        />
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              {/* Danh sách lịch học */}
+              <Grid size={{ xs: 12 }}>
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                    mt: 2,
+                    mb: 1
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <CalendarIcon color="primary" />
+                    Danh sách lịch học
+                  </Box>
+                </Typography>
+                {selectedClassDetail.schedules && selectedClassDetail.schedules.length > 0 ? (
+                  <Grid container spacing={1.5}>
+                    {selectedClassDetail.schedules.map((schedule: ScheduleData, index: number) => (
+                      <Grid size={{ xs: 12, sm: 6, md: 4 }} key={schedule.id || index}>
+                        <Card 
+                          sx={{ 
+                            height: '100%',
+                            border: schedule.statusId === 1 ? '2px solid' : '1px solid',
+                            borderColor: schedule.statusId === 1 ? '#ff9800' : '#e0e0e0',
+                            bgcolor: schedule.statusId === 1 ? '#fff3e0' : 'background.paper',
+                            '&:hover': {
+                              boxShadow: 3,
+                              transform: 'translateY(-2px)',
+                              transition: 'all 0.2s ease-in-out'
+                            }
+                          }}
+                        >
+                          <CardContent sx={{ p: { xs: 1, sm: 1.5 } }}>
+                            <Box display="flex" alignItems="center" gap={1} mb={1}>
+                              <Chip 
+                                label={schedule.dayName} 
+                                size="small" 
+                                color="primary" 
+                                variant="outlined"
+                                sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                              />
+                              <Chip 
+                                label={schedule.timeSlot} 
+                                size="small" 
+                                color="secondary" 
+                                variant="outlined"
+                                sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' } }}
+                              />
+                            </Box>
+                            <Typography 
+                              variant="body2" 
+                              color="text.secondary"
+                              sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' }, mb: 0.5 }}
+                            >
+                              {schedule.startTime} - {schedule.endTime}
+                            </Typography>
+                            {schedule.roomName ? (
+                              <Box 
+                                display="flex" 
+                                alignItems="center" 
+                                gap={0.5} 
+                                mt={1}
+                                sx={{
+                                  p: 1,
+                                  borderRadius: 1,
+                                  bgcolor: 'success.light',
+                                  border: '1px solid',
+                                  borderColor: 'success.main'
+                                }}
+                              >
+                                <RoomIcon fontSize="small" color="success" />
+                                <Typography 
+                                  variant="body2" 
+                                  fontWeight="bold"
+                                  color="success.dark"
+                                  sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' } }}
+                                >
+                                  {schedule.roomName}
+                                </Typography>
+                                {schedule.roomCode && (
+                                  <Typography 
+                                    variant="caption" 
+                                    color="success.dark"
+                                    sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }, opacity: 0.8 }}
+                                  >
+                                    ({schedule.roomCode})
+                                  </Typography>
+                                )}
+                              </Box>
+                            ) : (
+                              <Box 
+                                display="flex" 
+                                alignItems="center" 
+                                gap={0.5} 
+                                mt={1}
+                                sx={{
+                                  p: 1,
+                                  borderRadius: 1,
+                                  bgcolor: '#fff3e0',
+                                  border: '1px solid',
+                                  borderColor: '#ff9800'
+                                }}
+                              >
+                                <RoomIcon fontSize="small" sx={{ color: '#f57c00' }} />
+                                <Typography 
+                                  variant="body2" 
+                                  fontWeight="bold"
+                                  sx={{ 
+                                    fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' },
+                                    color: '#e65100'
+                                  }}
+                                >
+                                  Chưa gán phòng
+                                </Typography>
+                              </Box>
+                            )}
+                            {schedule.practiceGroup && (
+                              <Chip 
+                                label={`Nhóm TH: ${schedule.practiceGroup}`} 
+                                size="small" 
+                                color="secondary" 
+                                variant="filled"
+                                sx={{ 
+                                  mt: 1,
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' }
+                                }}
+                              />
+                            )}
+                            {schedule.note && (
+                              <Typography 
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{ 
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
+                                  display: 'block',
+                                  mt: 1,
+                                  fontStyle: 'italic'
+                                }}
+                              >
+                                Ghi chú: {schedule.note}
+                              </Typography>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : (
+                  <Alert severity="info" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                    Lớp học này chưa có lịch học nào.
+                  </Alert>
+                )}
+              </Grid>
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: { xs: 1, sm: 1.5, md: 2 }, gap: { xs: 1, sm: 1.5 } }}>
+          <Button 
+            onClick={() => setClassDetailDialogOpen(false)}
+            size={isMobile ? "medium" : "large"}
+            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+          >
+            Đóng
           </Button>
         </DialogActions>
       </Dialog>

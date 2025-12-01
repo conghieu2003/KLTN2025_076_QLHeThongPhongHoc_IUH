@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Card, CardContent, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, Chip, CircularProgress, Paper, Divider, Stack, TextField, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Card, CardContent, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, Chip, CircularProgress, Paper, Stack, TextField, Grid, useTheme, useMediaQuery } from '@mui/material';
 import { Person as PersonIcon, Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
 import { roomService } from '../../services/api';
@@ -19,6 +19,25 @@ interface ProcessRequestData {
     movedToTimeSlotId?: number;
     movedToDate?: string;
     movedToDayOfWeek?: number;
+    exceptionDate?: string;
+    exceptionType?: string;
+    newClassRoomId?: number;
+    newTimeSlotId?: number;
+    newDate?: string; // Cho thi giữa kỳ
+    class?: { // Cho thi cuối kỳ
+        id: number;
+        code: string;
+        className: string;
+        subjectName: string;
+        subjectCode: string;
+        maxStudents: number;
+        departmentId: number;
+        classRoomTypeId?: number;
+        ClassRoomType?: {
+            id: number;
+            name: string;
+        };
+    };
     requester?: {
         id: number;
         fullName: string;
@@ -41,6 +60,7 @@ interface ProcessRequestData {
             subjectName: string;
             subjectCode: string;
             maxStudents: number;
+            departmentId: number; // Thêm departmentId
         };
         classRoom?: {
             id: number;
@@ -53,6 +73,15 @@ interface ProcessRequestData {
         };
         dayOfWeek: number;
         timeSlotId: number;
+    };
+    newClassRoom?: {
+        id: number;
+        code: string;
+        name: string;
+        capacity: number;
+        ClassRoomType?: {
+            name: string;
+        };
     };
 }
 
@@ -81,7 +110,6 @@ const ProcessRequest: React.FC = () => {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
 
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
@@ -111,44 +139,122 @@ const ProcessRequest: React.FC = () => {
                 await loadSuggestedRooms(response.data);
             } else {
                 toast.error('Không thể tải thông tin yêu cầu');
-                navigate('/rooms/requests');
+                navigate('/rooms/requests/list');
             }
         } catch (error) {
             console.error('Error loading request data:', error);
             toast.error('Có lỗi xảy ra khi tải dữ liệu');
-            navigate('/rooms/requests');
+            navigate('/rooms/requests/list');
         } finally {
             setLoading(false);
         }
     };
 
+    // Helper function: Kiểm tra xem có cần chọn phòng không
+    const shouldShowRoomSelection = (request: ProcessRequestData): boolean => {
+        const requestTypeId = request.requestTypeId;
+        
+        // Các loại không cần chọn phòng:
+        // 5: Tạm ngưng/Hủy lịch (không cần phòng)
+        // Các loại CẦN chọn phòng:
+        // 6: Thi giữa kỳ (admin chọn phòng khi duyệt)
+        // 8: Đổi lịch (cần chọn phòng)
+        // 10: Thi cuối kỳ (admin chọn phòng khi duyệt)
+        const noRoomNeeded = [5]; // Chỉ tạm ngưng không cần phòng
+        
+        return !noRoomNeeded.includes(requestTypeId);
+    };
+
     const loadSuggestedRooms = async (request: ProcessRequestData) => {
         try {
-            const classMaxStudents = request.classSchedule?.class?.maxStudents || 0;
-            const classRoomTypeId = request.classSchedule?.classRoom?.ClassRoomType?.name === 'Thực hành' ? '2' : '1';
+            // Nếu không cần chọn phòng, bỏ qua việc load suggested rooms
+            if (!shouldShowRoomSelection(request)) {
+                console.log('Room selection not needed for this request type');
+                setSuggestedRooms([]);
+                return;
+            }
 
-            console.log('Class requirements:', { classMaxStudents, classRoomTypeId });
-
-            if (request.RequestType?.name === 'Đổi lịch' && 
-                request.movedToTimeSlotId && 
-                request.movedToDayOfWeek && 
-                request.movedToDate) {
+            // Lấy thông tin lớp học
+            let classMaxStudents = 0;
+            let classRoomTypeId = '1';
+            let departmentId: number | undefined = undefined;
+            
+            // Xử lý thi cuối kỳ (RequestType 10) - không có classSchedule, có class
+            if (request.requestTypeId === 10 && request.class) {
+                classMaxStudents = request.class.maxStudents || 0;
+                departmentId = request.class.departmentId;
                 
+                // Lấy loại phòng từ classRoomTypeId hoặc ClassRoomType
+                if (request.class.classRoomTypeId) {
+                    classRoomTypeId = String(request.class.classRoomTypeId);
+                } else if (request.class.ClassRoomType?.name) {
+                    classRoomTypeId = request.class.ClassRoomType.name === 'Thực hành' ? '2' : '1';
+                } else {
+                    classRoomTypeId = '1';
+                }
+            } else if (request.classSchedule?.class) {
+                classMaxStudents = request.classSchedule.class.maxStudents || 0;
+                departmentId = request.classSchedule.class.departmentId;
+                
+                // Lấy loại phòng từ classRoom của schedule hoặc từ class
+                if (request.classSchedule.classRoom?.ClassRoomType?.name) {
+                    classRoomTypeId = request.classSchedule.classRoom.ClassRoomType.name === 'Thực hành' ? '2' : '1';
+                } else {
+                    classRoomTypeId = '1';
+                }
+            }
+
+            console.log('Class requirements:', { classMaxStudents, classRoomTypeId, departmentId });
+
+            // Xử lý các loại request cần chọn phòng: Đổi lịch, Thi giữa kỳ, Thi cuối kỳ
+            const isMoved = request.RequestType?.name === 'Đổi lịch';
+            const isExam = request.requestTypeId === 6; // Thi giữa kỳ
+            const isFinalExam = request.requestTypeId === 10; // Thi cuối kỳ
+            
+            let targetDate: string | undefined;
+            let targetTimeSlotId: number | undefined;
+            let targetDayOfWeek: number | undefined;
+            
+            if (isMoved && request.movedToDate && request.movedToTimeSlotId && request.movedToDayOfWeek) {
+                targetDate = request.movedToDate;
+                targetTimeSlotId = request.movedToTimeSlotId;
+                targetDayOfWeek = request.movedToDayOfWeek;
+            } else if (isExam && request.newDate && request.newTimeSlotId) {
+                // Thi giữa kỳ: dùng newDate và newTimeSlotId
+                targetDate = request.newDate;
+                targetTimeSlotId = request.newTimeSlotId;
+                // Tính dayOfWeek từ newDate
+                if (targetDate) {
+                    const dateObj = new Date(targetDate);
+                    targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                }
+            } else if (isFinalExam && request.exceptionDate && request.newTimeSlotId) {
+                // Thi cuối kỳ: dùng exceptionDate và newTimeSlotId
+                targetDate = request.exceptionDate;
+                targetTimeSlotId = request.newTimeSlotId;
+                // Tính dayOfWeek từ exceptionDate
+                const dateObj = new Date(targetDate);
+                targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+            }
+            
+            if (targetDate && targetTimeSlotId && targetDayOfWeek) {
                 console.log('🎯 Using getAvailableRoomsForException API');
                 console.log('Request params:', {
-                    timeSlotId: request.movedToTimeSlotId,
-                    dayOfWeek: request.movedToDayOfWeek,
-                    date: request.movedToDate,
+                    timeSlotId: targetTimeSlotId,
+                    dayOfWeek: targetDayOfWeek,
+                    date: targetDate,
                     capacity: classMaxStudents,
-                    classRoomTypeId
+                    classRoomTypeId,
+                    departmentId
                 });
 
                 const availableRoomsResponse = await roomService.getAvailableRoomsForException(
-                    Number(request.movedToTimeSlotId),
-                    Number(request.movedToDayOfWeek),
-                    request.movedToDate.split('T')[0], // Format: YYYY-MM-DD
+                    Number(targetTimeSlotId),
+                    Number(targetDayOfWeek),
+                    targetDate.split('T')[0], // Format: YYYY-MM-DD
                     classMaxStudents,
-                    classRoomTypeId
+                    classRoomTypeId,
+                    departmentId ? String(departmentId) : undefined // Lọc theo khoa
                 );
 
                 if (availableRoomsResponse.success) {
@@ -257,7 +363,10 @@ const ProcessRequest: React.FC = () => {
     };
 
     const handleProcessRequest = async () => {
-        if (!selectedRoomId) {
+        // Kiểm tra xem có cần chọn phòng không
+        const needsRoomSelection = requestData && shouldShowRoomSelection(requestData);
+        
+        if (needsRoomSelection && !selectedRoomId) {
             toast.error('Vui lòng chọn phòng học');
             return;
         }
@@ -275,7 +384,7 @@ const ProcessRequest: React.FC = () => {
 
             if (updateResponse.success) {
                 toast.success('Đã xử lý yêu cầu thành công');
-                navigate('/rooms/requests');
+                navigate('/rooms/requests/list');
             } else {
                 toast.error('Có lỗi xảy ra khi xử lý yêu cầu');
             }
@@ -323,9 +432,9 @@ const ProcessRequest: React.FC = () => {
             {/* Header */}
             <Grid container spacing={2} alignItems="center" sx={{ mb: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Grid size={{ xs: 'auto' }}>
-                    <Button
-                        startIcon={<ArrowBackIcon />}
-                        onClick={() => navigate('/rooms/requests')}
+                        <Button
+                            startIcon={<ArrowBackIcon />}
+                            onClick={() => navigate('/rooms/requests/list')}
                         size={isMobile ? "small" : "medium"}
                         sx={{ 
                             fontSize: { xs: '0.75rem', sm: '0.875rem', md: '0.875rem' }
@@ -625,7 +734,8 @@ const ProcessRequest: React.FC = () => {
                 </Grid>
             </Grid>
 
-            {/* Chọn phòng học */}
+            {/* Chọn phòng học - Chỉ hiển thị khi cần */}
+            {requestData && shouldShowRoomSelection(requestData) && (
             <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Card>
                     <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
@@ -746,9 +856,16 @@ const ProcessRequest: React.FC = () => {
                                 Không tìm thấy phòng học phù hợp. Vui lòng kiểm tra lại yêu cầu.
                             </Alert>
                         )}
+                    </CardContent>
+                </Card>
+            </Box>
+            )}
 
-                        <Divider sx={{ my: { xs: 1.5, sm: 2 } }} />
 
+            {/* Ghi chú và nút xử lý */}
+            <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Card>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
                         <TextField
                             fullWidth
                             multiline
@@ -773,7 +890,7 @@ const ProcessRequest: React.FC = () => {
                             <Grid size={{ xs: 6, sm: 'auto' }}>
                                 <Button
                                     variant="outlined"
-                                    onClick={() => navigate('/rooms/requests')}
+                                    onClick={() => navigate('/rooms/requests/list')}
                                     fullWidth={isMobile}
                                     size={isMobile ? "medium" : "large"}
                                     sx={{ 
@@ -788,7 +905,7 @@ const ProcessRequest: React.FC = () => {
                                     variant="contained"
                                     startIcon={<SaveIcon />}
                                     onClick={handleProcessRequest}
-                                    disabled={!selectedRoomId || processing}
+                                    disabled={(requestData && shouldShowRoomSelection(requestData) && !selectedRoomId) || processing}
                                     fullWidth={isMobile}
                                     size={isMobile ? "medium" : "large"}
                                     sx={{ 

@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../redux/store';
 import { toast } from 'react-toastify';
 import { roomService } from '../../services/api';
+import { getSocket, initSocket } from '../../utils/socket';
 import {
   Typography,
   Box,
@@ -212,11 +215,50 @@ const RoomRequestList = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
+  const user = useSelector((state: RootState) => state.auth.user);
+  const socketInitialized = useRef(false);
+  
   const [requests, setRequests] = useState<RoomRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const dataGridRef = useGridApiRef();
+
+  // Setup socket listeners for real-time updates
+  useEffect(() => {
+    if (!socketInitialized.current && user?.id) {
+      const socket = getSocket() || initSocket(user.id);
+      socketInitialized.current = true;
+
+      const reloadRequests = () => {
+        console.log('🔄 Reloading requests due to socket event');
+        setRefreshKey(prev => prev + 1);
+      };
+
+      const setupListeners = () => {
+        if (!socket) return;
+        // Listen for new schedule requests created by teachers
+        socket.on('schedule-request-created', reloadRequests);
+        // Listen for schedule request updates (approved/rejected)
+        socket.on('schedule-exception-updated', reloadRequests);
+      };
+
+      if (socket.connected) {
+        setupListeners();
+      } else {
+        socket.once('connect', setupListeners);
+      }
+
+      return () => {
+        if (socket) {
+          socket.off('schedule-request-created', reloadRequests);
+          socket.off('schedule-exception-updated', reloadRequests);
+          socket.off('connect', setupListeners);
+        }
+        socketInitialized.current = false;
+      };
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     loadRequests();
@@ -249,12 +291,8 @@ const RoomRequestList = () => {
   };
 
   const handleViewRequest = (requestId: number) => {
-    // Navigate to request detail page để admin xử lý yêu cầu
-    // Trang này sẽ hiển thị chi tiết yêu cầu và cho phép admin:
-    // 1. Xem thông tin giảng viên và lớp yêu cầu
-    // 2. Dựa vào yêu cầu để thay đổi lịch học
-    // 3. Chọn phòng trống của tiết đó và thuộc dãy phòng khoa đó
-    navigate(`/rooms/requests/${requestId}`);
+    // Điều hướng tới trang xử lý chi tiết yêu cầu
+    navigate(`/rooms/requests/${requestId}/process`);
   };
 
   const handleApproveRequest = async (requestId: number) => {

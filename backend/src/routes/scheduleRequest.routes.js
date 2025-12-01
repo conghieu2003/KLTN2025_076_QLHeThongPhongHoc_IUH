@@ -21,4 +21,7 @@ router.get('/:requestId', scheduleRequestController.getScheduleRequestById);
 // Update schedule request status (approve/reject)
 router.put('/:requestId/status', scheduleRequestController.updateScheduleRequestStatus);
 
+// Update schedule request room (admin only)
+router.put('/:requestId/room', scheduleRequestController.updateScheduleRequestRoom);
+
 module.exports = router;

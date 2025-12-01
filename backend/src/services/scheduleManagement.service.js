@@ -889,6 +889,7 @@ class ScheduleManagementService {
         // Kiểm tra ngày chuyển đến có trong tuần này không
         let isMovedToThisWeek = false;
         let movedToDayOfWeek = null;
+        let isMovedToDifferentDay = false; // Kiểm tra xem có chuyển sang ngày khác không
         
         if (isMoved && movedToDate) {
           const movedDate = new Date(movedToDate);
@@ -900,11 +901,21 @@ class ScheduleManagementService {
             isMovedToThisWeek = true;
             const movedDayJS = movedDate.getDay(); // 0=CN, 1=T2, ..., 6=T7
             movedToDayOfWeek = movedDayJS === 0 ? 1 : movedDayJS + 1; // Convert to 1=CN, 2=T2, ..., 7=T7
+            
+            // Kiểm tra xem có chuyển sang ngày khác không
+            isMovedToDifferentDay = movedToDayOfWeek !== schedule.dayOfWeek;
           }
         }
         
-        // LOGIC: Chỉ hiển thị lịch gốc khi KHÔNG có exception moved/exam
-        const shouldShowOriginal = !isMoved;
+        // LOGIC: 
+        // - Với 'cancelled' hoặc 'substitute': LUÔN hiển thị lịch gốc với exception info
+        // - Với 'moved' hoặc 'exam': 
+        //   + Nếu KHÔNG có movedToDate hoặc thi/chuyển TẠI CHỖ (cùng ngày): Hiển thị lịch gốc với exception info
+        //   + Nếu có movedToDate và chuyển SANG NGÀY KHÁC: Ẩn lịch gốc, chỉ hiển thị lịch mới
+        const shouldShowOriginal = !exception || 
+                                   exception.exceptionType === 'cancelled' || 
+                                   exception.exceptionType === 'substitute' ||
+                                   (isMoved && (!movedToDate || !isMovedToDifferentDay));
         
         if (shouldShowOriginal) {
           weeklySchedules.push({

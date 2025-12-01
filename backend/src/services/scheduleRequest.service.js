@@ -178,8 +178,19 @@ const createScheduleRequest = async (requestData) => {
           console.error('[Schedule Request] Lỗi khi lấy danh sách users:', error);
         }
 
-        // Emit socket event khi teacher tạo request có exception - chỉ admin và teacher nhận
+        // Emit socket event khi teacher tạo request - admin nhận real-time
         try {
+          // Emit event riêng cho việc tạo request mới (admin nhận để reload danh sách)
+          await SocketClient.emitScheduleRequestCreated({
+            requestId: scheduleRequest.id,
+            requestTypeId: scheduleRequest.requestTypeId,
+            requesterId: scheduleRequest.requesterId,
+            requestStatusId: scheduleRequest.requestStatusId,
+            createdAt: scheduleRequest.createdAt,
+            userIds: relatedUserIds
+          });
+
+          // Emit event cho schedule exception updated (nếu có exception date)
           if (scheduleRequest.exceptionDate || scheduleRequest.movedToDate) {
             const dates = [];
             if (scheduleRequest.exceptionDate) dates.push(new Date(scheduleRequest.exceptionDate));
@@ -888,6 +899,25 @@ const getScheduleRequestById = async (requestId) => {
                         id: true,
                         fullName: true,
                         email: true
+                    }
+                },
+                // Include class cho thi cuối kỳ (requestTypeId = 10)
+                class: {
+                    select: {
+                        id: true,
+                        code: true,
+                        className: true,
+                        subjectName: true,
+                        subjectCode: true,
+                        maxStudents: true,
+                        departmentId: true,
+                        classRoomTypeId: true,
+                        ClassRoomType: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
                     }
                 }
             }

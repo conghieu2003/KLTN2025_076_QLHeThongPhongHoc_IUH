@@ -122,10 +122,33 @@ const getScheduleRequestById = async (req, res) => {
     }
 };
 
+const updateScheduleRequestRoom = async (req, res) => {
+    try {
+        const { requestId } = req.params;
+        const { newRoomId } = req.body;
+
+        const result = await scheduleRequestService.updateScheduleRequestRoom(requestId, newRoomId);
+
+        res.status(200).json({
+            success: true,
+            message: 'Phòng mới đã được cập nhật',
+            data: result
+        });
+    } catch (error) {
+        console.error('Error updating schedule request room:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Có lỗi xảy ra khi cập nhật phòng',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createScheduleRequest,
     getScheduleRequests,
     getTeacherSchedules,
     updateScheduleRequestStatus,
-    getScheduleRequestById
+    getScheduleRequestById,
+    updateScheduleRequestRoom
 };
