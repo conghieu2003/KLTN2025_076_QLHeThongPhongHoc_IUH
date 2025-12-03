@@ -4,7 +4,7 @@ import { RootState } from '../../redux/store';
 import { scheduleExceptionService, roomService, scheduleManagementService } from '../../services/api';
 import { Box, Paper, Typography, Button, FormControl, InputLabel, Select, MenuItem, Card, CardContent, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Tabs, Tab, Alert, CircularProgress, Tooltip, Grid, useTheme, useMediaQuery } from '@mui/material';
 import { toast } from 'react-toastify';
-import { Add as AddIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, Cancel as CloseIcon, Warning as WarningIcon, SwapHoriz as SwapIcon, Info as InfoIcon, Send as SendIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, Schedule as ScheduleIcon, Person as PersonIcon, Cancel as CloseIcon, Warning as WarningIcon, SwapHoriz as SwapIcon, Info as InfoIcon, Send as SendIcon, Room as RoomIcon } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -33,8 +33,10 @@ interface Room {
 
 interface Teacher {
   id: number;
-  name: string;
-  code: string;
+  name?: string;
+  fullName?: string;
+  code?: string;
+  teacherCode?: string;
   departmentId: number;
 }
 
@@ -116,8 +118,9 @@ interface CreateScheduleRequestData {
 
 const getExceptionTypeFromRequestType = (requestTypeId: number): string => {
   switch (requestTypeId) {
-    case 5: return 'cancelled'; // Tạm ngưng
+    case 5: return 'paused'; // Tạm ngưng
     case 6: return 'exam'; // Thi giữa kỳ
+    case 7: return 'roomChange'; // Đổi phòng
     case 8: return 'moved'; // Đổi lịch
     case 9: return 'substitute'; // Đổi giáo viên
     case 10: return 'finalExam'; // Thi cuối kỳ
@@ -128,7 +131,9 @@ const getExceptionTypeFromRequestType = (requestTypeId: number): string => {
 const getRequestTypeIdFromExceptionType = (exceptionType: string): number => {
   switch (exceptionType) {
     case 'cancelled': return 5; // Tạm ngưng
+    case 'paused': return 5; // Tạm ngưng
     case 'exam': return 6; // Thi giữa kỳ
+    case 'roomChange': return 7; // Đổi phòng
     case 'moved': return 8; // Đổi lịch
     case 'substitute': return 9; // Đổi giáo viên
     case 'finalExam': return 10; // Thi cuối kỳ
@@ -139,7 +144,9 @@ const getRequestTypeIdFromExceptionType = (exceptionType: string): number => {
 const createExceptionTypes = (requestTypes: RequestType[]) => {
   const exceptionTypeMap = {
     'cancelled': { label: 'Hủy lớp', color: 'error', icon: <CloseIcon /> },
+    'paused': { label: 'Tạm ngưng', color: 'error', icon: <CloseIcon /> },
     'exam': { label: 'Thi giữa kỳ', color: 'secondary', icon: <ScheduleIcon /> },
+    'roomChange': { label: 'Đổi phòng', color: 'warning', icon: <RoomIcon /> },
     'moved': { label: 'Chuyển lịch', color: 'warning', icon: <SwapIcon /> },
     'substitute': { label: 'Thay giảng viên', color: 'info', icon: <PersonIcon /> },
     'finalExam': { label: 'Thi cuối kỳ', color: 'secondary', icon: <ScheduleIcon /> }
@@ -254,7 +261,18 @@ const RoomRequestForm = () => {
       ]);
 
       if (timeSlotsRes.success) setTimeSlots(timeSlotsRes.data || []);
-      if (teachersRes.success) setTeachers(teachersRes.data || []);
+      if (teachersRes.success) {
+        // Map dữ liệu để đảm bảo có name và fullName
+        const mappedTeachers = (teachersRes.data || []).map((teacher: any) => ({
+          id: teacher.id,
+          name: teacher.name || teacher.fullName || '',
+          fullName: teacher.fullName || teacher.name || '',
+          code: teacher.code || teacher.teacherCode || '',
+          teacherCode: teacher.teacherCode || teacher.code || '',
+          departmentId: teacher.departmentId || 0
+        }));
+        setTeachers(mappedTeachers);
+      }
       if (requestTypesRes.success) setRequestTypes(requestTypesRes.data || []);
       
       if (classesRes && classesRes.success && classesRes.data) {
@@ -344,11 +362,13 @@ const RoomRequestForm = () => {
     return days[dayOfWeek] || '';
   };
 
-  // Kiểm tra phòng available - CHỈ cho "moved" (đổi lịch), không check cho exam và finalExam
+  // Kiểm tra phòng available - CHỈ cho "moved" (đổi lịch), không check cho roomChange, exam và finalExam (admin sẽ chọn)
   useEffect(() => {
     const checkAvailableRooms = async () => {
-      // CHỈ check phòng cho "moved" (đổi lịch), vì exam và finalExam admin sẽ chọn phòng
-      if (formData.exceptionType === 'moved' && formData.newDate && formData.newTimeSlotId) {
+      const isMoved = formData.exceptionType === 'moved';
+      
+      // CHỈ check phòng cho "moved" (đổi lịch), vì roomChange, exam và finalExam admin sẽ chọn phòng
+      if (isMoved && formData.newDate && formData.newTimeSlotId) {
         setCheckingRooms(true);
         try {
           // Lấy departmentId từ lớp học đã chọn
@@ -412,7 +432,7 @@ const RoomRequestForm = () => {
     };
 
     checkAvailableRooms();
-  }, [formData.exceptionType, formData.newDate, formData.newTimeSlotId, formData.classScheduleId, availableSchedules]);
+  }, [formData.exceptionType, formData.newDate, formData.exceptionDate, formData.newTimeSlotId, formData.classScheduleId, availableSchedules]);
 
   // Filter schedules
   const filteredSchedules = useMemo(() => {
@@ -443,6 +463,25 @@ const RoomRequestForm = () => {
 
     return filtered;
   }, [myRequests, selectedExceptionType, selectedDate]);
+
+  // Filter teachers based on exception type and selected schedule/class
+  const filteredTeachers = useMemo(() => {
+    // Nếu là thi cuối kỳ: lấy tất cả giáo viên
+    if (formData.exceptionType === 'finalExam') {
+      return teachers;
+    }
+    
+    // Nếu là đổi giáo viên: chỉ lấy giáo viên của khoa tương ứng với lớp
+    if (formData.exceptionType === 'substitute' && formData.classScheduleId) {
+      const selectedSchedule = availableSchedules.find(s => s.id === formData.classScheduleId);
+      if (selectedSchedule?.departmentId) {
+        return teachers.filter(teacher => teacher.departmentId === selectedSchedule.departmentId);
+      }
+    }
+    
+    // Mặc định: lấy tất cả
+    return teachers;
+  }, [teachers, formData.exceptionType, formData.classScheduleId, availableSchedules]);
 
   const handleOpenRequestDialog = (schedule?: AvailableSchedule, request?: ScheduleRequest) => {
     if (request) {
@@ -551,29 +590,30 @@ const RoomRequestForm = () => {
       return;
     }
 
-    // Chỉ yêu cầu phòng cho "moved" (đổi lịch), không yêu cầu cho "exam" (thi giữa kỳ)
+    // ⭐ Giảng viên không cần chọn phòng cho "moved" (đổi lịch) và "exam" (thi giữa kỳ) - admin sẽ chọn khi duyệt
+    // Chỉ yêu cầu ngày và tiết cho "moved" và "exam"
     if (formData.exceptionType === 'moved') {
-      if (!formData.newDate || !formData.newTimeSlotId || !formData.newClassRoomId) {
-        toast.error('Vui lòng điền đầy đủ thông tin chuyển lịch (ngày, tiết, phòng)');
+      if (!formData.newDate || !formData.newTimeSlotId) {
+        toast.error('Vui lòng chọn đầy đủ: ngày chuyển đến và tiết chuyển đến');
         return;
       }
-      
-      if (occupiedRoomIds.length > 0 && occupiedRoomIds.includes(formData.newClassRoomId)) {
-        toast.error('Phòng đã chọn đã có lớp ngoại lệ! Vui lòng chọn phòng khác.');
-        return;
-      }
+      // Không yêu cầu newClassRoomId - admin sẽ chọn phòng khi duyệt
     } else if (formData.exceptionType === 'exam') {
       // Thi giữa kỳ: Chỉ cần ngày và tiết, không cần phòng (admin sẽ chọn)
       if (!formData.newDate || !formData.newTimeSlotId) {
         toast.error('Vui lòng chọn ngày và tiết thi');
         return;
       }
+    } else if (formData.exceptionType === 'roomChange') {
+      // Đổi phòng: Chỉ cần ngày ngoại lệ, không cần phòng mới (admin sẽ chọn)
+      if (!formData.exceptionDate) {
+        toast.error('Vui lòng chọn ngày ngoại lệ');
+        return;
+      }
     }
 
-    if (formData.exceptionType === 'substitute' && !formData.substituteTeacherId) {
-      toast.error('Vui lòng chọn giảng viên thay thế');
-      return;
-    }
+    // Không yêu cầu giảng viên thay thế cho "substitute" (đổi giáo viên) - admin sẽ sắp xếp
+    // Không yêu cầu cho "finalExam" (admin sẽ sắp xếp)
 
     try {
       const requestTypeId = getRequestTypeIdFromExceptionType(formData.exceptionType || 'cancelled');
@@ -583,15 +623,53 @@ const RoomRequestForm = () => {
       const dataToSend: any = {
         ...formData,
         requestTypeId: requestTypeId,
-        exceptionDate: exceptionDate,
-        ...(newDate && { newDate: newDate })
+        exceptionDate: exceptionDate
       };
+      
+      // ⭐ QUAN TRỌNG: Map newDate -> movedToDate cho đổi lịch (moved) và thi giữa kỳ (exam)
+      if (formData.exceptionType === 'moved' || formData.exceptionType === 'exam') {
+        if (newDate) {
+          dataToSend.movedToDate = newDate;
+          // Tính movedToDayOfWeek từ newDate
+          const dateObj = parseDateFromAPI(newDate) || new Date(newDate);
+          const dayOfWeek = dateObj.getDay();
+          dataToSend.movedToDayOfWeek = dayOfWeek === 0 ? 1 : dayOfWeek + 1; // 1=CN, 2=T2, ..., 7=T7
+        }
+        // Map newTimeSlotId -> movedToTimeSlotId cho đổi lịch và thi giữa kỳ
+        if (formData.newTimeSlotId) {
+          dataToSend.movedToTimeSlotId = formData.newTimeSlotId;
+        }
+        // Không gửi newDate và newTimeSlotId nữa, đã map sang movedToDate và movedToTimeSlotId
+        dataToSend.newDate = undefined;
+        dataToSend.newTimeSlotId = undefined;
+      } else if (newDate) {
+        // Các loại khác vẫn dùng newDate
+        dataToSend.newDate = newDate;
+      }
       
       if (isFinalExam) {
         dataToSend.classScheduleId = undefined;
         dataToSend.classId = formData.classId;
+        // Không gửi newClassRoomId và substituteTeacherId - admin sẽ sắp xếp
+        dataToSend.newClassRoomId = undefined;
+        dataToSend.substituteTeacherId = undefined;
       } else {
         dataToSend.classId = undefined;
+      }
+      
+      // Với roomChange và exam: không gửi newClassRoomId - admin sẽ sắp xếp
+      if (formData.exceptionType === 'roomChange' || formData.exceptionType === 'exam') {
+        dataToSend.newClassRoomId = undefined;
+      }
+      
+      // Với finalExam và substitute: không gửi substituteTeacherId - admin sẽ sắp xếp
+      if (formData.exceptionType === 'finalExam' || formData.exceptionType === 'substitute') {
+        dataToSend.substituteTeacherId = undefined;
+      }
+      
+      // ⭐ QUAN TRỌNG: Không gửi movedToClassRoomId cho giảng viên - admin sẽ chọn khi duyệt
+      if (formData.exceptionType === 'moved' || formData.exceptionType === 'exam') {
+        dataToSend.movedToClassRoomId = undefined;
       }
 
       if (editingRequest) {
@@ -1243,7 +1321,7 @@ const RoomRequestForm = () => {
                             return String(classId) === selected;
                           });
                           if (selectedClass) {
-                            return `${selectedClass.className || 'Chưa có tên'} - ${selectedClass.code || selectedClass.subjectCode || ''}`;
+                            return `${selectedClass.className || ''} - ${selectedClass.code || selectedClass.subjectCode || ''}`;
                           }
                           return <em>-- Chọn lớp học --</em>;
                         }}
@@ -1300,7 +1378,7 @@ const RoomRequestForm = () => {
                           return filteredClasses.map(cls => {
                             // Lấy classId (có thể là id hoặc classId)
                             const classId = cls.classId || cls.id;
-                            const displayName = `${cls.className || 'Chưa có tên'} - ${cls.code || cls.subjectCode || ''}`;
+                            const displayName = `${cls.className || ''} - ${cls.code || cls.subjectCode || ''}`;
                             return (
                               <MenuItem key={classId} value={String(classId)}>
                                 {displayName}
@@ -1473,80 +1551,14 @@ const RoomRequestForm = () => {
                       </FormControl>
                     </Box>
 
+                    {/* ⭐ Ẩn dropdown chọn phòng cho giảng viên - admin sẽ chọn phòng khi duyệt */}
+                    {/* Giảng viên không thể chọn phòng cho đổi lịch và thi giữa kỳ */}
                     <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
-                      <FormControl fullWidth size="small">
-                        <InputLabel>
-                          Phòng chuyển đến
-                          {checkingRooms && ' (Đang kiểm tra...)'}
-                        </InputLabel>
-                        <Select
-                          value={formData.newClassRoomId || ''}
-                          onChange={(e) => {
-                            const selectedRoomId = parseInt(String(e.target.value));
-                            const selectedRoom = availableRoomsForException.find((r: any) => {
-                              const roomIdNum = parseInt(String(r.id));
-                              return roomIdNum === selectedRoomId;
-                            });
-                            if (!selectedRoom) {
-                              toast.error('Phòng không khả dụng! Vui lòng chọn phòng khác.');
-                              setFormData(prev => ({ ...prev, newClassRoomId: undefined }));
-                              return;
-                            }
-                            if (occupiedRoomIds.includes(selectedRoomId)) {
-                              toast.error('Phòng này đã có lớp ngoại lệ! Vui lòng chọn phòng khác.');
-                              setFormData(prev => ({ ...prev, newClassRoomId: undefined }));
-                              return;
-                            }
-                            setFormData(prev => ({ ...prev, newClassRoomId: selectedRoomId }));
-                          }}
-                          label="Phòng chuyển đến"
-                          disabled={checkingRooms || !formData.newDate || !formData.newTimeSlotId || editingRequest !== null}
-                        >
-                          {checkingRooms ? (
-                            <MenuItem value="" disabled>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <CircularProgress size={16} />
-                                <Typography variant="body2">Đang kiểm tra phòng...</Typography>
-                              </Box>
-                            </MenuItem>
-                          ) : availableRoomsForException.length > 0 ? (
-                            availableRoomsForException
-                              .filter((room: any) => {
-                                const roomIdNum = parseInt(String(room.id));
-                                return !occupiedRoomIds.includes(roomIdNum);
-                              })
-                              .map((room: any) => {
-                                const isFreed = room.isFreedByException;
-                                const roomIdNum = parseInt(String(room.id));
-                                return (
-                                  <MenuItem key={room.id} value={roomIdNum}>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                      <Typography variant="body2">
-                                        {room.name} ({room.code}) - {room.capacity} chỗ
-                                      </Typography>
-                                      {isFreed && (
-                                        <Typography variant="caption" color="info.main" sx={{ fontSize: '0.65rem' }}>
-                                          🎉 Trống do ngoại lệ
-                                        </Typography>
-                                      )}
-                                    </Box>
-                                  </MenuItem>
-                                );
-                              })
-                          ) : (
-                            <MenuItem value="" disabled>
-                              Không có phòng trống
-                            </MenuItem>
-                          )}
-                        </Select>
-                      </FormControl>
-                      {formData.newDate && formData.newTimeSlotId && !checkingRooms && (
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                          {availableRoomsForException.length > 0 
-                            ? `Có ${availableRoomsForException.length} phòng trống cho ngày/tiết này`
-                            : 'Không có phòng trống cho ngày/tiết này'}
+                      <Alert severity="info" sx={{ fontSize: '0.75rem', py: 0.5 }}>
+                        <Typography variant="caption">
+                          Admin sẽ chọn phòng khi duyệt yêu cầu
                         </Typography>
-                      )}
+                      </Alert>
                     </Box>
                   </Box>
                 </Box>
@@ -1637,8 +1649,8 @@ const RoomRequestForm = () => {
                 </Box>
               )}
 
-              {/* Substitute teacher */}
-              {formData.exceptionType === 'substitute' && (
+              {/* Substitute teacher - Ẩn vì admin sẽ sắp xếp */}
+              {/* {formData.exceptionType === 'substitute' && (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                   <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
                     <FormControl fullWidth size="small">
@@ -1647,18 +1659,56 @@ const RoomRequestForm = () => {
                         value={formData.substituteTeacherId || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, substituteTeacherId: parseInt(String(e.target.value)) }))}
                         label="Giảng viên thay thế"
-                        disabled={editingRequest !== null}
+                        disabled={editingRequest !== null || !formData.classScheduleId}
                       >
-                        {teachers.map(teacher => (
-                          <MenuItem key={teacher.id} value={teacher.id}>
-                            {teacher.name} ({teacher.code})
+                        {filteredTeachers.length > 0 ? (
+                          filteredTeachers.map(teacher => {
+                            const teacherName = teacher.name || teacher.fullName || '';
+                            return (
+                              <MenuItem key={teacher.id} value={teacher.id}>
+                                {teacherName}
+                              </MenuItem>
+                            );
+                          })
+                        ) : (
+                          <MenuItem disabled value="">
+                            {formData.classScheduleId ? 'Không có giáo viên trong khoa này' : 'Vui lòng chọn lịch học trước'}
                           </MenuItem>
-                        ))}
+                        )}
                       </Select>
                     </FormControl>
                   </Box>
                 </Box>
-              )}
+              )} */}
+
+              {/* Giảng viên cho thi cuối kỳ - Ẩn vì admin sẽ sắp xếp */}
+              {/* {formData.exceptionType === 'finalExam' && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  <Box sx={{ flex: '1 1 300px', minWidth: '300px' }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Giảng viên (tùy chọn)</InputLabel>
+                      <Select
+                        value={formData.substituteTeacherId || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, substituteTeacherId: parseInt(String(e.target.value)) || undefined }))}
+                        label="Giảng viên (tùy chọn)"
+                        disabled={editingRequest !== null}
+                      >
+                        <MenuItem value="">
+                          <em>Không chọn (dùng giảng viên của lớp)</em>
+                        </MenuItem>
+                        {filteredTeachers.map(teacher => {
+                          const teacherName = teacher.name || teacher.fullName || '';
+                          return (
+                            <MenuItem key={teacher.id} value={teacher.id}>
+                              {teacherName}
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                  </Box>
+                </Box>
+              )} */}
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <TextField
@@ -1700,7 +1750,7 @@ const RoomRequestForm = () => {
                   loading || 
                   !formData.reason.trim() ||
                   (formData.exceptionType === 'finalExam' 
-                    ? (!formData.classId || formData.classId === 0 || !formData.newTimeSlotId || !formData.newClassRoomId)
+                    ? (!formData.classId || formData.classId === 0 || !formData.newTimeSlotId)
                     : (!formData.classScheduleId || formData.classScheduleId === 0))
                 }
                 startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}

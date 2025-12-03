@@ -340,8 +340,8 @@ export const roomService = {
     return response.data;
   },
 
-  updateScheduleRequestStatus: async (requestId: number, status: number, note?: string, selectedRoomId?: string): Promise<any> => {
-    const response = await api.put(`/schedule-requests/${requestId}/status`, { status, note, selectedRoomId });
+  updateScheduleRequestStatus: async (requestId: number, status: number, note?: string, selectedRoomId?: string, substituteTeacherId?: number): Promise<any> => {
+    const response = await api.put(`/schedule-requests/${requestId}/status`, { status, note, selectedRoomId, substituteTeacherId });
     return response.data;
   },
 
@@ -466,6 +466,26 @@ export const userService = {
 
 // Schedule Management Service (Gộp tất cả logic sắp xếp phòng)
 export const scheduleManagementService = {
+  getAvailableTeachers: async (date: string, timeSlotId: number, departmentId?: number): Promise<ApiResponse<any[]>> => {
+    try {
+      const params: any = { date, timeSlotId: String(timeSlotId) };
+      if (departmentId) {
+        params.departmentId = String(departmentId);
+      }
+      const response = await api.get('/schedule-management/teachers/available', { params });
+      return {
+        success: response.data.success,
+        data: response.data.data || [],
+        message: response.data.message
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi lấy danh sách giảng viên trống',
+        data: []
+      };
+    }
+  },
   getClassesForScheduling: async (): Promise<any> => {
     const response = await api.get('/schedule-management/classes');
     return response.data;

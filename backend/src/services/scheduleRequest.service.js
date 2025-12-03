@@ -292,6 +292,16 @@ const getScheduleRequests = async (filters = {}) => {
                             // Bỏ timeSlot vì không có relation trực tiếp
                         }
                     },
+                    class: {
+                        select: {
+                            id: true,
+                            code: true,
+                            className: true,
+                            subjectName: true,
+                            subjectCode: true,
+                            maxStudents: true
+                        }
+                    },
                     // Bỏ timeSlot vì không có relation trực tiếp
                     oldClassRoom: {
                         select: {
@@ -428,7 +438,7 @@ const recalculateExceptionDate = (oldExceptionDate, oldDayOfWeek, newDayOfWeek) 
     return newExceptionDate;
 };
 
-const updateScheduleRequestStatus = async (requestId, status, approverId, note, selectedRoomId = null) => {
+const updateScheduleRequestStatus = async (requestId, status, approverId, note, selectedRoomId = null, substituteTeacherId = null) => {
     try {
         // First, get the request details to understand what needs to be updated
         const requestDetails = await prisma.scheduleRequest.findUnique({
@@ -447,17 +457,35 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
         const oldDayOfWeek = requestDetails.classSchedule?.dayOfWeek;
         const oldTimeSlotId = requestDetails.classSchedule?.timeSlotId;
 
+        // Chuẩn bị dữ liệu cập nhật cho schedule request
+        const scheduleRequestUpdatePayload = {
+            requestStatusId: status,
+            approvedBy: approverId,
+            approvedAt: new Date(),
+            note: note || null
+        };
+        
+        // Cập nhật substituteTeacherId nếu có (cho yêu cầu đổi giáo viên)
+        if (substituteTeacherId) {
+            scheduleRequestUpdatePayload.substituteTeacherId = parseInt(substituteTeacherId);
+        }
+        
+        // Cập nhật exceptionType cho yêu cầu đổi giáo viên
+        if (requestDetails.RequestType?.name === 'Đổi giáo viên' || requestDetails.requestTypeId === 9) {
+            scheduleRequestUpdatePayload.exceptionType = 'substitute';
+            // Đảm bảo có exceptionDate nếu chưa có
+            if (!requestDetails.exceptionDate && requestDetails.classSchedule) {
+                // Dùng ngày hiện tại hoặc ngày đầu tiên của lớp
+                scheduleRequestUpdatePayload.exceptionDate = new Date();
+            }
+        }
+        
         // Update the schedule request status
         const scheduleRequest = await prisma.scheduleRequest.update({
             where: {
                 id: parseInt(requestId)
             },
-            data: {
-                requestStatusId: status,
-                approvedBy: approverId,
-                approvedAt: new Date(),
-                note: note || null
-            },
+            data: scheduleRequestUpdatePayload,
             include: {
                 requester: {
                     select: {
@@ -491,10 +519,8 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                                 }
                             }
                         },
-                        // Bỏ timeSlot vì không có relation trực tiếp
                     }
                 },
-                // Bỏ timeSlot vì không có relation trực tiếp
                 oldClassRoom: {
                     select: {
                         id: true,
@@ -554,7 +580,7 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
             }
 
             // For schedule change requests, update dayOfWeek and timeSlotId
-            if (requestDetails.RequestType?.name === 'Đổi lịch') {
+            if (requestDetails.RequestType?.name === 'Đổi lịch' || requestDetails.requestTypeId === 8) {
                 if (requestDetails.movedToDayOfWeek) {
                     updateData.dayOfWeek = requestDetails.movedToDayOfWeek;
                     console.log('Updating dayOfWeek to:', requestDetails.movedToDayOfWeek);
@@ -574,6 +600,55 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                     updateData.assignedAt = new Date();
                     console.log('Updating statusId to 2 (Đã phân phòng)');
                 }
+                
+                // ⭐ QUAN TRỌNG: Cập nhật schedule request để có đầy đủ thông tin cho WeeklySchedule
+                // Cần có movedToDate, movedToDayOfWeek, movedToTimeSlotId, movedToClassRoomId, exceptionType
+                const scheduleRequestUpdateData = {
+                    exceptionType: 'moved',
+                    requestStatusId: status
+                };
+                
+                // Cập nhật movedToDate nếu có
+                if (requestDetails.movedToDate) {
+                    scheduleRequestUpdateData.movedToDate = new Date(requestDetails.movedToDate);
+                } else if (requestDetails.exceptionDate) {
+                    // Nếu không có movedToDate nhưng có exceptionDate, dùng exceptionDate
+                    scheduleRequestUpdateData.movedToDate = new Date(requestDetails.exceptionDate);
+                }
+                
+                // Cập nhật movedToDayOfWeek - tính từ movedToDate nếu chưa có
+                if (requestDetails.movedToDayOfWeek) {
+                    scheduleRequestUpdateData.movedToDayOfWeek = requestDetails.movedToDayOfWeek;
+                } else if (scheduleRequestUpdateData.movedToDate) {
+                    // Tính movedToDayOfWeek từ movedToDate
+                    const movedDate = new Date(scheduleRequestUpdateData.movedToDate);
+                    scheduleRequestUpdateData.movedToDayOfWeek = movedDate.getDay() === 0 ? 1 : movedDate.getDay() + 1; // 1=CN, 2=T2, ..., 7=T7
+                }
+                
+                // Cập nhật movedToTimeSlotId
+                if (requestDetails.movedToTimeSlotId) {
+                    scheduleRequestUpdateData.movedToTimeSlotId = requestDetails.movedToTimeSlotId;
+                }
+                
+                // Cập nhật movedToClassRoomId nếu có phòng được chọn
+                if (selectedRoomId) {
+                    scheduleRequestUpdateData.movedToClassRoomId = parseInt(selectedRoomId);
+                } else if (requestDetails.movedToClassRoomId) {
+                    scheduleRequestUpdateData.movedToClassRoomId = requestDetails.movedToClassRoomId;
+                }
+                
+                // Cập nhật exceptionDate nếu chưa có
+                if (!requestDetails.exceptionDate && scheduleRequestUpdateData.movedToDate) {
+                    scheduleRequestUpdateData.exceptionDate = scheduleRequestUpdateData.movedToDate;
+                }
+                
+                // Cập nhật schedule request
+                await prisma.scheduleRequest.update({
+                    where: { id: parseInt(requestId) },
+                    data: scheduleRequestUpdateData
+                });
+                
+                console.log('Updated schedule request with moved information:', scheduleRequestUpdateData);
             }
 
             // Update ClassSchedule if we have changes to make
@@ -795,10 +870,8 @@ const getScheduleRequestById = async (requestId) => {
             },
             include: {
                 requester: {
-                    select: {
-                        id: true,
-                        fullName: true,
-                        email: true
+                    include: {
+                        teacher: true
                     }
                 },
                 RequestType: {
@@ -816,13 +889,12 @@ const getScheduleRequestById = async (requestId) => {
                 classSchedule: {
                     include: {
                         class: {
-                            select: {
-                                id: true,
-                                code: true,
-                                className: true,
-                                subjectName: true,
-                                subjectCode: true,
-                                maxStudents: true
+                            include: {
+                                teacher: {
+                                    include: {
+                                        user: true
+                                    }
+                                }
                             }
                         },
                         classRoom: {

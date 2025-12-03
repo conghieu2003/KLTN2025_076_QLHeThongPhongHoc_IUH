@@ -61,13 +61,14 @@ export interface AvailableSchedule {
   classType: 'theory' | 'practice';
   classRoomType: string;
   practiceGroup?: number | null;
+  timeSlotId?: number;
 }
 
 export interface CreateScheduleExceptionData {
   classScheduleId: number;
   classId?: number; // Cho thi cuối kỳ
   exceptionDate: string;
-  exceptionType: 'cancelled' | 'exam' | 'moved' | 'substitute' | 'finalExam';
+  exceptionType: 'cancelled' | 'paused' | 'exam' | 'roomChange' | 'moved' | 'substitute' | 'finalExam';
   newTimeSlotId?: number;
   newClassRoomId?: number;
   newDate?: string;

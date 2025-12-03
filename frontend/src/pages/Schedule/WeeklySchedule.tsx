@@ -544,16 +544,12 @@ const WeeklySchedule = memo(() => {
 
   const getRequestTypeColor = (requestTypeId: number): string => {
     switch (requestTypeId) {
-      case 1: return '#e3f2fd';
-      case 2: return '#f3e5f5';
-      case 3: return '#e8f5e8';
-      case 4: return '#f8d7da';
-      case 5: return '#f8d7da';
-      case 6: return '#fff3cd'; // Thi
-      case 7: return '#ffeaa7';
-      case 8: return '#d1ecf1';
-      case 9: return '#a8e6cf';
-      case 10: return '#fff3cd'; // Thi cuối kỳ (cùng màu với thi)
+      case 5: return '#ff9800';   
+      case 6: return '#fff3cd'; 
+      case 7: return '#9c27b0'; 
+      case 8: return '#2196f3'; 
+      case 9: return '#4caf50'; 
+      case 10: return '#ffc107'; 
       default: return '#f8f9fa';
     }
   };
@@ -1173,7 +1169,7 @@ const WeeklySchedule = memo(() => {
                 <Box sx={{ 
                   width: { xs: 16, sm: 18, md: 20 }, 
                   height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#e3f2fd', 
+                  backgroundColor: '#ff9800', 
                   border: '1px solid #ddd',
                   flexShrink: 0
                 }} />
@@ -1181,58 +1177,7 @@ const WeeklySchedule = memo(() => {
                   variant="body2"
                   sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                 >
-                  Chờ phân phòng
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ 
-                  width: { xs: 16, sm: 18, md: 20 }, 
-                  height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#f3e5f5', 
-                  border: '1px solid #ddd',
-                  flexShrink: 0
-                }} />
-                <Typography 
-                  variant="body2"
-                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
-                >
-                  Đã phân phòng
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ 
-                  width: { xs: 16, sm: 18, md: 20 }, 
-                  height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#e8f5e8', 
-                  border: '1px solid #ddd',
-                  flexShrink: 0
-                }} />
-                <Typography 
-                  variant="body2"
-                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
-                >
-                  Đang hoạt động
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box sx={{ 
-                  width: { xs: 16, sm: 18, md: 20 }, 
-                  height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#f8d7da', 
-                  border: '1px solid #ddd',
-                  flexShrink: 0
-                }} />
-                <Typography 
-                  variant="body2"
-                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
-                >
-                  Đã hủy / Tạm ngưng
+                  Tạm ngưng
                 </Typography>
               </Box>
             </Grid>
@@ -1258,7 +1203,7 @@ const WeeklySchedule = memo(() => {
                 <Box sx={{ 
                   width: { xs: 16, sm: 18, md: 20 }, 
                   height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#ffeaa7', 
+                  backgroundColor: '#9c27b0', 
                   border: '1px solid #ddd',
                   flexShrink: 0
                 }} />
@@ -1275,7 +1220,7 @@ const WeeklySchedule = memo(() => {
                 <Box sx={{ 
                   width: { xs: 16, sm: 18, md: 20 }, 
                   height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#d1ecf1', 
+                  backgroundColor: '#2196f3', 
                   border: '1px solid #ddd',
                   flexShrink: 0
                 }} />
@@ -1292,7 +1237,7 @@ const WeeklySchedule = memo(() => {
                 <Box sx={{ 
                   width: { xs: 16, sm: 18, md: 20 }, 
                   height: { xs: 16, sm: 18, md: 20 }, 
-                  backgroundColor: '#a8e6cf', 
+                  backgroundColor: '#4caf50', 
                   border: '1px solid #ddd',
                   flexShrink: 0
                 }} />

@@ -98,6 +98,7 @@ router.get('/departments', scheduleManagementController.getDepartments);
  *         description: Danh sách giảng viên
  */
 router.get('/teachers', scheduleManagementController.getTeachers);
+router.get('/teachers/available', scheduleManagementController.getAvailableTeachers);
 
 /**
  * @swagger

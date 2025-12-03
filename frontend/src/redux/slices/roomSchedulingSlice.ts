@@ -40,6 +40,8 @@ export interface ClassForScheduling {
   classRoomTypeName: string;
   statusId: number;
   statusName: string;
+  startDate?: string | null;
+  endDate?: string | null;
   schedules: ScheduleData[];
 }
 

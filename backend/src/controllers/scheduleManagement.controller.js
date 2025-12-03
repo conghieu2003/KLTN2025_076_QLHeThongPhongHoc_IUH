@@ -135,6 +135,38 @@ class ScheduleManagementController {
     }
   }
 
+  // Lấy danh sách giảng viên trống vào thời điểm cụ thể
+  async getAvailableTeachers(req, res) {
+    try {
+      const { date, timeSlotId, departmentId } = req.query;
+      
+      if (!date || !timeSlotId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Thiếu tham số: date và timeSlotId là bắt buộc'
+        });
+      }
+
+      const teachers = await scheduleManagementService.getAvailableTeachers(
+        date,
+        timeSlotId,
+        departmentId || null
+      );
+      
+      return res.status(200).json({
+        success: true,
+        data: teachers
+      });
+    } catch (error) {
+      console.error('Schedule Management Controller Error:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Lỗi server',
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  }
+
   // Lấy danh sách trạng thái lịch học
   async getRequestTypes(req, res) {
     try {

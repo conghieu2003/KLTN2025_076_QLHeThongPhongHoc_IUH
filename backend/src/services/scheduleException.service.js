@@ -68,11 +68,13 @@ const createScheduleException = async (data) => {
       // Với thi cuối kỳ, không kiểm tra khoảng thời gian (có thể thi ngoài thời gian học)
       
       // Kiểm tra đã có ngoại lệ thi cuối kỳ cho lớp này và ngày này chưa
+      // Chỉ kiểm tra exception đã duyệt (status 2 hoặc 4) để tránh duplicate
       existingException = await prisma.scheduleRequest.findFirst({
         where: {
           classId: parseInt(classId),
           exceptionDate: new Date(exceptionDate),
-          requestTypeId: 10 // Thi cuối kỳ
+          requestTypeId: 10, // Thi cuối kỳ
+          requestStatusId: { in: [2, 4] } // Chỉ kiểm tra đã duyệt hoặc hoàn thành
         }
       });
 
@@ -114,11 +116,13 @@ const createScheduleException = async (data) => {
       }
 
       // Kiểm tra đã có ngoại lệ cho ngày này chưa
+      // Chỉ kiểm tra exception đã duyệt (status 2 hoặc 4) để tránh duplicate
       existingException = await prisma.scheduleRequest.findFirst({
         where: {
           classScheduleId: classScheduleId,
           exceptionDate: new Date(exceptionDate),
-          requestTypeId: requestTypeId
+          requestTypeId: requestTypeId,
+          requestStatusId: { in: [2, 4] } // Chỉ kiểm tra đã duyệt hoặc hoàn thành
         }
       });
 
@@ -223,6 +227,13 @@ const createScheduleException = async (data) => {
       }
     }
 
+    // Tính movedToDayOfWeek nếu có newDate (cho moved/exam)
+    let movedToDayOfWeek = null;
+    if (newDate && (exceptionType === 'moved' || exceptionType === 'exam')) {
+      const movedDate = new Date(newDate);
+      movedToDayOfWeek = movedDate.getDay() === 0 ? 1 : movedDate.getDay() + 1; // 1=CN, 2=T2, ..., 7=T7
+    }
+
     // Tạo ngoại lệ lịch học
     // Admin tạo ngoại lệ sẽ được tự động duyệt (requestStatusId = 2)
     const newException = await prisma.scheduleRequest.create({
@@ -238,6 +249,7 @@ const createScheduleException = async (data) => {
         newTimeSlotId: newTimeSlotId ? parseInt(newTimeSlotId) : null,
         newClassRoomId: newClassRoomId ? parseInt(newClassRoomId) : null,
         movedToDate: newDate ? new Date(newDate) : null,
+        movedToDayOfWeek: movedToDayOfWeek, // Thêm movedToDayOfWeek cho moved/exam
         movedToTimeSlotId: newTimeSlotId ? parseInt(newTimeSlotId) : null,
         movedToClassRoomId: newClassRoomId ? parseInt(newClassRoomId) : null,
         substituteTeacherId: substituteTeacherId || null,
@@ -1140,6 +1152,7 @@ const getAvailableSchedules = async (params) => {
         roomName: schedule.classRoom?.name || 'Chưa phân phòng',
         roomCode: schedule.classRoom?.code || '',
         slotName: schedule.timeSlot.slotName || 'Chưa có tiết',
+        timeSlotId: schedule.timeSlotId, // Thêm timeSlotId để hỗ trợ đổi phòng
         startTime: schedule.timeSlot.startTime ? schedule.timeSlot.startTime.toTimeString().slice(0, 8) : '00:00:00',
         endTime: schedule.timeSlot.endTime ? schedule.timeSlot.endTime.toTimeString().slice(0, 8) : '00:00:00',
         shift: schedule.timeSlot.shift || 1,
