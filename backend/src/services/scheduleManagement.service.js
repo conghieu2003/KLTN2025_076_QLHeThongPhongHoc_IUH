@@ -166,16 +166,23 @@ class ScheduleManagementService {
       }
 
       // Lấy phòng phù hợp với loại phòng và khoa
+      // Đối với phòng thực hành (classRoomTypeId === 2), không kiểm tra capacity vì có nhiều nhóm
+      const whereClause = {
+        classRoomTypeId: schedule.classRoomTypeId, // Sử dụng classRoomTypeId từ ClassSchedule
+        isAvailable: true,
+        OR: [
+          { departmentId: schedule.class.departmentId }, // Phòng cùng khoa
+          { departmentId: null } // Phòng chung
+        ]
+      };
+
+      // Chỉ kiểm tra capacity cho phòng lý thuyết (classRoomTypeId !== 2)
+      if (schedule.classRoomTypeId !== 2) {
+        whereClause.capacity = { gte: schedule.class.maxStudents };
+      }
+
       const availableRooms = await prisma.classRoom.findMany({
-        where: {
-          classRoomTypeId: schedule.classRoomTypeId, // Sử dụng classRoomTypeId từ ClassSchedule
-          isAvailable: true,
-          capacity: { gte: schedule.class.maxStudents },
-          OR: [
-            { departmentId: schedule.class.departmentId }, // Phòng cùng khoa
-            { departmentId: null } // Phòng chung
-          ]
-        },
+        where: whereClause,
         include: {
           ClassRoomType: true,
           department: true

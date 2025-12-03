@@ -20,6 +20,7 @@ const RoomScheduling: React.FC = () => {
   const { classes, departments, teachers, stats, requestTypes, availableRooms, selectedDepartment, selectedClass, selectedTeacher, selectedStatus, loading, refreshing, loadingRooms, error, assignDialogOpen, selectedSchedule, selectedRoom, isAssigning } = useSelector((state: RootState) => state.roomScheduling);
   const [classDetailDialogOpen, setClassDetailDialogOpen] = React.useState(false);
   const [selectedClassDetail, setSelectedClassDetail] = React.useState<any>(null);
+  const [isAutoAssigning, setIsAutoAssigning] = React.useState(false);
   const handleLoadAllData = useCallback(() => { dispatch(loadAllData());}, [dispatch]);
   const handleAssignRoom = async () => {
     if (!selectedSchedule || !selectedRoom) {
@@ -40,28 +41,73 @@ const RoomScheduling: React.FC = () => {
       toast.error(errorMessage);
     }
   };
-  const handleAutoAssign = async (classId: number) => {
+  const handleAutoAssign = async (row: any) => {
+    if (isAutoAssigning) return; // Tránh gọi nhiều lần
+    
+    setIsAutoAssigning(true);
     try {
-      const classData = classes.find(c => c.classId === classId);
-      if (classData && classData.schedules) {
-        let successCount = 0; 
-        const pendingSchedules = classData.schedules.filter(schedule => schedule.statusId === 1);
-        for (const schedule of pendingSchedules) {
-          const roomsResponse = await scheduleManagementService.getAvailableRoomsForSchedule(schedule.scheduleId.toString());
-          if (roomsResponse.data && roomsResponse.data.length > 0) {
-            await scheduleManagementService.assignRoomToSchedule(schedule.scheduleId.toString(), roomsResponse.data[0].id.toString());
-            successCount++;
-          }
-        }
-        
-        if (successCount > 0) {
-          toast.success(`Tự động gán phòng thành công: ${successCount} lịch học`);
-        }
+      // Lấy scheduleId từ row
+      const scheduleId = row.scheduleId || row.id;
+      if (!scheduleId) {
+        toast.error('Không tìm thấy thông tin lịch học');
+        setIsAutoAssigning(false);
+        return;
       }
+
+      // Kiểm tra trạng thái - chỉ gán cho lịch chờ phân phòng
+      if (row.status !== 1) {
+        toast.warning('Lịch học này không ở trạng thái chờ phân phòng');
+        setIsAutoAssigning(false);
+        return;
+      }
+
+      // Lấy danh sách phòng trống trong khung giờ đó
+      const roomsResponse = await scheduleManagementService.getAvailableRoomsForSchedule(scheduleId.toString());
+      
+      // Kiểm tra response structure - có thể là array trực tiếp hoặc object với data property
+      let availableRooms: any[] = [];
+      if (Array.isArray(roomsResponse)) {
+        availableRooms = roomsResponse;
+      } else if (roomsResponse?.data && Array.isArray(roomsResponse.data)) {
+        availableRooms = roomsResponse.data;
+      } else if (roomsResponse?.success && Array.isArray(roomsResponse.data)) {
+        availableRooms = roomsResponse.data;
+      }
+      
+      // Backend đã filter conflict rồi, nhưng vẫn filter lại để chắc chắn
+      // Lọc chỉ lấy phòng trống (isAvailable !== false)
+      const trulyAvailableRooms = availableRooms.filter((room: any) => {
+        return room.isAvailable !== false;
+      });
+      
+      if (trulyAvailableRooms.length === 0) {
+        toast.error('Không có phòng trống phù hợp');
+        setIsAutoAssigning(false);
+        return;
+      }
+
+      // Ưu tiên phòng cùng khoa (isSameDepartment === true)
+      const sameDepartmentRooms = trulyAvailableRooms.filter((room: any) => room.isSameDepartment === true);
+      const selectedRoom = sameDepartmentRooms.length > 0 
+        ? sameDepartmentRooms[0]  // Ưu tiên phòng cùng khoa
+        : trulyAvailableRooms[0]; // Nếu không có, chọn phòng chung
+
+      // Gán phòng cho lịch học
+      await scheduleManagementService.assignRoomToSchedule(
+        scheduleId.toString(), 
+        selectedRoom.id.toString()
+      );
+      
+      toast.success('Sắp xếp phòng thành công');
+      
+      // Làm mới dữ liệu sau khi gán
+      dispatch(loadAllData());
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Lỗi tự động gán phòng';
+      const errorMessage = err.response?.data?.message || err.message || 'Lỗi tự động gán phòng';
       dispatch(setError(errorMessage));
       toast.error(errorMessage);
+    } finally {
+      setIsAutoAssigning(false);
     }
   };
 
@@ -530,15 +576,22 @@ const RoomScheduling: React.FC = () => {
               <AssignmentIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Tự động gán phòng">
-            <IconButton
-              size="small"
-              color="secondary"
-              onClick={() => handleAutoAssign(params.row.classId)}
-              sx={{ padding: { xs: 0.25, sm: 0.5 } }}
-            >
-              <AutoAssignIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
-            </IconButton>
+          <Tooltip title={isAutoAssigning ? "Đang gán phòng tự động..." : "Tự động gán phòng"}>
+            <span>
+              <IconButton
+                size="small"
+                color="secondary"
+                onClick={() => handleAutoAssign(params.row)}
+                disabled={isAutoAssigning || params.row.status !== 1}
+                sx={{ padding: { xs: 0.25, sm: 0.5 } }}
+              >
+                {isAutoAssigning ? (
+                  <CircularProgress size={isMobile ? 14 : 16} />
+                ) : (
+                  <AutoAssignIcon sx={{ fontSize: { xs: 14, sm: 15, md: 16 } }} />
+                )}
+              </IconButton>
+            </span>
           </Tooltip>
         </Box>
       )
