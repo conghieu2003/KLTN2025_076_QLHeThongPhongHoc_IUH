@@ -307,7 +307,7 @@ const UserManagement = () => {
             lineHeight: 1.4
           }}
         >
-          {params?.value || 'N/A'}
+          {params?.value || ''}
         </Typography>
       )
     },
@@ -350,7 +350,7 @@ const UserManagement = () => {
               minWidth: 0
             }}
           >
-            {params?.value || 'N/A'}
+            {params?.value || ''}
           </Typography>
         </Box>
       )
@@ -372,13 +372,13 @@ const UserManagement = () => {
       renderCell: (params: any) => {
         const user = params?.row;
         
-        if (!user) return <Typography variant="body2">N/A</Typography>;
+        if (!user) return <Typography variant="body2"></Typography>;
         
-        let code = 'N/A';
+        let code = '';
         if (user.role === 'teacher') {
-          code = user.teacherCode || 'N/A';
+          code = user.teacherCode || '';
         } else if (user.role === 'student') {
-          code = user.studentCode || 'N/A';
+          code = user.studentCode || '';
         } else if (user.role === 'admin') {
           code = 'ADMIN';
         }
@@ -457,7 +457,7 @@ const UserManagement = () => {
               lineHeight: 1.4
             }}
           >
-            {phone || 'N/A'}
+            {phone || ''}
           </Typography>
         );
       }
@@ -486,7 +486,7 @@ const UserManagement = () => {
             fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.875rem' }
           }}
         >
-          {params?.value || 'N/A'}
+          {params?.value || ''}
         </Typography>
       )
     },
@@ -505,7 +505,7 @@ const UserManagement = () => {
       align: 'center',
       disableColumnMenu: isMobile,
       renderCell: (params) => {
-        if (!params?.row) return <Chip label="N/A" size="small" />;
+        if (!params?.row) return <Chip label="" size="small" />;
         return (
           <Chip
             label={params.row.status === 'active' || params.row.isActive ? 'Hoạt động' : 'Đã khóa'}

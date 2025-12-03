@@ -174,12 +174,12 @@ import {
 
 interface RoomRequest {
   id: number;
-  requestType: 'room_request' | 'schedule_change' | 'exception';
+  requestType?: 'room_request' | 'schedule_change' | 'exception';
   classScheduleId?: number;
   classRoomId?: number;
   requesterId: number;
-  requestDate: string;
-  timeSlotId: number;
+  requestDate?: string;
+  timeSlotId?: number;
   changeType?: 'room_change' | 'time_change' | 'both' | 'exception';
   oldClassRoomId?: number;
   newClassRoomId?: number;
@@ -193,11 +193,51 @@ interface RoomRequest {
   substituteTeacherId?: number;
   reason: string;
   approvedBy?: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status?: 'pending' | 'approved' | 'rejected';
   approvedAt?: string;
   note?: string;
   createdAt: string;
   updatedAt: string;
+  RequestType?: {
+    id: number;
+    name: string;
+  };
+  RequestStatus?: {
+    id: number;
+    name: string;
+  };
+  requester?: {
+    id: number;
+    fullName: string;
+    email: string;
+  };
+  classSchedule?: {
+    class?: {
+      id: number;
+      code: string;
+      className: string;
+      subjectName: string;
+      subjectCode: string;
+      maxStudents: number;
+    };
+    classRoom?: {
+      id: number;
+      code: string;
+      name: string;
+      capacity: number;
+      ClassRoomType?: {
+        name: string;
+      };
+    };
+  };
+  class?: {
+    id: number;
+    code: string;
+    className: string;
+    subjectName: string;
+    subjectCode: string;
+    maxStudents: number;
+  };
   // Computed fields for display
   teacherName?: string;
   teacherCode?: string;
@@ -366,11 +406,31 @@ const RoomRequestList = () => {
   // Calculate statistics
   const stats = useMemo(() => {
     const total = requests.length;
-    const pending = requests.filter(r => r.status === 'pending').length;
-    const approved = requests.filter(r => r.status === 'approved').length;
-    const rejected = requests.filter(r => r.status === 'rejected').length;
-    const roomRequests = requests.filter(r => r.requestType === 'room_request').length;
-    const scheduleChanges = requests.filter(r => r.requestType === 'schedule_change').length;
+    // Sử dụng RequestStatus.name thay vì status
+    const pending = requests.filter(r => {
+      const statusName = r.RequestStatus?.name?.toLowerCase() || '';
+      return statusName.includes('chờ') || statusName.includes('pending') || statusName === 'chờ xử lý';
+    }).length;
+    const approved = requests.filter(r => {
+      const statusName = r.RequestStatus?.name?.toLowerCase() || '';
+      // Bao gồm cả "Hoàn thành" và "Đã duyệt"
+      return statusName.includes('đã duyệt') || statusName.includes('approved') || 
+             statusName.includes('hoàn thành') || statusName.includes('completed') ||
+             statusName === 'đã duyệt' || statusName === 'hoàn thành';
+    }).length;
+    const rejected = requests.filter(r => {
+      const statusName = r.RequestStatus?.name?.toLowerCase() || '';
+      return statusName.includes('từ chối') || statusName.includes('rejected') || statusName === 'từ chối';
+    }).length;
+    // Sử dụng RequestType.name thay vì requestType
+    const roomRequests = requests.filter(r => {
+      const typeName = r.RequestType?.name?.toLowerCase() || '';
+      return typeName.includes('xin phòng') || typeName.includes('room_request') || typeName === 'xin phòng';
+    }).length;
+    const scheduleChanges = requests.filter(r => {
+      const typeName = r.RequestType?.name?.toLowerCase() || '';
+      return typeName.includes('đổi lịch') || typeName.includes('schedule_change') || typeName === 'đổi lịch';
+    }).length;
 
     return { total, pending, approved, rejected, roomRequests, scheduleChanges };
   }, [requests]);
@@ -418,7 +478,7 @@ const RoomRequestList = () => {
       disableColumnMenu: isMobile,
       renderCell: (params) => (
         <Chip
-          label={params.value?.name || 'N/A'}
+          label={params.value?.name || ''}
           color={getRequestTypeColor(params.value?.name) as any}
           size="small"
           variant="outlined"
@@ -447,7 +507,7 @@ const RoomRequestList = () => {
       renderCell: (params) => (
         <Chip
           icon={getStatusIcon(params.value?.name)}
-          label={params.value?.name || 'N/A'}
+          label={params.value?.name || ''}
           color={getStatusColor(params.value?.name) as any}
           size="small"
           variant="filled"
@@ -490,7 +550,7 @@ const RoomRequestList = () => {
               whiteSpace: 'normal'
             }}
           >
-            {params.value?.fullName || 'N/A'}
+            {params.value?.fullName || ''}
           </Typography>
         </Box>
       )
@@ -510,27 +570,31 @@ const RoomRequestList = () => {
       headerAlign: 'left',
       align: 'left',
       disableColumnMenu: isMobile,
-      renderCell: (params) => (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, width: '100%' }}>
-          <ClassIcon color="secondary" sx={{ 
-            fontSize: { xs: 12, sm: 14, md: 16 }, 
-            marginTop: '2px', 
-            flexShrink: 0 
-          }} />
-          <Typography 
-            variant="body2" 
-            sx={{
-              fontWeight: 'medium',
-              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
-              lineHeight: 1.4,
-              wordBreak: 'break-word',
-              whiteSpace: 'normal'
-            }}
-          >
-            {params.value?.class?.className || 'N/A'}
-          </Typography>
-        </Box>
-      )
+      renderCell: (params) => {
+        // Kiểm tra cả classSchedule.class và class trực tiếp (cho ngoại lệ thi cuối kỳ)
+        const className = params.value?.class?.className || params.row.class?.className || '';
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, width: '100%' }}>
+            <ClassIcon color="secondary" sx={{ 
+              fontSize: { xs: 12, sm: 14, md: 16 }, 
+              marginTop: '2px', 
+              flexShrink: 0 
+            }} />
+            <Typography 
+              variant="body2" 
+              sx={{
+                fontWeight: 'medium',
+                fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                lineHeight: 1.4,
+                wordBreak: 'break-word',
+                whiteSpace: 'normal'
+              }}
+            >
+              {className || 'Chưa có thông tin'}
+            </Typography>
+          </Box>
+        );
+      }
     },
     {
       field: 'reason',
@@ -564,7 +628,7 @@ const RoomRequestList = () => {
                 whiteSpace: 'normal'
               }}
             >
-              {params.value || 'N/A'}
+              {params.value || ''}
             </Typography>
           </Box>
         );
@@ -1010,7 +1074,7 @@ const RoomRequestList = () => {
           pageSizeOptions={[10, 25, 50, 100]}
           initialState={{
             pagination: {
-              paginationModel: { page: 0, pageSize: isMobile ? 10 : isTablet ? 15 : 25 },
+              paginationModel: { page: 0, pageSize: 5 },
             },
           }}
           disableRowSelectionOnClick

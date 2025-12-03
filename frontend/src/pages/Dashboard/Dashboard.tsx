@@ -367,10 +367,10 @@ const Dashboard = () => {
                       {/* Left Column - Personal Information */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>MSSV:</strong> {studentInfo?.studentCode || 'N/A'}
+                          <strong>MSSV:</strong> {studentInfo?.studentCode || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Họ tên:</strong> {user.fullName || 'N/A'}
+                          <strong>Họ tên:</strong> {user.fullName || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Giới tính:</strong> {getGenderText(user.gender)}
@@ -379,25 +379,25 @@ const Dashboard = () => {
                           <strong>Ngày sinh:</strong> {formatDate(user.dateOfBirth)}
                         </Typography>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Nơi sinh:</strong> {personalProfile?.placeOfBirth || 'N/A'}
+                          <strong>Nơi sinh:</strong> {personalProfile?.placeOfBirth || ''}
                         </Typography>
                       </Grid>
                       {/* Right Column - Academic Information */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Lớp học:</strong> {academicProfile?.classCode || 'N/A'}
+                          <strong>Lớp học:</strong> {academicProfile?.classCode || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Khóa học:</strong> {academicProfile?.academicYear || 'N/A'}
+                          <strong>Khóa học:</strong> {academicProfile?.academicYear || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Bậc đào tạo:</strong> {academicProfile?.degreeLevel || 'N/A'}
+                          <strong>Bậc đào tạo:</strong> {academicProfile?.degreeLevel || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Loại hình đào tạo:</strong> {academicProfile?.trainingType || 'N/A'}
+                          <strong>Loại hình đào tạo:</strong> {academicProfile?.trainingType || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Ngành:</strong> {studentInfo?.major?.name || 'N/A'}
+                          <strong>Ngành:</strong> {studentInfo?.major?.name || ''}
                         </Typography>
                       </Grid>
                     </>
@@ -407,10 +407,10 @@ const Dashboard = () => {
                       {/* Left Column - Personal Information */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Mã GV:</strong> {teacherInfo?.teacherCode || 'N/A'}
+                          <strong>Mã GV:</strong> {teacherInfo?.teacherCode || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Họ tên:</strong> {user.fullName || 'N/A'}
+                          <strong>Họ tên:</strong> {user.fullName || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Giới tính:</strong> {getGenderText(user.gender)}
@@ -419,22 +419,22 @@ const Dashboard = () => {
                           <strong>Ngày sinh:</strong> {formatDate(user.dateOfBirth)}
                         </Typography>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Nơi sinh:</strong> {personalProfile?.placeOfBirth || 'N/A'}
+                          <strong>Nơi sinh:</strong> {personalProfile?.placeOfBirth || ''}
                         </Typography>
                       </Grid>
                       {/* Right Column - Academic Information */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Khoa:</strong> {teacherInfo?.department?.name || 'N/A'}
+                          <strong>Khoa:</strong> {teacherInfo?.department?.name || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Ngành:</strong> {teacherInfo?.major?.name || 'N/A'}
+                          <strong>Ngành:</strong> {teacherInfo?.major?.name || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Chức danh:</strong> {academicProfile?.title || 'N/A'}
+                          <strong>Chức danh:</strong> {academicProfile?.title || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Loại hình đào tạo:</strong> {academicProfile?.trainingType || 'N/A'}
+                          <strong>Loại hình đào tạo:</strong> {academicProfile?.trainingType || ''}
                         </Typography>
                       </Grid>
                     </>
@@ -444,16 +444,16 @@ const Dashboard = () => {
                       {/* Left Column - Personal Information */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Họ tên:</strong> {user.fullName || 'N/A'}
+                          <strong>Họ tên:</strong> {user.fullName || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Email:</strong> {user.email || 'N/A'}
+                          <strong>Email:</strong> {user.email || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Số điện thoại:</strong> {user.phone || 'N/A'}
+                          <strong>Số điện thoại:</strong> {user.phone || ''}
                         </Typography>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
-                          <strong>Địa chỉ:</strong> {user.address || 'N/A'}
+                          <strong>Địa chỉ:</strong> {user.address || ''}
                         </Typography>
                       </Grid>
                       {/* Right Column - Role Information */}

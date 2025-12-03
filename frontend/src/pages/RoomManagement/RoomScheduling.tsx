@@ -59,7 +59,6 @@ const RoomScheduling: React.FC = () => {
         }
       }
     } catch (err: any) {
-      console.error('Error auto assigning:', err);
       const errorMessage = err.response?.data?.message || 'Lỗi tự động gán phòng';
       dispatch(setError(errorMessage));
       toast.error(errorMessage);
@@ -69,10 +68,8 @@ const RoomScheduling: React.FC = () => {
   const handleOpenAssignDialog = (schedule: ScheduleData) => {
     dispatch(openAssignDialog(schedule));
     
-    // Clear previous room selection
     dispatch(setSelectedRoom(''));
     
-    // Tìm thông tin lớp học để lấy departmentId
     const classInfo = classes.find(c => c.classId === schedule.classId);
     if (classInfo) {
       const department = departments.find(d => d.name === classInfo.departmentName);
@@ -1007,7 +1004,7 @@ const RoomScheduling: React.FC = () => {
             columns={columns}
             pageSizeOptions={[10, 25, 50]}
             initialState={{
-              pagination: { paginationModel: { pageSize: 5 } }
+              pagination: { paginationModel: { page: 0, pageSize: 5 } }
             }}
             disableRowSelectionOnClick
             disableColumnFilter={isMobile}
@@ -1327,6 +1324,70 @@ const RoomScheduling: React.FC = () => {
                     </Box>
                     <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                       {selectedClassDetail.maxStudents} sinh viên
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <CalendarIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Thời gian bắt đầu
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.startDate 
+                        ? (() => {
+                            try {
+                              const date = new Date(selectedClassDetail.startDate);
+                              if (isNaN(date.getTime())) {
+                                return selectedClassDetail.startDate;
+                              }
+                              return date.toLocaleDateString('vi-VN', { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit' 
+                              });
+                            } catch (e) {
+                              return selectedClassDetail.startDate || 'Chưa xác định';
+                            }
+                          })()
+                        : 'Chưa xác định'}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <Card>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <CalendarIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                        Thời gian kết thúc
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
+                      {selectedClassDetail.endDate 
+                        ? (() => {
+                            try {
+                              const date = new Date(selectedClassDetail.endDate);
+                              if (isNaN(date.getTime())) {
+                                return selectedClassDetail.endDate;
+                              }
+                              return date.toLocaleDateString('vi-VN', { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit' 
+                              });
+                            } catch (e) {
+                              return selectedClassDetail.endDate || 'Chưa xác định';
+                            }
+                          })()
+                        : 'Chưa xác định'}
                     </Typography>
                   </CardContent>
                 </Card>

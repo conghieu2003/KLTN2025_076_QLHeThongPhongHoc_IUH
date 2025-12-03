@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Card, CardContent, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, Chip, CircularProgress, Paper, Stack, TextField, Grid, useTheme, useMediaQuery } from '@mui/material';
-import { Person as PersonIcon, Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, ArrowBack as ArrowBackIcon, Save as SaveIcon } from '@mui/icons-material';
+import { Person as PersonIcon, Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, ArrowBack as ArrowBackIcon, Save as SaveIcon, CheckCircle as ApproveIcon, Cancel as RejectIcon, Pending as PendingIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { roomService } from '../../services/api';
+import { roomService, scheduleManagementService } from '../../services/api';
+import { formatDateForAPI, parseDateFromAPI } from '../../utils/transDateTime';
 
 interface ProcessRequestData {
     id: number;
@@ -42,6 +43,10 @@ interface ProcessRequestData {
         id: number;
         fullName: string;
         email: string;
+        teacher?: {
+            id: number;
+            teacherCode: string;
+        };
     };
     RequestType?: {
         id: number;
@@ -51,6 +56,13 @@ interface ProcessRequestData {
         id: number;
         name: string;
     };
+    approver?: {
+        id: number;
+        fullName: string;
+        email: string;
+    };
+    approvedAt?: string;
+    note?: string;
     classSchedule?: {
         id: number;
         class?: {
@@ -61,6 +73,15 @@ interface ProcessRequestData {
             subjectCode: string;
             maxStudents: number;
             departmentId: number; // Thêm departmentId
+            teacher?: {
+                id: number;
+                teacherCode: string;
+                user?: {
+                    id: number;
+                    fullName: string;
+                    email: string;
+                };
+            };
         };
         classRoom?: {
             id: number;
@@ -117,6 +138,9 @@ const ProcessRequest: React.FC = () => {
     const [suggestedRooms, setSuggestedRooms] = useState<SuggestedRoom[]>([]);
     const [selectedRoomId, setSelectedRoomId] = useState<number | ''>('');
     const [adminNote, setAdminNote] = useState('');
+    const [availableTeachers, setAvailableTeachers] = useState<any[]>([]);
+    const [selectedTeacherId, setSelectedTeacherId] = useState<number | ''>('');
+    const [loadingTeachers, setLoadingTeachers] = useState(false);
 
     useEffect(() => {
         if (requestId) {
@@ -137,6 +161,7 @@ const ProcessRequest: React.FC = () => {
                 console.log('movedToDayOfWeek:', response.data.movedToDayOfWeek);
                 setRequestData(response.data);
                 await loadSuggestedRooms(response.data);
+                await loadAvailableTeachers(response.data);
             } else {
                 toast.error('Không thể tải thông tin yêu cầu');
                 navigate('/rooms/requests/list');
@@ -153,16 +178,95 @@ const ProcessRequest: React.FC = () => {
     // Helper function: Kiểm tra xem có cần chọn phòng không
     const shouldShowRoomSelection = (request: ProcessRequestData): boolean => {
         const requestTypeId = request.requestTypeId;
-        
-        // Các loại không cần chọn phòng:
-        // 5: Tạm ngưng/Hủy lịch (không cần phòng)
-        // Các loại CẦN chọn phòng:
-        // 6: Thi giữa kỳ (admin chọn phòng khi duyệt)
-        // 8: Đổi lịch (cần chọn phòng)
-        // 10: Thi cuối kỳ (admin chọn phòng khi duyệt)
-        const noRoomNeeded = [5]; // Chỉ tạm ngưng không cần phòng
-        
+        const noRoomNeeded = [5, 9]; 
+    
         return !noRoomNeeded.includes(requestTypeId);
+    };
+
+    const loadAvailableTeachers = async (request: ProcessRequestData) => {
+        try {
+            const isExam = request.requestTypeId === 6; // Thi giữa kỳ
+            const isFinalExam = request.requestTypeId === 10; // Thi cuối kỳ
+            const isSubstitute = request.requestTypeId === 9; // Đổi giáo viên
+            
+            if (!isExam && !isFinalExam && !isSubstitute) {
+                setAvailableTeachers([]);
+                return;
+            }
+
+            let targetDate: string | undefined;
+            let targetTimeSlotId: number | undefined;
+            let departmentId: number | undefined;
+
+            if (isExam) {
+                // Thi giữa kỳ: ưu tiên dùng movedToDate và movedToTimeSlotId (từ giảng viên)
+                // Nếu không có, dùng newDate và newTimeSlotId (từ admin tạo trực tiếp)
+                let examDate: string | undefined;
+                let examTimeSlotId: number | undefined;
+                
+                if (request.movedToDate && request.movedToTimeSlotId) {
+                    // Yêu cầu từ giảng viên: đã được map sang movedToDate và movedToTimeSlotId
+                    examDate = request.movedToDate;
+                    examTimeSlotId = request.movedToTimeSlotId;
+                } else if (request.newDate && request.newTimeSlotId) {
+                    // Yêu cầu từ admin tạo trực tiếp: dùng newDate và newTimeSlotId
+                    examDate = request.newDate;
+                    examTimeSlotId = request.newTimeSlotId;
+                }
+                
+                if (examDate && examTimeSlotId) {
+                    const parsedDate = parseDateFromAPI(examDate) || new Date(examDate);
+                    targetDate = formatDateForAPI(parsedDate) || examDate.split('T')[0];
+                    targetTimeSlotId = examTimeSlotId;
+                    // Lấy departmentId từ classSchedule nếu có
+                    if (request.classSchedule?.class?.departmentId) {
+                        departmentId = request.classSchedule.class.departmentId;
+                    }
+                }
+            } else if (isFinalExam && request.exceptionDate && request.newTimeSlotId) {
+                // Thi cuối kỳ: dùng exceptionDate và newTimeSlotId
+                const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
+                targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
+                targetTimeSlotId = request.newTimeSlotId;
+                // Lấy departmentId từ class nếu có
+                if (request.class?.departmentId) {
+                    departmentId = request.class.departmentId;
+                }
+            } else if (isSubstitute && request.exceptionDate && request.classSchedule) {
+                // Đổi giáo viên: dùng exceptionDate và timeSlotId từ classSchedule
+                const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
+                targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
+                targetTimeSlotId = request.classSchedule.timeSlotId;
+                // Lấy departmentId từ classSchedule
+                if (request.classSchedule?.class?.departmentId) {
+                    departmentId = request.classSchedule.class.departmentId;
+                }
+            }
+
+            if (!targetDate || !targetTimeSlotId) {
+                setAvailableTeachers([]);
+                return;
+            }
+
+            setLoadingTeachers(true);
+            const response = await scheduleManagementService.getAvailableTeachers(
+                targetDate,
+                targetTimeSlotId,
+                departmentId
+            );
+
+            if (response.success) {
+                setAvailableTeachers(response.data || []);
+            } else {
+                setAvailableTeachers([]);
+                toast.error(response.message || 'Lỗi lấy danh sách giảng viên trống');
+            }
+        } catch (error: any) {
+            console.error('Error loading available teachers:', error);
+            setAvailableTeachers([]);
+        } finally {
+            setLoadingTeachers(false);
+        }
     };
 
     const loadSuggestedRooms = async (request: ProcessRequestData) => {
@@ -203,11 +307,10 @@ const ProcessRequest: React.FC = () => {
                     classRoomTypeId = '1';
                 }
             }
-
-            console.log('Class requirements:', { classMaxStudents, classRoomTypeId, departmentId });
-
-            // Xử lý các loại request cần chọn phòng: Đổi lịch, Thi giữa kỳ, Thi cuối kỳ
-            const isMoved = request.RequestType?.name === 'Đổi lịch';
+            
+            // Xử lý các loại request cần chọn phòng: Đổi phòng, Đổi lịch, Thi giữa kỳ, Thi cuối kỳ
+            const isRoomChange = request.requestTypeId === 7; // Đổi phòng
+            const isMoved = request.RequestType?.name === 'Đổi lịch' || request.requestTypeId === 8;
             const isExam = request.requestTypeId === 6; // Thi giữa kỳ
             const isFinalExam = request.requestTypeId === 10; // Thi cuối kỳ
             
@@ -215,30 +318,70 @@ const ProcessRequest: React.FC = () => {
             let targetTimeSlotId: number | undefined;
             let targetDayOfWeek: number | undefined;
             
-            if (isMoved && request.movedToDate && request.movedToTimeSlotId && request.movedToDayOfWeek) {
-                targetDate = request.movedToDate;
-                targetTimeSlotId = request.movedToTimeSlotId;
-                targetDayOfWeek = request.movedToDayOfWeek;
-            } else if (isExam && request.newDate && request.newTimeSlotId) {
-                // Thi giữa kỳ: dùng newDate và newTimeSlotId
-                targetDate = request.newDate;
-                targetTimeSlotId = request.newTimeSlotId;
-                // Tính dayOfWeek từ newDate
+            if (isRoomChange && request.classSchedule && request.exceptionDate) {
+                // Đổi phòng: dùng exceptionDate và timeSlotId từ classSchedule
+                const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
+                targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
+                targetTimeSlotId = request.classSchedule.timeSlotId;
                 if (targetDate) {
-                    const dateObj = new Date(targetDate);
+                    const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
                     targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                }
+            } else if (isMoved && request.movedToDate && request.movedToTimeSlotId) {
+                // Đổi lịch: dùng movedToDate và movedToTimeSlotId
+                const parsedDate = parseDateFromAPI(request.movedToDate) || new Date(request.movedToDate);
+                targetDate = formatDateForAPI(parsedDate) || request.movedToDate.split('T')[0];
+                targetTimeSlotId = request.movedToTimeSlotId;
+                // Tính dayOfWeek từ movedToDate hoặc dùng movedToDayOfWeek nếu có
+                if (request.movedToDayOfWeek) {
+                    targetDayOfWeek = request.movedToDayOfWeek;
+                } else if (targetDate) {
+                    const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
+                    targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                }
+            } else if (isExam) {
+                // Thi giữa kỳ: ưu tiên dùng movedToDate và movedToTimeSlotId (từ giảng viên)
+                // Nếu không có, dùng newDate và newTimeSlotId (từ admin tạo trực tiếp)
+                let examDate: string | undefined;
+                let examTimeSlotId: number | undefined;
+                
+                if (request.movedToDate && request.movedToTimeSlotId) {
+                    // Yêu cầu từ giảng viên: đã được map sang movedToDate và movedToTimeSlotId
+                    examDate = request.movedToDate;
+                    examTimeSlotId = request.movedToTimeSlotId;
+                } else if (request.newDate && request.newTimeSlotId) {
+                    // Yêu cầu từ admin tạo trực tiếp: dùng newDate và newTimeSlotId
+                    examDate = request.newDate;
+                    examTimeSlotId = request.newTimeSlotId;
+                }
+                
+                if (examDate && examTimeSlotId) {
+                    const parsedDate = parseDateFromAPI(examDate) || new Date(examDate);
+                    targetDate = formatDateForAPI(parsedDate) || examDate.split('T')[0];
+                    targetTimeSlotId = examTimeSlotId;
+                    // Tính dayOfWeek từ examDate hoặc dùng movedToDayOfWeek nếu có
+                    if (request.movedToDayOfWeek) {
+                        targetDayOfWeek = request.movedToDayOfWeek;
+                    } else if (targetDate) {
+                        const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
+                        targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                    }
                 }
             } else if (isFinalExam && request.exceptionDate && request.newTimeSlotId) {
                 // Thi cuối kỳ: dùng exceptionDate và newTimeSlotId
-                targetDate = request.exceptionDate;
+                const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
+                targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
                 targetTimeSlotId = request.newTimeSlotId;
                 // Tính dayOfWeek từ exceptionDate
-                const dateObj = new Date(targetDate);
-                targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                if (targetDate) {
+                    const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
+                    targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                }
             }
             
             if (targetDate && targetTimeSlotId && targetDayOfWeek) {
                 console.log('🎯 Using getAvailableRoomsForException API');
+                console.log('Request type:', request.requestTypeId, request.RequestType?.name);
                 console.log('Request params:', {
                     timeSlotId: targetTimeSlotId,
                     dayOfWeek: targetDayOfWeek,
@@ -247,39 +390,67 @@ const ProcessRequest: React.FC = () => {
                     classRoomTypeId,
                     departmentId
                 });
+                console.log('Request data:', {
+                    exceptionDate: request.exceptionDate,
+                    newDate: request.newDate,
+                    movedToDate: request.movedToDate,
+                    movedToTimeSlotId: request.movedToTimeSlotId,
+                    movedToDayOfWeek: request.movedToDayOfWeek,
+                    newTimeSlotId: request.newTimeSlotId,
+                    classSchedule: request.classSchedule ? {
+                        id: request.classSchedule.id,
+                        timeSlotId: request.classSchedule.timeSlotId
+                    } : null,
+                    class: request.class ? {
+                        id: request.class.id,
+                        departmentId: request.class.departmentId
+                    } : null
+                });
 
                 const availableRoomsResponse = await roomService.getAvailableRoomsForException(
                     Number(targetTimeSlotId),
                     Number(targetDayOfWeek),
-                    targetDate.split('T')[0], // Format: YYYY-MM-DD
+                    targetDate, // Đã được format sẵn YYYY-MM-DD
                     classMaxStudents,
                     classRoomTypeId,
                     departmentId ? String(departmentId) : undefined // Lọc theo khoa
                 );
 
-                if (availableRoomsResponse.success) {
-                    const { normalRooms, freedRooms } = availableRoomsResponse.data;
+                if (availableRoomsResponse.success && availableRoomsResponse.data) {
+                    const { normalRooms, freedRooms, occupiedRooms } = availableRoomsResponse.data;
                     
                     console.log('✅ Available rooms:', {
-                        normal: normalRooms.length,
-                        freed: freedRooms.length
+                        normal: normalRooms?.length || 0,
+                        freed: freedRooms?.length || 0,
+                        occupied: occupiedRooms?.length || 0
                     });
 
+                    // Lấy danh sách phòng occupied (convert về number để so sánh)
+                    const occupiedIds = (occupiedRooms || []).map((r: any) => parseInt(String(r.id)));
+                    
+                    // Lấy danh sách tất cả phòng available (normal + freed)
+                    // Filter lại để loại bỏ phòng bị occupied
                     const allAvailable = [
-                        ...freedRooms.map((room: any) => ({ 
+                        ...(freedRooms || []).map((room: any) => ({ 
                             ...room, 
                             isFreedByException: true,
                             sortPriority: 1 
                         })),
-                        ...normalRooms.map((room: any) => ({ 
+                        ...(normalRooms || []).map((room: any) => ({ 
                             ...room, 
                             isFreedByException: false,
                             sortPriority: 2
                         }))
                     ];
 
+                    // Chỉ giữ lại phòng không bị occupied (so sánh với số để đảm bảo type matching)
+                    const availableRooms = allAvailable.filter((room: any) => {
+                        const roomIdNum = parseInt(String(room.id));
+                        return !occupiedIds.includes(roomIdNum);
+                    });
+
                     // Sort: Freed rooms trước, sau đó sort theo capacity gần với yêu cầu nhất
-                    allAvailable.sort((a: any, b: any) => {
+                    availableRooms.sort((a: any, b: any) => {
                         if (a.sortPriority !== b.sortPriority) {
                             return a.sortPriority - b.sortPriority;
                         }
@@ -288,10 +459,10 @@ const ProcessRequest: React.FC = () => {
                         return aDiff - bDiff;
                     });
 
-                    console.log('Suggested rooms:', allAvailable.slice(0, 15));
-                    setSuggestedRooms(allAvailable.slice(0, 15)); // Top 15 suggestions
+                    console.log('Suggested rooms:', availableRooms.slice(0, 15));
+                    setSuggestedRooms(availableRooms.slice(0, 15)); // Top 15 suggestions
 
-                    if (freedRooms.length > 0) {
+                    if ((freedRooms?.length || 0) > 0) {
                         toast.info(
                             `🎉 Có ${freedRooms.length} phòng trống do lớp khác nghỉ/thi trong ngày này`,
                             { autoClose: 5000 }
@@ -299,7 +470,11 @@ const ProcessRequest: React.FC = () => {
                     }
 
                     return;
+                } else {
+                    console.warn('API returned unsuccessful or no data');
                 }
+            } else {
+                console.warn('Missing required params:', { targetDate, targetTimeSlotId, targetDayOfWeek });
             }
 
             // ⭐ Logic cũ: Cho các trường hợp khác (hoặc khi API mới fail)
@@ -359,6 +534,7 @@ const ProcessRequest: React.FC = () => {
         } catch (error) {
             console.error('Error loading suggested rooms:', error);
             toast.error('Không thể tải danh sách phòng đề xuất');
+            setSuggestedRooms([]);
         }
     };
 
@@ -374,12 +550,13 @@ const ProcessRequest: React.FC = () => {
         try {
             setProcessing(true);
 
-            // Update request status to approved with selected room
+            // Update request status to approved with selected room and teacher
             const updateResponse = await roomService.updateScheduleRequestStatus(
                 parseInt(requestId!),
                 2, // Approved status
                 adminNote || 'Yêu cầu đã được chấp nhận và phân phòng',
-                selectedRoomId ? selectedRoomId.toString() : undefined
+                selectedRoomId ? selectedRoomId.toString() : undefined,
+                selectedTeacherId ? Number(selectedTeacherId) : undefined
             );
 
             if (updateResponse.success) {
@@ -450,6 +627,7 @@ const ProcessRequest: React.FC = () => {
                         sx={{
                             fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2rem' },
                             fontWeight: 'bold',
+                            color: 'primary.main',
                             wordBreak: 'break-word',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
@@ -483,6 +661,46 @@ const ProcessRequest: React.FC = () => {
                                         color="text.secondary"
                                         sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                     >
+                                        Trạng thái:
+                                    </Typography>
+                                    <Chip
+                                        icon={(() => {
+                                            const statusName = requestData.RequestStatus?.name?.toLowerCase() || '';
+                                            if (statusName.includes('đã duyệt') || statusName.includes('approved') || statusName.includes('hoàn thành') || statusName.includes('completed')) {
+                                                return <ApproveIcon />;
+                                            } else if (statusName.includes('từ chối') || statusName.includes('rejected')) {
+                                                return <RejectIcon />;
+                                            } else {
+                                                return <PendingIcon />;
+                                            }
+                                        })()}
+                                        label={requestData.RequestStatus?.name || 'Chưa xác định'}
+                                        color={(() => {
+                                            const statusName = requestData.RequestStatus?.name?.toLowerCase() || '';
+                                            if (statusName.includes('đã duyệt') || statusName.includes('approved') || statusName.includes('hoàn thành') || statusName.includes('completed')) {
+                                                return 'success';
+                                            } else if (statusName.includes('từ chối') || statusName.includes('rejected')) {
+                                                return 'error';
+                                            } else {
+                                                return 'warning';
+                                            }
+                                        })()}
+                                        size="small"
+                                        variant="filled"
+                                        sx={{ 
+                                            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
+                                            height: { xs: 24, sm: 28, md: 32 },
+                                            mt: 0.5
+                                        }}
+                                    />
+                                </Box>
+
+                                <Box>
+                                    <Typography 
+                                        variant="subtitle2" 
+                                        color="text.secondary"
+                                        sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                    >
                                         Loại yêu cầu:
                                     </Typography>
                                     <Chip
@@ -491,7 +709,8 @@ const ProcessRequest: React.FC = () => {
                                         size="small"
                                         sx={{ 
                                             fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' },
-                                            height: { xs: 20, sm: 24, md: 28 }
+                                            height: { xs: 20, sm: 24, md: 28 },
+                                            mt: 0.5
                                         }}
                                     />
                                 </Box>
@@ -514,15 +733,49 @@ const ProcessRequest: React.FC = () => {
                                             sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                         >
                                             {requestData.requester?.fullName}
+                                            {(requestData.requester?.teacher?.teacherCode || requestData.classSchedule?.class?.teacher?.teacherCode) && (
+                                                <Typography 
+                                                    component="span" 
+                                                    variant="caption" 
+                                                    color="text.secondary"
+                                                    sx={{ 
+                                                        ml: 1,
+                                                        fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' }
+                                                    }}
+                                                >
+                                                    ({requestData.requester?.teacher?.teacherCode || requestData.classSchedule?.class?.teacher?.teacherCode})
+                                                </Typography>
+                                            )}
                                         </Typography>
                                     </Box>
-                                    <Typography 
-                                        variant="caption" 
-                                        color="text.secondary"
-                                        sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
-                                    >
-                                        {requestData.requester?.email}
-                                    </Typography>
+
+                                    {/* Hiển thị giáo viên của lớp học nếu khác với người yêu cầu */}
+                                    {requestData.classSchedule?.class?.teacher && 
+                                     requestData.classSchedule.class.teacher.user?.fullName && 
+                                     requestData.classSchedule.class.teacher.user.fullName !== requestData.requester?.fullName && (
+                                        <Box sx={{ mt: 0.5 }}>
+                                            <Typography 
+                                                variant="caption" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
+                                            >
+                                                Giáo viên lớp học: {requestData.classSchedule.class.teacher.user.fullName}
+                                                {requestData.classSchedule.class.teacher.teacherCode && (
+                                                    <Typography 
+                                                        component="span" 
+                                                        variant="caption" 
+                                                        color="text.secondary"
+                                                        sx={{ 
+                                                            ml: 0.5,
+                                                            fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' }
+                                                        }}
+                                                    >
+                                                        ({requestData.classSchedule.class.teacher.teacherCode})
+                                                    </Typography>
+                                                )}
+                                            </Typography>
+                                        </Box>
+                                    )}
                                 </Box>
 
                                 <Box>
@@ -566,6 +819,104 @@ const ProcessRequest: React.FC = () => {
                                         {new Date(requestData.createdAt).toLocaleDateString('vi-VN')}
                                     </Typography>
                                 </Box>
+
+                                {/* Hiển thị ngày ngoại lệ nếu có */}
+                                {requestData.exceptionDate && (
+                                    <Box>
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            color="text.secondary"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
+                                            Ngày ngoại lệ:
+                                        </Typography>
+                                        <Typography 
+                                            variant="body2"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
+                                            {new Date(requestData.exceptionDate).toLocaleDateString('vi-VN')}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                                {/* Hiển thị thông tin người duyệt và ngày duyệt nếu đã được xử lý */}
+                                {requestData.approver && requestData.approvedAt && (
+                                    <>
+                                        <Box>
+                                            <Typography 
+                                                variant="subtitle2" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
+                                                Người xử lý:
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                                <PersonIcon sx={{ 
+                                                    mr: 1, 
+                                                    fontSize: { xs: 14, sm: 16, md: 18 },
+                                                    color: 'success.main'
+                                                }} />
+                                                <Typography 
+                                                    variant="body2"
+                                                    sx={{ 
+                                                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
+                                                        color: 'success.main',
+                                                        fontWeight: 'medium'
+                                                    }}
+                                                >
+                                                    {requestData.approver.fullName}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        <Box>
+                                            <Typography 
+                                                variant="subtitle2" 
+                                                color="text.secondary"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
+                                                Ngày xử lý:
+                                            </Typography>
+                                            <Typography 
+                                                variant="body2"
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                            >
+                                                {new Date(requestData.approvedAt).toLocaleDateString('vi-VN')}
+                                            </Typography>
+                                        </Box>
+                                    </>
+                                )}
+
+                                {/* Hiển thị ghi chú nếu có */}
+                                {requestData.note && (
+                                    <Box>
+                                        <Typography 
+                                            variant="subtitle2" 
+                                            color="text.secondary"
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                        >
+                                            Ghi chú:
+                                        </Typography>
+                                        <Paper sx={{ 
+                                            p: { xs: 1, sm: 1.5, md: 2 }, 
+                                            mt: 0.5, 
+                                            bgcolor: 'info.light',
+                                            border: '1px solid',
+                                            borderColor: 'info.main'
+                                        }}>
+                                            <Typography 
+                                                variant="body2"
+                                                sx={{ 
+                                                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
+                                                    wordBreak: 'break-word',
+                                                    whiteSpace: 'normal',
+                                                    color: 'info.dark'
+                                                }}
+                                            >
+                                                {requestData.note}
+                                            </Typography>
+                                        </Paper>
+                                    </Box>
+                                )}
                             </Stack>
                         </CardContent>
                     </Card>
@@ -586,7 +937,7 @@ const ProcessRequest: React.FC = () => {
                                 Thông tin lớp học
                             </Typography>
 
-                            {requestData.classSchedule?.class ? (
+                            {(requestData.classSchedule?.class || requestData.class) ? (
                                 <Stack spacing={{ xs: 1.5, sm: 2 }}>
                                     <Box>
                                         <Typography 
@@ -605,16 +956,16 @@ const ProcessRequest: React.FC = () => {
                                                 variant="body2"
                                                 sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                             >
-                                                {requestData.classSchedule.class.className}
+                                                {requestData.classSchedule?.class?.className || requestData.class?.className}
                                             </Typography>
                                         </Box>
-                                        <Typography 
+                                        {/* <Typography 
                                             variant="caption" 
                                             color="text.secondary"
                                             sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
                                         >
-                                            {requestData.classSchedule.class.subjectName} ({requestData.classSchedule.class.subjectCode})
-                                        </Typography>
+                                            {requestData.classSchedule?.class?.subjectName || requestData.class?.subjectName} ({requestData.classSchedule?.class?.subjectCode || requestData.class?.subjectCode})
+                                        </Typography> */}
                                     </Box>
 
                                     <Box>
@@ -629,31 +980,33 @@ const ProcessRequest: React.FC = () => {
                                             variant="body2"
                                             sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                         >
-                                            {requestData.classSchedule.class.maxStudents} sinh viên
+                                            {requestData.classSchedule?.class?.maxStudents || requestData.class?.maxStudents} sinh viên
                                         </Typography>
                                     </Box>
 
-                                    <Box>
-                                        <Typography 
-                                            variant="subtitle2" 
-                                            color="text.secondary"
-                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
-                                        >
-                                            Lịch học hiện tại:
-                                        </Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                            <ScheduleIcon sx={{ 
-                                                mr: 1, 
-                                                fontSize: { xs: 14, sm: 16, md: 18 } 
-                                            }} />
+                                    {requestData.classSchedule && (
+                                        <Box>
                                             <Typography 
-                                                variant="body2"
+                                                variant="subtitle2" 
+                                                color="text.secondary"
                                                 sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                             >
-                                                {getDayName(requestData.classSchedule.dayOfWeek)} - Tiết {requestData.classSchedule.timeSlotId}
+                                                Lịch học hiện tại:
                                             </Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                                <ScheduleIcon sx={{ 
+                                                    mr: 1, 
+                                                    fontSize: { xs: 14, sm: 16, md: 18 } 
+                                                }} />
+                                                <Typography 
+                                                    variant="body2"
+                                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                                >
+                                                    {getDayName(requestData.classSchedule.dayOfWeek)} - Tiết {requestData.classSchedule.timeSlotId}
+                                                </Typography>
+                                            </Box>
                                         </Box>
-                                    </Box>
+                                    )}
 
                                     {/* Hiển thị lịch yêu cầu cho đổi lịch */}
                                     {requestData.RequestType?.name === 'Đổi lịch' && requestData.movedToTimeSlotId && requestData.movedToDayOfWeek && (
@@ -690,25 +1043,33 @@ const ProcessRequest: React.FC = () => {
                                         </Box>
                                     )}
 
-                                    {requestData.classSchedule.classRoom && (
+                                    {/* Hiển thị phòng đã xử lý (newClassRoom) nếu có, nếu không thì hiển thị phòng hiện tại */}
+                                    {(requestData.newClassRoom || requestData.classSchedule?.classRoom) && (
                                         <Box>
                                             <Typography 
                                                 variant="subtitle2" 
                                                 color="text.secondary"
                                                 sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                             >
-                                                Phòng hiện tại:
+                                                {requestData.newClassRoom ? 'Phòng đã phân:' : 'Phòng hiện tại:'}
                                             </Typography>
                                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
                                                 <RoomIcon sx={{ 
                                                     mr: 1, 
-                                                    fontSize: { xs: 14, sm: 16, md: 18 } 
+                                                    fontSize: { xs: 14, sm: 16, md: 18 },
+                                                    color: requestData.newClassRoom ? 'success.main' : 'inherit'
                                                 }} />
                                                 <Typography 
                                                     variant="body2"
-                                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                                                    sx={{ 
+                                                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' },
+                                                        color: requestData.newClassRoom ? 'success.main' : 'inherit',
+                                                        fontWeight: requestData.newClassRoom ? 'bold' : 'normal'
+                                                    }}
                                                 >
-                                                    {requestData.classSchedule.classRoom.name} ({requestData.classSchedule.classRoom.code})
+                                                    {requestData.newClassRoom 
+                                                        ? `${requestData.newClassRoom.name} (${requestData.newClassRoom.code})`
+                                                        : `${requestData.classSchedule?.classRoom?.name} (${requestData.classSchedule?.classRoom?.code})`}
                                                 </Typography>
                                             </Box>
                                             <Typography 
@@ -716,7 +1077,7 @@ const ProcessRequest: React.FC = () => {
                                                 color="text.secondary"
                                                 sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.75rem' } }}
                                             >
-                                                Sức chứa: {requestData.classSchedule.classRoom.capacity} chỗ
+                                                Sức chứa: {requestData.newClassRoom?.capacity || requestData.classSchedule?.classRoom?.capacity} chỗ
                                             </Typography>
                                         </Box>
                                     )}
@@ -734,8 +1095,8 @@ const ProcessRequest: React.FC = () => {
                 </Grid>
             </Grid>
 
-            {/* Chọn phòng học - Chỉ hiển thị khi cần */}
-            {requestData && shouldShowRoomSelection(requestData) && (
+            {/* Chọn phòng học - Chỉ hiển thị khi cần và chưa xử lý */}
+            {requestData && shouldShowRoomSelection(requestData) && requestData.RequestStatus?.name !== 'Hoàn thành' && requestData.RequestStatus?.name !== 'Đã duyệt' && (
             <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Card>
                     <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
@@ -856,13 +1217,141 @@ const ProcessRequest: React.FC = () => {
                                 Không tìm thấy phòng học phù hợp. Vui lòng kiểm tra lại yêu cầu.
                             </Alert>
                         )}
+
+                        {/* Chọn giảng viên cho thi giữa kỳ và thi cuối kỳ */}
+                        {(requestData.requestTypeId === 6 || requestData.requestTypeId === 10) && (
+                            <FormControl 
+                                fullWidth 
+                                size={isMobile ? "small" : "medium"}
+                                sx={{ mt: { xs: 1.5, sm: 2 } }}
+                            >
+                                <InputLabel 
+                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                                >
+                                    Chọn giảng viên (tùy chọn)
+                                </InputLabel>
+                                <Select
+                                    value={selectedTeacherId}
+                                    onChange={(e) => setSelectedTeacherId(e.target.value as number)}
+                                    label="Chọn giảng viên (tùy chọn)"
+                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                                    disabled={loadingTeachers}
+                                >
+                                    <MenuItem value="">
+                                        <em>Không chọn (dùng giảng viên của lớp)</em>
+                                    </MenuItem>
+                                    {loadingTeachers ? (
+                                        <MenuItem disabled value="">
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <CircularProgress size={16} />
+                                                <Typography variant="body2">Đang tải...</Typography>
+                                            </Box>
+                                        </MenuItem>
+                                    ) : availableTeachers.length > 0 ? (
+                                        availableTeachers.map((teacher) => (
+                                            <MenuItem 
+                                                key={teacher.id} 
+                                                value={teacher.id}
+                                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                                            >
+                                                {teacher.fullName || teacher.name} {teacher.teacherCode && `(${teacher.teacherCode})`}
+                                            </MenuItem>
+                                        ))
+                                    ) : (
+                                        <MenuItem disabled value="">
+                                            Không có giảng viên trống vào thời điểm này
+                                        </MenuItem>
+                                    )}
+                                </Select>
+                            </FormControl>
+                        )}
+                    </CardContent>
+                </Card>
+            </Box>
+            )}
+
+            {/* Chọn giảng viên thay thế cho đổi giáo viên - Phần riêng vì không cần chọn phòng */}
+            {requestData && requestData.requestTypeId === 9 && requestData.RequestStatus?.name !== 'Hoàn thành' && requestData.RequestStatus?.name !== 'Đã duyệt' && (
+            <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Card>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                        <Typography 
+                            variant="h6" 
+                            gutterBottom
+                            sx={{
+                                fontSize: { xs: '1rem', sm: '1.1rem', md: '1.25rem' },
+                                mb: { xs: 1.5, sm: 2 }
+                            }}
+                        >
+                            Chọn giảng viên thay thế
+                        </Typography>
+
+                        <Alert 
+                            severity="info" 
+                            sx={{ 
+                                mb: { xs: 1.5, sm: 2 },
+                                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                            }}
+                        >
+                            <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                            >
+                                <strong>Lưu ý:</strong> Chỉ hiển thị các giảng viên cùng khoa và không có tiết dạy vào thời điểm này.
+                                {requestData.exceptionDate && requestData.classSchedule && (
+                                    <> Ngày: {new Date(requestData.exceptionDate).toLocaleDateString('vi-VN')} - Tiết {requestData.classSchedule.timeSlotId}</>
+                                )}
+                            </Typography>
+                        </Alert>
+
+                        <FormControl 
+                            fullWidth 
+                            size={isMobile ? "small" : "medium"}
+                        >
+                            <InputLabel 
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                            >
+                                Chọn giảng viên thay thế
+                            </InputLabel>
+                            <Select
+                                value={selectedTeacherId}
+                                onChange={(e) => setSelectedTeacherId(e.target.value as number)}
+                                label="Chọn giảng viên thay thế"
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                                disabled={loadingTeachers}
+                            >
+                                {loadingTeachers ? (
+                                    <MenuItem disabled value="">
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <CircularProgress size={16} />
+                                            <Typography variant="body2">Đang tải danh sách giảng viên...</Typography>
+                                        </Box>
+                                    </MenuItem>
+                                ) : availableTeachers.length > 0 ? (
+                                    availableTeachers.map((teacher) => (
+                                        <MenuItem 
+                                            key={teacher.id} 
+                                            value={teacher.id}
+                                            sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                                        >
+                                            {teacher.fullName || teacher.name} {teacher.teacherCode && `(${teacher.teacherCode})`}
+                                        </MenuItem>
+                                    ))
+                                ) : (
+                                    <MenuItem disabled value="">
+                                        Không có giảng viên trống vào thời điểm này
+                                    </MenuItem>
+                                )}
+                            </Select>
+                        </FormControl>
                     </CardContent>
                 </Card>
             </Box>
             )}
 
 
-            {/* Ghi chú và nút xử lý */}
+            {/* Ghi chú và nút xử lý - Chỉ hiển thị khi chưa xử lý */}
+            {requestData.RequestStatus?.name !== 'Hoàn thành' && requestData.RequestStatus?.name !== 'Đã duyệt' && (
             <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
                 <Card>
                     <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
@@ -905,7 +1394,7 @@ const ProcessRequest: React.FC = () => {
                                     variant="contained"
                                     startIcon={<SaveIcon />}
                                     onClick={handleProcessRequest}
-                                    disabled={(requestData && shouldShowRoomSelection(requestData) && !selectedRoomId) || processing}
+                                    disabled={((requestData && shouldShowRoomSelection(requestData) && !selectedRoomId) || (requestData?.requestTypeId === 9 && !selectedTeacherId)) || processing}
                                     fullWidth={isMobile}
                                     size={isMobile ? "medium" : "large"}
                                     sx={{ 
@@ -919,6 +1408,7 @@ const ProcessRequest: React.FC = () => {
                     </CardContent>
                 </Card>
             </Box>
+            )}
         </Box>
     );
 };
