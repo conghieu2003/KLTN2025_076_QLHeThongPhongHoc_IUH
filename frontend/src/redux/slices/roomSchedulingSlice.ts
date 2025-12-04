@@ -106,8 +106,8 @@ interface RoomSchedulingState {
   
   // UI State
   loading: boolean;
-  refreshing: boolean; // Separate loading state for data refresh
-  loadingRooms: boolean; // Loading state for room list
+  refreshing: boolean; 
+  loadingRooms: boolean; 
   error: string | null;
   successMessage: string | null;
   
@@ -173,8 +173,7 @@ export const loadAllData = createAsyncThunk(
     }
   }
 );
-
-// Load only schedule data (classes and stats) for faster refresh
+// load lịch học
 export const loadScheduleData = createAsyncThunk(
   'roomScheduling/loadScheduleData',
   async (_, { rejectWithValue }) => {
@@ -193,7 +192,7 @@ export const loadScheduleData = createAsyncThunk(
     }
   }
 );
-
+// load danh sách phòng trống
 export const loadAvailableRooms = createAsyncThunk(
   'roomScheduling/loadAvailableRooms',
   async (scheduleId: string, { rejectWithValue }) => {
@@ -205,7 +204,7 @@ export const loadAvailableRooms = createAsyncThunk(
     }
   }
 );
-
+// load danh sách phòng theo khoa và loại phòng
 export const loadRoomsByDepartmentAndType = createAsyncThunk(
   'roomScheduling/loadRoomsByDepartmentAndType',
   async ({ departmentId, classRoomTypeId }: { departmentId: string, classRoomTypeId: string }, { rejectWithValue }) => {
@@ -217,7 +216,7 @@ export const loadRoomsByDepartmentAndType = createAsyncThunk(
     }
   }
 );
-
+// gán phòng cho lịch học
 export const assignRoomToSchedule = createAsyncThunk(
   'roomScheduling/assignRoomToSchedule',
   async ({ scheduleId, roomId }: { scheduleId: string, roomId: string }, { rejectWithValue, dispatch }) => {
@@ -233,7 +232,7 @@ export const assignRoomToSchedule = createAsyncThunk(
     }
   }
 );
-
+// hủy gán phòng cho lịch học
 export const unassignRoomFromSchedule = createAsyncThunk(
   'roomScheduling/unassignRoomFromSchedule',
   async (scheduleId: string, { rejectWithValue, dispatch }) => {
@@ -249,16 +248,14 @@ export const unassignRoomFromSchedule = createAsyncThunk(
     }
   }
 );
-
-// Slice
+// slice
 const roomSchedulingSlice = createSlice({
   name: 'roomScheduling',
   initialState,
   reducers: {
-    // Filter actions
+    // lọc theo khoa
     setSelectedDepartment: (state, action: PayloadAction<string>) => {
       state.selectedDepartment = action.payload;
-      // Reset other filters when department changes
       state.selectedClass = '';
       state.selectedTeacher = '';
     },
@@ -301,7 +298,7 @@ const roomSchedulingSlice = createSlice({
       state.successMessage = null;
     },
     
-    // Socket real-time update actions
+    // Socket real-time 
     updateScheduleFromSocket: (state, action: PayloadAction<any>) => {
       const { scheduleId, scheduleStatusId, classId, classStatusId, roomId, roomName, roomCode } = action.payload;
       
@@ -368,7 +365,7 @@ const roomSchedulingSlice = createSlice({
         state.error = action.payload as string;
       })
       
-      // Load available rooms
+      // load danh sách phòng trống
       .addCase(loadAvailableRooms.pending, (state) => {
         state.loadingRooms = true;
         state.error = null;
@@ -382,7 +379,7 @@ const roomSchedulingSlice = createSlice({
         state.error = action.payload as string;
       })
       
-      // Load rooms by department and type
+      // load danh sách phòng theo khoa và loại phòng
       .addCase(loadRoomsByDepartmentAndType.pending, (state) => {
         state.loadingRooms = true;
         state.error = null;
@@ -396,7 +393,7 @@ const roomSchedulingSlice = createSlice({
         state.error = action.payload as string;
       })
       
-      // Assign room
+      // gán phòng cho lịch học
       .addCase(assignRoomToSchedule.pending, (state) => {
         state.isAssigning = true;
         state.error = null;
@@ -407,8 +404,6 @@ const roomSchedulingSlice = createSlice({
         state.assignDialogOpen = false;
         state.selectedSchedule = null;
         state.selectedRoom = '';
-        // Refresh data
-        // Note: In a real app, you might want to update the specific class/schedule in the state
       })
       .addCase(assignRoomToSchedule.rejected, (state, action) => {
         state.isAssigning = false;
@@ -423,7 +418,6 @@ const roomSchedulingSlice = createSlice({
       .addCase(unassignRoomFromSchedule.fulfilled, (state, action) => {
         state.loading = false;
         state.successMessage = 'Hủy gán phòng thành công';
-        // Refresh data
       })
       .addCase(unassignRoomFromSchedule.rejected, (state, action) => {
         state.loading = false;

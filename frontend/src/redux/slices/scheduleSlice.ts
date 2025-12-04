@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { enhancedScheduleService, scheduleManagementService } from '../../services/api';
 
-// Types for schedule-related data
+// loại lịch học
 export interface ScheduleItem {
   id: number;
   title: string;
@@ -24,6 +24,7 @@ export interface ScheduleItem {
   note?: string;
 }
 
+// lọc lịch học
 export interface ScheduleFilter {
   departmentId?: number;
   classId?: number;
@@ -34,12 +35,14 @@ export interface ScheduleFilter {
   weekStartDate?: string;
 }
 
+// khoa
 export interface Department {
   id: number;
   name: string;
   code?: string;
 }
 
+// lớp học
 export interface Class {
   id: number;
   name: string;
@@ -49,6 +52,7 @@ export interface Class {
   maxStudents?: number;
 }
 
+// giảng viên
 export interface Teacher {
   id: number;
   name: string;
@@ -57,15 +61,15 @@ export interface Teacher {
   departmentName?: string;
 }
 
-// Interface cho state
+// slice
 interface ScheduleState {
   schedules: ScheduleItem[];
-  weeklySchedules: any[]; // Weekly schedule items from API
+  weeklySchedules: any[]; 
   departments: Department[];
   classes: Class[];
   teachers: Teacher[];
   loading: boolean;
-  weeklyScheduleLoading: boolean; // Loading state riêng cho weekly schedule
+  weeklyScheduleLoading: boolean; 
   error: string | null;
   filters: ScheduleFilter;
 }
@@ -83,7 +87,7 @@ const initialState: ScheduleState = {
   filters: {}
 };
 
-// Async thunks
+// lấy danh sách lịch học
 export const fetchSchedules = createAsyncThunk(
   'schedule/fetchSchedules',
   async (filters: ScheduleFilter = {}) => {
@@ -92,6 +96,7 @@ export const fetchSchedules = createAsyncThunk(
   }
 );
 
+// lấy lịch học theo tuần
 export const fetchWeeklySchedule = createAsyncThunk(
   'schedule/fetchWeeklySchedule',
   async ({ weekStartDate, filters }: { weekStartDate: string; filters: ScheduleFilter }) => {
@@ -100,6 +105,7 @@ export const fetchWeeklySchedule = createAsyncThunk(
   }
 );
 
+// lấy danh sách khoa
 export const fetchDepartments = createAsyncThunk(
   'schedule/fetchDepartments',
   async () => {
@@ -108,6 +114,7 @@ export const fetchDepartments = createAsyncThunk(
   }
 );
 
+// lấy danh sách lớp học
 export const fetchClasses = createAsyncThunk(
   'schedule/fetchClasses',
   async (departmentId?: number) => {
@@ -116,6 +123,7 @@ export const fetchClasses = createAsyncThunk(
   }
 );
 
+// lấy danh sách giảng viên
 export const fetchTeachers = createAsyncThunk(
   'schedule/fetchTeachers',
   async (departmentId?: number) => {
@@ -124,6 +132,7 @@ export const fetchTeachers = createAsyncThunk(
   }
 );
 
+// tạo lịch học
 export const createSchedule = createAsyncThunk(
   'schedule/createSchedule',
   async (scheduleData: Partial<ScheduleItem>) => {
@@ -132,6 +141,7 @@ export const createSchedule = createAsyncThunk(
   }
 );
 
+// cập nhật lịch học
 export const updateSchedule = createAsyncThunk(
   'schedule/updateSchedule',
   async ({ id, scheduleData }: { id: number; scheduleData: Partial<ScheduleItem> }) => {
@@ -140,6 +150,7 @@ export const updateSchedule = createAsyncThunk(
   }
 );
 
+// xóa lịch học
 export const deleteSchedule = createAsyncThunk(
   'schedule/deleteSchedule',
   async (id: number) => {
@@ -148,7 +159,7 @@ export const deleteSchedule = createAsyncThunk(
   }
 );
 
-// Slice
+// slice
 const scheduleSlice = createSlice({
   name: 'schedule',
   initialState,
@@ -164,7 +175,6 @@ const scheduleSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
-    // Fetch schedules
     builder
       .addCase(fetchSchedules.pending, (state) => {
         state.loading = true;
@@ -179,10 +189,8 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch schedules';
       });
 
-    // Fetch departments - không set loading để tránh nhấp nháy
     builder
       .addCase(fetchDepartments.pending, (state) => {
-        // Chỉ set loading nếu chưa có data
         if (state.departments.length === 0) {
           state.loading = true;
         }
@@ -197,10 +205,8 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch departments';
       });
 
-    // Fetch classes - không set loading để tránh nhấp nháy
     builder
       .addCase(fetchClasses.pending, (state) => {
-        // Chỉ set loading nếu chưa có data
         if (state.classes.length === 0) {
           state.loading = true;
         }
@@ -215,10 +221,8 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch classes';
       });
 
-    // Fetch teachers - không set loading để tránh nhấp nháy
     builder
       .addCase(fetchTeachers.pending, (state) => {
-        // Chỉ set loading nếu chưa có data
         if (state.teachers.length === 0) {
           state.loading = true;
         }
@@ -233,7 +237,6 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch teachers';
       });
 
-    // Fetch weekly schedule
     builder
       .addCase(fetchWeeklySchedule.pending, (state) => {
         state.weeklyScheduleLoading = true;
@@ -248,7 +251,6 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to fetch weekly schedule';
       });
 
-    // Create schedule
     builder
       .addCase(createSchedule.pending, (state) => {
         state.loading = true;
@@ -263,7 +265,6 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to create schedule';
       });
 
-    // Update schedule
     builder
       .addCase(updateSchedule.pending, (state) => {
         state.loading = true;
@@ -281,7 +282,6 @@ const scheduleSlice = createSlice({
         state.error = action.error.message || 'Failed to update schedule';
       });
 
-    // Delete schedule
     builder
       .addCase(deleteSchedule.pending, (state) => {
         state.loading = true;
@@ -298,10 +298,7 @@ const scheduleSlice = createSlice({
   }
 });
 
-// Export actions
 export const { setFilters, clearSchedules, clearError } = scheduleSlice.actions;
-
-// Selectors
 export const selectSchedules = (state: { schedule: ScheduleState }) => state.schedule.schedules;
 export const selectDepartments = (state: { schedule: ScheduleState }) => state.schedule.departments;
 export const selectClasses = (state: { schedule: ScheduleState }) => state.schedule.classes;

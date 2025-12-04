@@ -15,11 +15,8 @@ function validateStrongPassword(password) {
         };
     }
 
-    // Kiểm tra có chữ in hoa
     const hasUpperCase = /[A-Z]/.test(password);
-    // Kiểm tra có số
     const hasNumber = /[0-9]/.test(password);
-    // Kiểm tra có ký tự đặc biệt
     const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
 
     if (!hasUpperCase) {
@@ -50,6 +47,7 @@ function validateStrongPassword(password) {
 }
 
 class AuthService {
+    // đăng ký
     async register(userData) {
         const { username, password, role, fullName, email, phone, address } = userData;
 
@@ -75,7 +73,6 @@ class AuthService {
             // Hash password
             const hashedPassword = await bcryptConfig.hashPassword(password);
 
-            // Tạo transaction để đảm bảo tính nhất quán
             const result = await prisma.$transaction(async (tx) => {
                 // Tạo account
                 const account = await tx.account.create({
@@ -98,7 +95,6 @@ class AuthService {
                     }
                 });
 
-                // Tạo thêm bản ghi teacher hoặc student tùy theo role
                 if (role === 'teacher') {
                     await tx.teacher.create({
                         data: {
@@ -128,11 +124,11 @@ class AuthService {
         }
     }
 
+    // đăng nhập
     async login(identifier, password) {
         try {
             let account = null;
 
-            // 1) Teacher login via teacherCode
             if (!account) {
                 const teacherRecord = await prisma.teacher.findUnique({
                     where: { teacherCode: identifier },
@@ -145,7 +141,6 @@ class AuthService {
                 }
             }
 
-            // 2) Student login via studentCode
             if (!account) {
                 const studentRecord = await prisma.student.findUnique({
                     where: { studentCode: identifier },
@@ -158,7 +153,6 @@ class AuthService {
                 }
             }
 
-            // 3) Admin login via userId (numeric)
             if (!account) {
                 const userIdAsInt = Number(identifier);
                 if (!Number.isNaN(userIdAsInt)) {
@@ -172,7 +166,6 @@ class AuthService {
                 }
             }
 
-            // 4) Backward compatibility: login via account.username
             if (!account) {
                 const acc = await prisma.account.findUnique({
                     where: { username: identifier },
@@ -191,7 +184,6 @@ class AuthService {
                 throw new Error('Tài khoản đã bị khóa');
             }
 
-            // Kiểm tra password
             const isValidPassword = await bcryptConfig.comparePassword(password, account.password);
             if (!isValidPassword) {
                 throw new Error('Mật khẩu không chính xác');
@@ -228,6 +220,7 @@ class AuthService {
         }
     }
 
+    // đổi mật khẩu
     async changePassword(userId, oldPassword, newPassword) {
         try {
             const account = await prisma.account.findFirst({
@@ -272,6 +265,7 @@ class AuthService {
         }
     }
 
+    // quên mật khẩu
     async forgotPassword(identifier) {
         try {
             if (!identifier || !identifier.trim()) {
@@ -297,7 +291,6 @@ class AuthService {
                     }
                 });
                 
-                // Nếu không tìm thấy, thử tìm case-insensitive (nếu là string)
                 if (!studentRecord && trimmedIdentifier) {
                     studentRecord = await prisma.student.findFirst({
                         where: {
@@ -316,7 +309,6 @@ class AuthService {
                     });
                 }
                 
-                console.log('Student search result:', studentRecord ? `Found studentCode: ${studentRecord.studentCode}` : 'Not found');
                 if (studentRecord?.user) {
                     user = studentRecord.user;
                     console.log('Found student user:', user.id, user.email, user.fullName);
@@ -325,8 +317,7 @@ class AuthService {
                 console.error('Error searching student:', err);
                 console.error('Error details:', err.message, err.stack);
             }
-
-            // 2) Tìm teacher theo teacherCode
+ 
             if (!user) {
                 try {
                     let teacherRecord = await prisma.teacher.findUnique({
@@ -340,7 +331,6 @@ class AuthService {
                         }
                     });
                     
-                    // Nếu không tìm thấy, thử tìm case-insensitive
                     if (!teacherRecord && trimmedIdentifier) {
                         teacherRecord = await prisma.teacher.findFirst({
                             where: {
@@ -359,7 +349,6 @@ class AuthService {
                         });
                     }
                     
-                    console.log('Teacher search result:', teacherRecord ? `Found teacherCode: ${teacherRecord.teacherCode}` : 'Not found');
                     if (teacherRecord?.user) {
                         user = teacherRecord.user;
                         console.log('Found teacher user:', user.id, user.email, user.fullName);
@@ -370,21 +359,16 @@ class AuthService {
                 }
             }
 
-            // 3) Tìm admin theo userId (numeric) - chỉ khi identifier là số thuần VÀ không tìm thấy student/teacher
-            // Và chỉ tìm admin nếu số đó nhỏ hơn 1000 (vì admin thường có id nhỏ)
             if (!user && /^\d+$/.test(trimmedIdentifier)) {
                 try {
                     const userIdAsInt = Number(trimmedIdentifier);
-                    // Chỉ tìm admin nếu số nhỏ hơn 1000 (tránh nhầm với mã số sinh viên)
                     if (!Number.isNaN(userIdAsInt) && userIdAsInt < 1000) {
                         const adminUser = await prisma.user.findUnique({
                             where: { id: userIdAsInt },
                             include: { account: true }
                         });
-                        console.log('Admin search result:', adminUser ? `Found userId: ${adminUser.id}` : 'Not found');
                         if (adminUser && adminUser.account && adminUser.account.role === 'admin') {
                             user = adminUser;
-                            console.log('Found admin user:', user.id, user.email, user.fullName);
                         }
                     }
                 } catch (err) {
@@ -392,17 +376,14 @@ class AuthService {
                 }
             }
 
-            // 4) Tìm theo username (backward compatibility)
             if (!user) {
                 try {
                     const account = await prisma.account.findUnique({
                         where: { username: trimmedIdentifier },
                         include: { user: true }
                     });
-                    console.log('Username search result:', account ? `Found username: ${account.username}` : 'Not found');
                     if (account?.user) {
                         user = account.user;
-                        console.log('Found user by username:', user.id, user.email, user.fullName);
                     }
                 } catch (err) {
                     console.error('Error searching by username:', err);
@@ -468,9 +449,6 @@ class AuthService {
                 
                 if (emailError.message.includes('xác thực email') || emailError.message.includes('Invalid login') || emailError.message.includes('BadCredentials')) {
                     errorMessage = 'Lỗi cấu hình email server. Vui lòng liên hệ quản trị viên hệ thống.';
-                    console.error('⚠️ Email server authentication failed. Please check EMAIL_USER and EMAIL_PASSWORD in .env file.');
-                    console.error('💡 For Gmail, you need to use App Password instead of regular password.');
-                    console.error('   Create App Password at: https://myaccount.google.com/apppasswords');
                 } else if (emailError.message.includes('kết nối')) {
                     errorMessage = 'Không thể kết nối đến máy chủ email. Vui lòng thử lại sau.';
                 } else {
@@ -491,24 +469,20 @@ class AuthService {
         }
     }
 
+    // đặt lại mật khẩu
     async resetPassword(token, newPassword) {
         try {
-            // Verify token
             let decoded;
             try {
                 decoded = jwt.verify(token, config.jwt.secret);
             } catch (error) {
                 throw new Error('Link khôi phục mật khẩu không hợp lệ hoặc đã hết hạn');
             }
-
-            // Kiểm tra token type
             if (decoded.type !== 'password_reset') {
                 throw new Error('Link khôi phục mật khẩu không hợp lệ');
             }
 
             const userId = decoded.userId;
-
-            // Tìm user
             const user = await prisma.user.findUnique({
                 where: { id: userId },
                 include: { account: true }
@@ -517,17 +491,13 @@ class AuthService {
             if (!user || !user.account) {
                 throw new Error('Tài khoản không tồn tại');
             }
-
-            // Validate mật khẩu mạnh
+            // validate mật khẩu mạnh
             const passwordValidation = validateStrongPassword(newPassword);
             if (!passwordValidation.isValid) {
                 throw new Error(passwordValidation.message);
             }
-
-            // Hash mật khẩu mới
             const hashedPassword = await bcryptConfig.hashPassword(newPassword);
-
-            // Cập nhật mật khẩu
+            // cập nhật mật khẩu
             await prisma.account.update({
                 where: { id: user.account.id },
                 data: { password: hashedPassword }

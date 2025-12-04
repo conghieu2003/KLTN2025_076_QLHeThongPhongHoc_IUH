@@ -1,5 +1,6 @@
 const scheduleRequestService = require('../services/scheduleRequest.service');
-
+ 
+// tạo yêu cầu lịch học từ gv
 const createScheduleRequest = async (req, res) => {
     try {
         const requestData = req.body;
@@ -20,6 +21,7 @@ const createScheduleRequest = async (req, res) => {
     }
 };
 
+// lấy danh sách yêu cầu lịch học
 const getScheduleRequests = async (req, res) => {
     try {
         const {
@@ -55,6 +57,7 @@ const getScheduleRequests = async (req, res) => {
     }
 };
 
+// lấy lịch dạy của giảng viên
 const getTeacherSchedules = async (req, res) => {
     try {
         const { teacherId } = req.params; // Thực tế là userId từ frontend
@@ -74,6 +77,7 @@ const getTeacherSchedules = async (req, res) => {
     }
 };
 
+// cập nhật trạng thái yêu cầu lịch học
 const updateScheduleRequestStatus = async (req, res) => {
     try {
         const { requestId } = req.params;
@@ -103,7 +107,7 @@ const updateScheduleRequestStatus = async (req, res) => {
         });
     }
 };
-
+// lấy chi tiết yêu cầu lịch học
 const getScheduleRequestById = async (req, res) => {
     try {
         const { requestId } = req.params;
@@ -123,6 +127,7 @@ const getScheduleRequestById = async (req, res) => {
     }
 };
 
+// cập nhật phòng lịch học
 const updateScheduleRequestRoom = async (req, res) => {
     try {
         const { requestId } = req.params;

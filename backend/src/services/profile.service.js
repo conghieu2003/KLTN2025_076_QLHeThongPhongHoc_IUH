@@ -32,7 +32,6 @@ const getFullProfile = async (userId) => {
       throw new Error('Không tìm thấy thông tin người dùng');
     }
 
-    // Tạo studentInfo hoặc teacherInfo
     let studentInfo = null;
     let teacherInfo = null;
 
@@ -79,21 +78,17 @@ const getFullProfile = async (userId) => {
       isActive: user.account.isActive
     };
 
-    // Format dates for personal profile
     const personalProfile = user.personalProfile ? {
       ...user.personalProfile,
       createdAt: user.personalProfile.createdAt.toISOString(),
       updatedAt: user.personalProfile.updatedAt.toISOString()
     } : null;
 
-    // Format dates for family info
     const familyInfo = user.familyInfo ? {
       ...user.familyInfo,
       createdAt: user.familyInfo.createdAt.toISOString(),
       updatedAt: user.familyInfo.updatedAt.toISOString()
     } : null;
-
-    // Format dates for academic profile
     const academicProfile = user.academicProfile ? {
       ...user.academicProfile,
       createdAt: user.academicProfile.createdAt.toISOString(),
@@ -118,7 +113,6 @@ const getFullProfile = async (userId) => {
 // Cập nhật thông tin cá nhân
 const updatePersonalProfile = async (userId, personalData) => {
   try {
-    // Kiểm tra xem PersonalProfile đã tồn tại chưa
     const existingProfile = await prisma.personalProfile.findUnique({
       where: { userId: userId }
     });
@@ -170,13 +164,11 @@ const updatePersonalProfile = async (userId, personalData) => {
 // Cập nhật thông tin gia đình
 const updateFamilyInfo = async (userId, familyData) => {
   try {
-    // Kiểm tra xem FamilyInfo đã tồn tại chưa
     const existingFamily = await prisma.familyInfo.findUnique({
       where: { userId: userId }
     });
     
     if (existingFamily) {
-      // Cập nhật
       await prisma.familyInfo.update({
         where: { userId: userId },
         data: {
@@ -190,7 +182,6 @@ const updateFamilyInfo = async (userId, familyData) => {
         }
       });
     } else {
-      // Tạo mới
       await prisma.familyInfo.create({
         data: {
           userId: userId,
@@ -204,7 +195,6 @@ const updateFamilyInfo = async (userId, familyData) => {
       });
     }
     
-    // Trả về thông tin đã cập nhật
     return await getFullProfile(userId);
     
   } catch (error) {
@@ -216,13 +206,11 @@ const updateFamilyInfo = async (userId, familyData) => {
 // Cập nhật thông tin học vấn
 const updateAcademicProfile = async (userId, academicData) => {
   try {
-    // Kiểm tra xem AcademicProfile đã tồn tại chưa
     const existingAcademic = await prisma.academicProfile.findUnique({
       where: { userId: userId }
     });
     
     if (existingAcademic) {
-      // Cập nhật
       await prisma.academicProfile.update({
         where: { userId: userId },
         data: {
@@ -237,7 +225,6 @@ const updateAcademicProfile = async (userId, academicData) => {
         }
       });
     } else {
-      // Tạo mới
       await prisma.academicProfile.create({
         data: {
           userId: userId,
@@ -253,7 +240,6 @@ const updateAcademicProfile = async (userId, academicData) => {
       });
     }
     
-    // Trả về thông tin đã cập nhật
     return await getFullProfile(userId);
     
   } catch (error) {

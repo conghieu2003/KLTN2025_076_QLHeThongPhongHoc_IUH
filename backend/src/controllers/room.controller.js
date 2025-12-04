@@ -1,7 +1,7 @@
 const roomService = require('../services/room.service');
 
 class RoomController {
-  // Helper methods
+  // hỗ trợ trả về response
   sendResponse(res, statusCode, success, data, message = null) {
     return res.status(statusCode).json({
       success,
@@ -11,7 +11,6 @@ class RoomController {
   }
 
   sendError(res, error) {
-    console.error('Room Controller Error:', error);
     return res.status(500).json({
       success: false,
       message: error.message || 'Lỗi server',
@@ -28,7 +27,6 @@ class RoomController {
         data: rooms
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -47,7 +45,6 @@ class RoomController {
         data: rooms
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -66,7 +63,6 @@ class RoomController {
         data: room
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -105,7 +101,6 @@ class RoomController {
         message: 'Cập nhật phòng học thành công'
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -142,7 +137,6 @@ class RoomController {
         data: types
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -161,7 +155,6 @@ class RoomController {
         data: types
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -179,7 +172,6 @@ class RoomController {
         data: statuses
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -197,7 +189,6 @@ class RoomController {
         data: timeSlots
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -210,7 +201,7 @@ class RoomController {
   // API lấy danh sách lớp học của giảng viên
   async getTeacherSchedules(req, res) {
     try {
-      const { teacherId } = req.params; // Thực tế là userId từ frontend
+      const { teacherId } = req.params; 
       const schedules = await roomService.getTeacherSchedules(teacherId);
       return res.status(200).json({
         success: true,
@@ -236,7 +227,6 @@ class RoomController {
         data: schedule
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',
@@ -245,10 +235,10 @@ class RoomController {
     }
   }
 
-  // API lấy lịch học theo time slot và thứ trong tuần (có hỗ trợ kiểm tra ngoại lệ cho ngày cụ thể)
+  // API lấy lịch học theo time slot và thứ trong tuần
   async getSchedulesByTimeSlotAndDate(req, res) {
     try {
-      const { timeSlotId, dayOfWeek, date } = req.query; // Thêm tham số 'date'
+      const { timeSlotId, dayOfWeek, date } = req.query; 
 
       if (!timeSlotId || !dayOfWeek) {
         return res.status(400).json({
@@ -257,7 +247,6 @@ class RoomController {
         });
       }
 
-      // Gọi service với date parameter (nếu có)
       const schedules = await roomService.getSchedulesByTimeSlotAndDate(
         timeSlotId, 
         dayOfWeek,
@@ -281,7 +270,7 @@ class RoomController {
     }
   }
 
-  // API lấy danh sách phòng available cho ngoại lệ (bao gồm cả phòng trống do ngoại lệ khác)
+  // API lấy danh sách phòng available cho ngoại lệ 
   async getAvailableRoomsForException(req, res) {
     try {
       const { timeSlotId, dayOfWeek, date, capacity, classRoomTypeId, departmentId } = req.query;
@@ -292,8 +281,6 @@ class RoomController {
           message: 'Thiếu thông tin bắt buộc: timeSlotId, dayOfWeek, date'
         });
       }
-
-      console.log('[getAvailableRoomsForException] Request params:', { timeSlotId, dayOfWeek, date, capacity, classRoomTypeId, departmentId });
 
       const rooms = await roomService.getAvailableRoomsForException(
         parseInt(timeSlotId),
@@ -310,7 +297,6 @@ class RoomController {
         message: `Tìm thấy ${rooms.normalRooms.length} phòng trống thường và ${rooms.freedRooms.length} phòng trống do ngoại lệ`
       });
     } catch (error) {
-      console.error('Room Controller Error:', error);
       return res.status(500).json({
         success: false,
         message: error.message || 'Lỗi server',

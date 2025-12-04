@@ -1014,7 +1014,9 @@ class ScheduleManagementService {
         
         // Filter scheduleRequests theo ngày chính xác trong tuần
         const relevantExceptions = schedule.scheduleRequests.filter(request => {
-          if (!request.exceptionDate) return false;
+          if (!request.exceptionDate) {
+            return false;
+          }
           
           const exceptionDate = new Date(request.exceptionDate);
           const exceptionDateStr = exceptionDate.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -1057,7 +1059,10 @@ class ScheduleManagementService {
           }
         }
         
-        // Tìm exception moved/exam (ưu tiên cao nhất)
+        const roomChangeException = relevantExceptions.find(ex => 
+          ex.requestTypeId === 7 
+        );
+
         const movedException = relevantExceptions.find(ex => 
           ex.exceptionType === 'moved' || ex.exceptionType === 'exam'
         );
@@ -1085,15 +1090,7 @@ class ScheduleManagementService {
           substituteTeacher = substituteException.substituteTeacher || substituteTeacher;
         }
         
-        // Tìm exception đổi phòng (có thể kết hợp)
-        const roomChangeException = relevantExceptions.find(ex => 
-          ex.requestTypeId === 7 // Đổi phòng
-        );
-        
         if (roomChangeException) {
-          if (!mergedException) {
-            mergedException = roomChangeException;
-          }
           // Nếu chưa có newRoom từ moved, lấy từ roomChange
           if (!newRoom) {
             newRoom = roomChangeException.newClassRoom;
@@ -1101,6 +1098,9 @@ class ScheduleManagementService {
           // Nếu có substituteTeacher trong roomChange, lấy nó
           if (roomChangeException.substituteTeacher) {
             substituteTeacher = roomChangeException.substituteTeacher;
+          }
+          if (!mergedException) {
+            mergedException = roomChangeException;
           }
         }
         
@@ -1143,20 +1143,14 @@ class ScheduleManagementService {
           }
         }
         
-        // LOGIC: 
-        // - Với 'cancelled': LUÔN hiển thị lịch gốc với trạng thái tạm ngưng (ngay cả khi có moved/exam)
-        // - Với 'substitute': Hiển thị lịch gốc với exception info (thay thế giáo viên)
-        // - Với 'moved' hoặc 'exam': 
-        //   + Nếu KHÔNG có movedToDate hoặc thi/chuyển TẠI CHỖ (cùng ngày với exceptionDate): Hiển thị lịch gốc với exception info, KHÔNG hiển thị lịch mới
-        //   + Nếu có movedToDate và chuyển SANG NGÀY KHÁC: Ẩn lịch gốc, chỉ hiển thị lịch mới
-        //   + NHƯNG: Nếu có cancelled, vẫn hiển thị lịch gốc với trạng thái tạm ngưng
         const shouldShowOriginal = !exception || 
                                    isCancelled || 
                                    exception.exceptionType === 'cancelled' ||
-                                   exception.requestTypeId === 5 || // RequestType 5 = Tạm ngưng
+                                   exception.requestTypeId === 5 ||
                                    exception.RequestType?.name?.toLowerCase().includes('tạm ngưng') ||
                                    exception.RequestType?.name?.toLowerCase().includes('suspended') ||
                                    exception.exceptionType === 'substitute' ||
+                                   exception.requestTypeId === 7 ||  
                                    (isMoved && (!movedToDate || !isMovedToDifferentDay || isMovedToSameDate));
         
         if (shouldShowOriginal) {
@@ -1173,17 +1167,18 @@ class ScheduleManagementService {
           }
           
           // Xác định statusId và status dựa trên exception
-          // Ưu tiên: cancelled > moved/exam > substitute > đổi phòng
           let displayStatusId = schedule.statusId;
           let displayStatus = this.getStatusName(schedule.statusId);
           let displayException = exception;
           
           if (isCancelled) {
-            // Nếu có cancelled, ưu tiên hiển thị trạng thái tạm ngưng
-            displayStatusId = 5; // Tạm ngưng
+            displayStatusId = 5; 
             displayStatus = 'Tạm ngưng';
-            // Sử dụng cancelled exception để hiển thị thông tin
             displayException = cancelledException || exception;
+          } else if (roomChangeException) {
+            displayException = roomChangeException;
+            displayStatusId = roomChangeException.requestTypeId || schedule.statusId;
+            displayStatus = roomChangeException.RequestType?.name || this.getStatusName(schedule.statusId);
           } else if (exception) {
             displayStatusId = exception.requestTypeId || schedule.statusId;
             displayStatus = exception.RequestType?.name || this.getStatusName(schedule.statusId);

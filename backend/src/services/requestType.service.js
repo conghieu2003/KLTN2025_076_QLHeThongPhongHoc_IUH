@@ -2,10 +2,6 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class RequestTypeService {
-  // =====================================================
-  // LẤY DANH SÁCH TRẠNG THÁI LỊCH HỌC
-  // =====================================================
-  
   async getScheduleStatuses() {
     try {
       const requestTypes = await prisma.requestType.findMany({
@@ -44,7 +40,6 @@ class RequestTypeService {
         }))
       };
     } catch (error) {
-      console.error('[RequestTypeService.getAllRequestTypes] Error:', error);
       return {
         success: false,
         message: `Lỗi lấy danh sách loại yêu cầu: ${error.message}`
@@ -74,7 +69,6 @@ class RequestTypeService {
         }
       };
     } catch (error) {
-      console.error('[RequestTypeService.getRequestTypeById] Error:', error);
       return {
         success: false,
         message: `Lỗi lấy thông tin loại yêu cầu: ${error.message}`
@@ -86,8 +80,6 @@ class RequestTypeService {
   async createRequestType(requestTypeData) {
     try {
       const { name } = requestTypeData;
-
-      // Kiểm tra tên đã tồn tại
       const existingType = await prisma.requestType.findFirst({
         where: { name }
       });
@@ -124,8 +116,6 @@ class RequestTypeService {
   async updateRequestType(id, requestTypeData) {
     try {
       const { name } = requestTypeData;
-
-      // Kiểm tra loại yêu cầu có tồn tại
       const existingType = await prisma.requestType.findUnique({
         where: { id: parseInt(id) }
       });
@@ -137,7 +127,6 @@ class RequestTypeService {
         };
       }
 
-      // Kiểm tra tên đã tồn tại (trừ loại hiện tại)
       if (name && name !== existingType.name) {
         const existingName = await prisma.requestType.findFirst({
           where: { name }
@@ -176,7 +165,6 @@ class RequestTypeService {
   // Xóa loại yêu cầu
   async deleteRequestType(id) {
     try {
-      // Kiểm tra loại yêu cầu có tồn tại
       const existingType = await prisma.requestType.findUnique({
         where: { id: parseInt(id) }
       });
@@ -188,7 +176,6 @@ class RequestTypeService {
         };
       }
 
-      // Kiểm tra có lịch học nào sử dụng loại này không
       const schedulesCount = await prisma.classSchedule.count({
         where: { statusId: parseInt(id) }
       });

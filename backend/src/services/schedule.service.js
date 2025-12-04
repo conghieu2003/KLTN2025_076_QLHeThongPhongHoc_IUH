@@ -97,15 +97,13 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
     const startDate = new Date(weekStartDate);
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + 6);
-  
-    // Build where clause
     const whereClause = {
       OR: [
-        { statusId: { in: [2, 3, 5, 6] } }, // Đã phân phòng, Đang hoạt động, Tạm ngưng, Thi
+        { statusId: { in: [2, 3, 5, 6] } },
         { 
           AND: [
-            { statusId: 1 }, // Chờ phân phòng
-            { classRoomId: { not: null } } // Nhưng đã có phòng (từ yêu cầu đã được chấp nhận)
+            { statusId: 1 },
+            { classRoomId: { not: null } } 
           ]
         }
       ]
@@ -132,17 +130,17 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
     if (filters.scheduleType && filters.scheduleType !== 'all') {
       if (filters.scheduleType === 'study') {
         whereClause.OR = [
-          { statusId: { in: [2, 3] } }, // Đã phân phòng, Đang hoạt động
+          { statusId: { in: [2, 3] } }, 
           { 
             AND: [
-              { statusId: 1 }, // Chờ phân phòng
-              { classRoomId: { not: null } } // Nhưng đã có phòng
+              { statusId: 1 }, 
+              { classRoomId: { not: null } } 
             ]
           }
         ];
       } else if (filters.scheduleType === 'exam') {
         whereClause.OR = [
-          { statusId: 6 } // Chỉ lấy lịch thi
+          { statusId: 6 } 
         ];
       }
     }
@@ -167,8 +165,8 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
         RequestType: true,
          scheduleRequests: {
            where: {
-             requestStatusId: 2, // Chỉ lấy các yêu cầu đã được phê duyệt (admin tạo hoặc đã xử lý)
-             requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9, 10] } // Lấy tất cả loại ngoại lệ (ID 3-10, bao gồm thi cuối kỳ)
+             requestStatusId: 2, 
+             requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9, 10] } 
            },
            include: {
              RequestType: true,
@@ -189,46 +187,34 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
         { timeSlot: { startTime: 'asc' } }
       ]
     });
-    // Transform data to match expected format with moved schedules
     const result = [];
     
     schedules.forEach(schedule => {
-      // Filter scheduleRequests theo ngày chính xác trong tuần
       const relevantExceptions = schedule.scheduleRequests.filter(request => {
         if (!request.exceptionDate) return false;
         
         const exceptionDate = new Date(request.exceptionDate);
-        const exceptionDateStr = exceptionDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        
-        // Tính ngày của schedule trong tuần hiện tại
-        // dayOfWeek: 1=CN, 2=T2, 3=T3, 4=T4, 5=T5, 6=T6, 7=T7
+        const exceptionDateStr = exceptionDate.toISOString().split('T')[0]; 
         const startDateObj = new Date(weekStartDate);
-        // Tính offset từ Thứ 2 (ngày bắt đầu tuần)
-        // Thứ 2 (dayOfWeek=2) -> offset=0, Thứ 3 (dayOfWeek=3) -> offset=1, ..., Chủ nhật (dayOfWeek=1) -> offset=6
         let scheduleDayOffset;
-        if (schedule.dayOfWeek === 1) { // Chủ nhật
-          scheduleDayOffset = 6; // Ngày thứ 7 trong tuần (Chủ nhật)
+        if (schedule.dayOfWeek === 1) { 
+          scheduleDayOffset = 6; 
         } else {
-          scheduleDayOffset = schedule.dayOfWeek - 2; // Thứ 2=0, Thứ 3=1, ..., Thứ 7=5
+          scheduleDayOffset = schedule.dayOfWeek - 2; 
         }
         const scheduleDate = new Date(startDateObj);
         scheduleDate.setDate(startDateObj.getDate() + scheduleDayOffset);
-        const scheduleDateStr = scheduleDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        
+        const scheduleDateStr = scheduleDate.toISOString().split('T')[0]; 
         // Chỉ lấy ngoại lệ khi ngày ngoại lệ khớp chính xác với ngày của schedule
         const isRelevant = exceptionDateStr === scheduleDateStr;
         
         return isRelevant;
       });
-      
-      // Get the first exception if exists
       const exception = relevantExceptions.length > 0 ? relevantExceptions[0] : null;
       
       // Nếu có ngoại lệ moved hoặc exam
       const isMoved = exception && (exception.exceptionType === 'moved' || exception.exceptionType === 'exam');
       const movedToDate = exception?.movedToDate;
-      
-      // Kiểm tra xem ngày được chuyển đến có nằm trong tuần hiện tại không
       let isMovedToThisWeek = false;
       let movedToDayOfWeek = null;
       
@@ -243,12 +229,11 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
           isMovedToThisWeek = true;
           
           // Tính dayOfWeek từ movedDate
-          const movedDayJS = movedDate.getDay(); // 0=CN, 1=T2, ..., 6=T7
-          movedToDayOfWeek = movedDayJS === 0 ? 1 : movedDayJS + 1; // Convert to 1=CN, 2=T2, ..., 7=T7
+          const movedDayJS = movedDate.getDay(); 7
+          movedToDayOfWeek = movedDayJS === 0 ? 1 : movedDayJS + 1; 
         }
       }
-      
-      // LOGIC: Chỉ hiển thị lịch gốc khi KHÔNG có exception moved/exam
+
       const shouldShowOriginal = !isMoved;
       
       if (shouldShowOriginal) {
@@ -290,7 +275,7 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
           timeSlotOrder: schedule.timeSlot.id,
           assignedAt: schedule.assignedAt,
           note: schedule.note,
-          // Exception data
+
           exceptionDate: exception?.exceptionDate || null,
           exceptionType: exception?.exceptionType || null,
           exceptionReason: exception?.reason || null,
@@ -300,14 +285,14 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
         });
       }
       
-      // Nếu có lịch được chuyển đến trong tuần này, tạo entry mới
+      // Nếu có lịch được chuyển đến trong tuần này
       if (isMovedToThisWeek && movedToDayOfWeek) {
         const movedTimeSlot = exception.movedToTimeSlot || exception.newTimeSlot;
         const movedRoom = exception.movedToClassRoom || exception.newClassRoom;
         const substituteTeacher = exception.substituteTeacher;
         
         result.push({
-          id: schedule.id + 100000, // ID ảo để tránh trùng
+          id: schedule.id + 100000, 
           classId: schedule.classId,
           className: schedule.class.className,
           classCode: schedule.class.code,
@@ -320,7 +305,7 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
           roomName: movedRoom ? movedRoom.name : schedule.classRoom?.name || null,
           roomCode: movedRoom ? movedRoom.code : schedule.classRoom?.code || null,
           roomType: schedule.ClassRoomType.name,
-          dayOfWeek: movedToDayOfWeek, // Ngày mới được chuyển đến
+          dayOfWeek: movedToDayOfWeek, 
           timeSlot: movedTimeSlot ? movedTimeSlot.slotName : schedule.timeSlot.slotName,
           timeRange: movedTimeSlot ? `${movedTimeSlot.startTime}-${movedTimeSlot.endTime}` : `${schedule.timeSlot.startTime}-${schedule.timeSlot.endTime}`,
           startTime: movedTimeSlot ? movedTimeSlot.startTime : schedule.timeSlot.startTime,
@@ -345,13 +330,12 @@ const getWeeklySchedule = async (weekStartDate, filters = {}) => {
           timeSlotOrder: movedTimeSlot ? movedTimeSlot.id : schedule.timeSlot.id,
           assignedAt: schedule.assignedAt,
           note: `Đã chuyển từ ${schedule.dayOfWeek === 1 ? 'CN' : 'T' + (schedule.dayOfWeek)} - ${schedule.timeSlot.slotName}`,
-          // Exception data
           exceptionDate: exception.exceptionDate,
           exceptionType: exception.exceptionType,
           exceptionReason: exception.reason,
           exceptionStatus: exception.RequestType.name,
           requestTypeId: exception.requestTypeId,
-          isMovedSchedule: true, // Đánh dấu đây là lịch đã được chuyển
+          isMovedSchedule: true, 
           originalDayOfWeek: schedule.dayOfWeek,
           originalTimeSlot: schedule.timeSlot.slotName
         });

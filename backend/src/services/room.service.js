@@ -18,7 +18,7 @@ class RoomService {
       isAvailable: room.isAvailable
     };
   }
-
+  // lấy danh sách phòng học
   async getAllRooms() {
     try {
       const rooms = await prisma.classRoom.findMany({
@@ -27,11 +27,8 @@ class RoomService {
           department: true
         }
       });
-
-      console.log('Found rooms:', rooms.length);
       return rooms.map(room => this.processRoomData(room));
     } catch (error) {
-      console.error('Error in getAllRooms:', error);
       throw new Error(`Lỗi lấy danh sách phòng học: ${error.message}`);
     }
   }
@@ -43,15 +40,12 @@ class RoomService {
         isAvailable: true
       };
 
-      // Lọc theo khoa nếu có
       if (departmentId && departmentId !== 'all') {
         whereClause.OR = [
           { departmentId: parseInt(departmentId) },
-          { departmentId: null } // Phòng chung
+          { departmentId: null } 
         ];
       }
-
-      // Lọc theo loại phòng nếu có
       if (classRoomTypeId && classRoomTypeId !== 'all') {
         whereClause.classRoomTypeId = parseInt(classRoomTypeId);
       }
@@ -68,11 +62,8 @@ class RoomService {
           { code: 'asc' }
         ]
       });
-
-      console.log(`Found ${rooms.length} rooms for department ${departmentId} and type ${classRoomTypeId}`);
       return rooms.map(room => this.processRoomData(room));
     } catch (error) {
-      console.error('Error in getRoomsByDepartmentAndType:', error);
       throw new Error(`Lỗi lấy danh sách phòng học: ${error.message}`);
     }
   }
@@ -86,7 +77,7 @@ class RoomService {
           department: true
         }
       });
-
+      
       if (!room) {
         throw new Error('Không tìm thấy phòng học');
       }
@@ -590,22 +581,28 @@ class RoomService {
   // Lấy danh sách phòng available cho ngoại lệ (bao gồm cả phòng trống do ngoại lệ khác)
   async getAvailableRoomsForException(timeSlotId, dayOfWeek, specificDate, requiredCapacity = 0, classRoomTypeId = null, departmentId = null) {
     try {
-      // Step 1: Lấy TẤT CẢ phòng phù hợp với các điều kiện
       const whereClause = {
-        isAvailable: true,
-        capacity: { gte: parseInt(requiredCapacity) || 0 }
+        isAvailable: true
       };
 
       // Lọc theo loại phòng nếu có
       if (classRoomTypeId && classRoomTypeId !== 'all') {
-        whereClause.classRoomTypeId = parseInt(classRoomTypeId);
+        const parsedClassRoomTypeId = parseInt(classRoomTypeId);
+        whereClause.classRoomTypeId = parsedClassRoomTypeId;
+        if (parsedClassRoomTypeId !== 2 && requiredCapacity > 0) {
+          whereClause.capacity = { gte: parseInt(requiredCapacity) };
+        }
+      } else {
+        if (requiredCapacity > 0) {
+          whereClause.capacity = { gte: parseInt(requiredCapacity) };
+        }
       }
 
       // Lọc theo khoa nếu có
       if (departmentId && departmentId !== 'all') {
         whereClause.OR = [
           { departmentId: parseInt(departmentId) },
-          { departmentId: null } // Phòng chung
+          { departmentId: null } 
         ];
       }
 
@@ -616,9 +613,6 @@ class RoomService {
           department: true
         }
       });
-
-      console.log(`[getAvailableRoomsForException] Found ${allRooms.length} total rooms matching criteria`);
-
       // Step 2: Lấy schedules với exceptions cho ngày cụ thể
       const schedules = await this.getSchedulesByTimeSlotAndDate(
         timeSlotId,
@@ -739,8 +733,6 @@ class RoomService {
         occupiedRooms: categorizedRooms.filter(r => r.status === 'occupied' || r.isOccupiedByMovedException),
         totalAvailable: categorizedRooms.filter(r => r.status === 'available' && !r.isOccupiedByMovedException).length
       };
-
-      console.log(`[getAvailableRoomsForException] Result: ${result.normalRooms.length} normal, ${result.freedRooms.length} freed, ${result.occupiedRooms.length} occupied`);
 
       return result;
     } catch (error) {

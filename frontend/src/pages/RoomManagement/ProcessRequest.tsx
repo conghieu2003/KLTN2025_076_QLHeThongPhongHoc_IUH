@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Card, CardContent, Typography, Button, FormControl, InputLabel, Select, MenuItem, Alert, Chip, CircularProgress, Paper, Stack, TextField, Grid, useTheme, useMediaQuery } from '@mui/material';
-import { Person as PersonIcon, Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, ArrowBack as ArrowBackIcon, Save as SaveIcon, CheckCircle as ApproveIcon, Cancel as RejectIcon, Pending as PendingIcon } from '@mui/icons-material';
+import { Person as PersonIcon, Class as ClassIcon, Room as RoomIcon, Schedule as ScheduleIcon, ArrowBack as ArrowBackIcon, Save as SaveIcon, CheckCircle as ApproveIcon, Cancel as RejectIcon, Pending as PendingIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { roomService, scheduleManagementService } from '../../services/api';
+import { roomService, scheduleManagementService, scheduleExceptionService } from '../../services/api';
 import { formatDateForAPI, parseDateFromAPI } from '../../utils/transDateTime';
 
 interface ProcessRequestData {
@@ -63,7 +63,7 @@ interface ProcessRequestData {
     };
     approvedAt?: string;
     note?: string;
-    classSchedule?: {
+        classSchedule?: {
         id: number;
         class?: {
             id: number;
@@ -94,6 +94,24 @@ interface ProcessRequestData {
         };
         dayOfWeek: number;
         timeSlotId: number;
+        timeSlot?: {
+            id: number;
+            slotName?: string;
+            startTime?: string;
+            endTime?: string;
+        };
+    };
+    movedToTimeSlot?: {
+        id: number;
+        slotName?: string;
+        startTime?: string;
+        endTime?: string;
+    };
+    newTimeSlot?: {
+        id: number;
+        slotName?: string;
+        startTime?: string;
+        endTime?: string;
     };
     newClassRoom?: {
         id: number;
@@ -141,24 +159,34 @@ const ProcessRequest: React.FC = () => {
     const [availableTeachers, setAvailableTeachers] = useState<any[]>([]);
     const [selectedTeacherId, setSelectedTeacherId] = useState<number | ''>('');
     const [loadingTeachers, setLoadingTeachers] = useState(false);
+    const [timeSlots, setTimeSlots] = useState<any[]>([]);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (requestId) {
             loadRequestData();
         }
-    }, [requestId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [requestId]); 
+
+    useEffect(() => {
+        const loadTimeSlots = async () => {
+            try {
+                const response = await scheduleExceptionService.getTimeSlots();
+                if (response.success && response.data) {
+                    setTimeSlots(response.data);
+                }
+            } catch (error) {
+                console.error('Error loading time slots:', error);
+            }
+        };
+        loadTimeSlots();
+    }, []);
 
     const loadRequestData = async () => {
         try {
             setLoading(true);
             const response = await roomService.getScheduleRequestById(parseInt(requestId!));
-            console.log('API Response:', response);
             if (response.success) {
-                console.log('Request Data:', response.data);
-                console.log('Request Type:', response.data.RequestType?.name);
-                console.log('movedToTimeSlotId:', response.data.movedToTimeSlotId);
-                console.log('movedToDate:', response.data.movedToDate);
-                console.log('movedToDayOfWeek:', response.data.movedToDayOfWeek);
                 setRequestData(response.data);
                 await loadSuggestedRooms(response.data);
                 await loadAvailableTeachers(response.data);
@@ -175,7 +203,6 @@ const ProcessRequest: React.FC = () => {
         }
     };
 
-    // Helper function: Kiểm tra xem có cần chọn phòng không
     const shouldShowRoomSelection = (request: ProcessRequestData): boolean => {
         const requestTypeId = request.requestTypeId;
         const noRoomNeeded = [5, 9]; 
@@ -199,45 +226,38 @@ const ProcessRequest: React.FC = () => {
             let departmentId: number | undefined;
 
             if (isExam) {
-                // Thi giữa kỳ: ưu tiên dùng movedToDate và movedToTimeSlotId (từ giảng viên)
-                // Nếu không có, dùng newDate và newTimeSlotId (từ admin tạo trực tiếp)
                 let examDate: string | undefined;
                 let examTimeSlotId: number | undefined;
                 
                 if (request.movedToDate && request.movedToTimeSlotId) {
-                    // Yêu cầu từ giảng viên: đã được map sang movedToDate và movedToTimeSlotId
                     examDate = request.movedToDate;
                     examTimeSlotId = request.movedToTimeSlotId;
                 } else if (request.newDate && request.newTimeSlotId) {
-                    // Yêu cầu từ admin tạo trực tiếp: dùng newDate và newTimeSlotId
                     examDate = request.newDate;
                     examTimeSlotId = request.newTimeSlotId;
                 }
-                
+                // xử lý thi giữa kỳ
                 if (examDate && examTimeSlotId) {
                     const parsedDate = parseDateFromAPI(examDate) || new Date(examDate);
                     targetDate = formatDateForAPI(parsedDate) || examDate.split('T')[0];
                     targetTimeSlotId = examTimeSlotId;
-                    // Lấy departmentId từ classSchedule nếu có
                     if (request.classSchedule?.class?.departmentId) {
                         departmentId = request.classSchedule.class.departmentId;
                     }
                 }
+                // xử lý thi giữa kỳ
             } else if (isFinalExam && request.exceptionDate && request.newTimeSlotId) {
-                // Thi cuối kỳ: dùng exceptionDate và newTimeSlotId
                 const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
                 targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
                 targetTimeSlotId = request.newTimeSlotId;
-                // Lấy departmentId từ class nếu có
                 if (request.class?.departmentId) {
                     departmentId = request.class.departmentId;
                 }
+                // xử lý đổi giáo viên
             } else if (isSubstitute && request.exceptionDate && request.classSchedule) {
-                // Đổi giáo viên: dùng exceptionDate và timeSlotId từ classSchedule
                 const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
                 targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
                 targetTimeSlotId = request.classSchedule.timeSlotId;
-                // Lấy departmentId từ classSchedule
                 if (request.classSchedule?.class?.departmentId) {
                     departmentId = request.classSchedule.class.departmentId;
                 }
@@ -271,24 +291,20 @@ const ProcessRequest: React.FC = () => {
 
     const loadSuggestedRooms = async (request: ProcessRequestData) => {
         try {
-            // Nếu không cần chọn phòng, bỏ qua việc load suggested rooms
             if (!shouldShowRoomSelection(request)) {
-                console.log('Room selection not needed for this request type');
                 setSuggestedRooms([]);
                 return;
             }
 
-            // Lấy thông tin lớp học
             let classMaxStudents = 0;
             let classRoomTypeId = '1';
             let departmentId: number | undefined = undefined;
             
-            // Xử lý thi cuối kỳ (RequestType 10) - không có classSchedule, có class
+            // Xử lý thi cuối kỳ
             if (request.requestTypeId === 10 && request.class) {
                 classMaxStudents = request.class.maxStudents || 0;
                 departmentId = request.class.departmentId;
-                
-                // Lấy loại phòng từ classRoomTypeId hoặc ClassRoomType
+        
                 if (request.class.classRoomTypeId) {
                     classRoomTypeId = String(request.class.classRoomTypeId);
                 } else if (request.class.ClassRoomType?.name) {
@@ -299,16 +315,12 @@ const ProcessRequest: React.FC = () => {
             } else if (request.classSchedule?.class) {
                 classMaxStudents = request.classSchedule.class.maxStudents || 0;
                 departmentId = request.classSchedule.class.departmentId;
-                
-                // Lấy loại phòng từ classRoom của schedule hoặc từ class
                 if (request.classSchedule.classRoom?.ClassRoomType?.name) {
                     classRoomTypeId = request.classSchedule.classRoom.ClassRoomType.name === 'Thực hành' ? '2' : '1';
                 } else {
                     classRoomTypeId = '1';
                 }
             }
-            
-            // Xử lý các loại request cần chọn phòng: Đổi phòng, Đổi lịch, Thi giữa kỳ, Thi cuối kỳ
             const isRoomChange = request.requestTypeId === 7; // Đổi phòng
             const isMoved = request.RequestType?.name === 'Đổi lịch' || request.requestTypeId === 8;
             const isExam = request.requestTypeId === 6; // Thi giữa kỳ
@@ -319,47 +331,64 @@ const ProcessRequest: React.FC = () => {
             let targetDayOfWeek: number | undefined;
             
             if (isRoomChange && request.classSchedule && request.exceptionDate) {
-                // Đổi phòng: dùng exceptionDate và timeSlotId từ classSchedule
                 const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
                 targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
-                targetTimeSlotId = request.classSchedule.timeSlotId;
+                if (request.classSchedule.timeSlot?.id) {
+                    targetTimeSlotId = request.classSchedule.timeSlot.id;
+                } else if (request.classSchedule.timeSlotId) {
+                    targetTimeSlotId = request.classSchedule.timeSlotId;
+                } 
                 if (targetDate) {
                     const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
                     targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
                 }
-            } else if (isMoved && request.movedToDate && request.movedToTimeSlotId) {
-                // Đổi lịch: dùng movedToDate và movedToTimeSlotId
-                const parsedDate = parseDateFromAPI(request.movedToDate) || new Date(request.movedToDate);
-                targetDate = formatDateForAPI(parsedDate) || request.movedToDate.split('T')[0];
-                targetTimeSlotId = request.movedToTimeSlotId;
-                // Tính dayOfWeek từ movedToDate hoặc dùng movedToDayOfWeek nếu có
-                if (request.movedToDayOfWeek) {
-                    targetDayOfWeek = request.movedToDayOfWeek;
-                } else if (targetDate) {
-                    const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
-                    targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+            } else if (isMoved) {
+                if (request.movedToDate && request.movedToTimeSlotId) {
+                    const parsedDate = parseDateFromAPI(request.movedToDate) || new Date(request.movedToDate);
+                    targetDate = formatDateForAPI(parsedDate) || request.movedToDate.split('T')[0];
+                    targetTimeSlotId = request.movedToTimeSlotId;
+                    if (request.movedToDayOfWeek) {
+                        targetDayOfWeek = request.movedToDayOfWeek;
+                    } else if (targetDate) {
+                        const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
+                        targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                    }
+                } else if (request.exceptionDate && request.classSchedule) {
+                    const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
+                    targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
+                    if (request.classSchedule.timeSlot?.id) {
+                        targetTimeSlotId = request.classSchedule.timeSlot.id;
+                    } else if (request.classSchedule.timeSlotId) {
+                        targetTimeSlotId = request.classSchedule.timeSlotId;
+                    }
+                    if (targetDate) {
+                        const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
+                        targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                    }
                 }
             } else if (isExam) {
-                // Thi giữa kỳ: ưu tiên dùng movedToDate và movedToTimeSlotId (từ giảng viên)
-                // Nếu không có, dùng newDate và newTimeSlotId (từ admin tạo trực tiếp)
                 let examDate: string | undefined;
                 let examTimeSlotId: number | undefined;
                 
                 if (request.movedToDate && request.movedToTimeSlotId) {
-                    // Yêu cầu từ giảng viên: đã được map sang movedToDate và movedToTimeSlotId
                     examDate = request.movedToDate;
                     examTimeSlotId = request.movedToTimeSlotId;
                 } else if (request.newDate && request.newTimeSlotId) {
-                    // Yêu cầu từ admin tạo trực tiếp: dùng newDate và newTimeSlotId
                     examDate = request.newDate;
                     examTimeSlotId = request.newTimeSlotId;
+                } else if (request.exceptionDate && request.classSchedule) {
+                    examDate = request.exceptionDate;
+                    if (request.classSchedule.timeSlot?.id) {
+                        examTimeSlotId = request.classSchedule.timeSlot.id;
+                    } else if (request.classSchedule.timeSlotId) {
+                        examTimeSlotId = request.classSchedule.timeSlotId;
+                    }
                 }
                 
                 if (examDate && examTimeSlotId) {
                     const parsedDate = parseDateFromAPI(examDate) || new Date(examDate);
                     targetDate = formatDateForAPI(parsedDate) || examDate.split('T')[0];
                     targetTimeSlotId = examTimeSlotId;
-                    // Tính dayOfWeek từ examDate hoặc dùng movedToDayOfWeek nếu có
                     if (request.movedToDayOfWeek) {
                         targetDayOfWeek = request.movedToDayOfWeek;
                     } else if (targetDate) {
@@ -367,69 +396,44 @@ const ProcessRequest: React.FC = () => {
                         targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
                     }
                 }
-            } else if (isFinalExam && request.exceptionDate && request.newTimeSlotId) {
+            } else if (isFinalExam) {
                 // Thi cuối kỳ: dùng exceptionDate và newTimeSlotId
-                const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
-                targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
-                targetTimeSlotId = request.newTimeSlotId;
-                // Tính dayOfWeek từ exceptionDate
-                if (targetDate) {
-                    const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
-                    targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                if (request.exceptionDate) {
+                    const parsedDate = parseDateFromAPI(request.exceptionDate) || new Date(request.exceptionDate);
+                    targetDate = formatDateForAPI(parsedDate) || request.exceptionDate.split('T')[0];
+                    
+                    if (request.newTimeSlotId) {
+                        targetTimeSlotId = request.newTimeSlotId;
+                    } else {
+                    }
+                    
+                    if (targetDate) {
+                        const dateObj = parseDateFromAPI(targetDate) || new Date(targetDate);
+                        targetDayOfWeek = dateObj.getDay() === 0 ? 1 : dateObj.getDay() + 1;
+                    }
                 }
             }
             
-            if (targetDate && targetTimeSlotId && targetDayOfWeek) {
-                console.log('🎯 Using getAvailableRoomsForException API');
-                console.log('Request type:', request.requestTypeId, request.RequestType?.name);
-                console.log('Request params:', {
-                    timeSlotId: targetTimeSlotId,
-                    dayOfWeek: targetDayOfWeek,
-                    date: targetDate,
-                    capacity: classMaxStudents,
-                    classRoomTypeId,
-                    departmentId
-                });
-                console.log('Request data:', {
-                    exceptionDate: request.exceptionDate,
-                    newDate: request.newDate,
-                    movedToDate: request.movedToDate,
-                    movedToTimeSlotId: request.movedToTimeSlotId,
-                    movedToDayOfWeek: request.movedToDayOfWeek,
-                    newTimeSlotId: request.newTimeSlotId,
-                    classSchedule: request.classSchedule ? {
-                        id: request.classSchedule.id,
-                        timeSlotId: request.classSchedule.timeSlotId
-                    } : null,
-                    class: request.class ? {
-                        id: request.class.id,
-                        departmentId: request.class.departmentId
-                    } : null
-                });
+            if (targetTimeSlotId && (targetTimeSlotId < 1 || targetTimeSlotId > 30)) {
+                toast.error(`Lỗi:không hợp lệ (${targetTimeSlotId}). Vui lòng kiểm tra dữ liệu.`);
+                setSuggestedRooms([]);
+                return;
+            }
 
+            if (targetDate && targetTimeSlotId && targetDayOfWeek) {
                 const availableRoomsResponse = await roomService.getAvailableRoomsForException(
                     Number(targetTimeSlotId),
                     Number(targetDayOfWeek),
-                    targetDate, // Đã được format sẵn YYYY-MM-DD
+                    targetDate,
                     classMaxStudents,
                     classRoomTypeId,
-                    departmentId ? String(departmentId) : undefined // Lọc theo khoa
+                    departmentId ? String(departmentId) : undefined 
                 );
 
                 if (availableRoomsResponse.success && availableRoomsResponse.data) {
                     const { normalRooms, freedRooms, occupiedRooms } = availableRoomsResponse.data;
-                    
-                    console.log('✅ Available rooms:', {
-                        normal: normalRooms?.length || 0,
-                        freed: freedRooms?.length || 0,
-                        occupied: occupiedRooms?.length || 0
-                    });
-
-                    // Lấy danh sách phòng occupied (convert về number để so sánh)
                     const occupiedIds = (occupiedRooms || []).map((r: any) => parseInt(String(r.id)));
                     
-                    // Lấy danh sách tất cả phòng available (normal + freed)
-                    // Filter lại để loại bỏ phòng bị occupied
                     const allAvailable = [
                         ...(freedRooms || []).map((room: any) => ({ 
                             ...room, 
@@ -443,13 +447,11 @@ const ProcessRequest: React.FC = () => {
                         }))
                     ];
 
-                    // Chỉ giữ lại phòng không bị occupied (so sánh với số để đảm bảo type matching)
                     const availableRooms = allAvailable.filter((room: any) => {
                         const roomIdNum = parseInt(String(room.id));
                         return !occupiedIds.includes(roomIdNum);
                     });
 
-                    // Sort: Freed rooms trước, sau đó sort theo capacity gần với yêu cầu nhất
                     availableRooms.sort((a: any, b: any) => {
                         if (a.sortPriority !== b.sortPriority) {
                             return a.sortPriority - b.sortPriority;
@@ -459,33 +461,23 @@ const ProcessRequest: React.FC = () => {
                         return aDiff - bDiff;
                     });
 
-                    console.log('Suggested rooms:', availableRooms.slice(0, 15));
                     setSuggestedRooms(availableRooms.slice(0, 15)); // Top 15 suggestions
 
                     if ((freedRooms?.length || 0) > 0) {
                         toast.info(
-                            `🎉 Có ${freedRooms.length} phòng trống do lớp khác nghỉ/thi trong ngày này`,
+                            `Có ${freedRooms.length} phòng trống do lớp khác nghỉ/thi trong ngày này`,
                             { autoClose: 5000 }
                         );
                     }
 
                     return;
-                } else {
-                    console.warn('API returned unsuccessful or no data');
-                }
-            } else {
-                console.warn('Missing required params:', { targetDate, targetTimeSlotId, targetDayOfWeek });
-            }
-
-            // ⭐ Logic cũ: Cho các trường hợp khác (hoặc khi API mới fail)
-            console.log('Using legacy room suggestion logic');
+                } 
+            } 
             
             const roomsResponse = await roomService.getAllRooms();
-            console.log('Rooms response:', roomsResponse);
             
             if (roomsResponse.success) {
                 const allRooms = roomsResponse.data;
-                console.log('All rooms:', allRooms);
 
                 let suggested = allRooms.filter((room: any) => {
                     const capacityMatch = room.capacity >= classMaxStudents;
@@ -497,12 +489,7 @@ const ProcessRequest: React.FC = () => {
                     return capacityMatch && typeMatch && available;
                 });
 
-                console.log(`After initial filtering: ${suggested.length} rooms found`);
-
-                // Kiểm tra conflict cho case "Đổi lịch" không có ngày cụ thể
                 if (request.RequestType?.name === 'Đổi lịch' && request.movedToTimeSlotId && request.movedToDayOfWeek) {
-                    console.log('Checking schedule conflicts for time change request (legacy)');
-
                     const schedulesResponse = await roomService.getSchedulesByTimeSlotAndDate(
                         Number(request.movedToTimeSlotId),
                         Number(request.movedToDayOfWeek)
@@ -519,27 +506,21 @@ const ProcessRequest: React.FC = () => {
                     }
                 }
 
-                console.log(`After schedule conflict filtering: ${suggested.length} rooms found`);
-
-                // Sort by capacity
                 suggested.sort((a: any, b: any) => {
                     const aDiff = Math.abs(a.capacity - classMaxStudents);
                     const bDiff = Math.abs(b.capacity - classMaxStudents);
                     return aDiff - bDiff;
                 });
 
-                console.log('Suggested rooms:', suggested.slice(0, 10));
                 setSuggestedRooms(suggested.slice(0, 10));
             }
         } catch (error) {
-            console.error('Error loading suggested rooms:', error);
             toast.error('Không thể tải danh sách phòng đề xuất');
             setSuggestedRooms([]);
         }
     };
 
     const handleProcessRequest = async () => {
-        // Kiểm tra xem có cần chọn phòng không
         const needsRoomSelection = requestData && shouldShowRoomSelection(requestData);
         
         if (needsRoomSelection && !selectedRoomId) {
@@ -550,10 +531,9 @@ const ProcessRequest: React.FC = () => {
         try {
             setProcessing(true);
 
-            // Update request status to approved with selected room and teacher
             const updateResponse = await roomService.updateScheduleRequestStatus(
                 parseInt(requestId!),
-                2, // Approved status
+                2,
                 adminNote || 'Yêu cầu đã được chấp nhận và phân phòng',
                 selectedRoomId ? selectedRoomId.toString() : undefined,
                 selectedTeacherId ? Number(selectedTeacherId) : undefined
@@ -566,7 +546,6 @@ const ProcessRequest: React.FC = () => {
                 toast.error('Có lỗi xảy ra khi xử lý yêu cầu');
             }
         } catch (error) {
-            console.error('Error processing request:', error);
             toast.error('Có lỗi xảy ra khi xử lý yêu cầu');
         } finally {
             setProcessing(false);
@@ -574,9 +553,22 @@ const ProcessRequest: React.FC = () => {
     };
 
     const getDayName = (dayOfWeek: number): string => {
-        // Mapping theo logic của WeeklySchedule.tsx: 1=CN, 2=T2, 3=T3, 4=T4, 5=T5, 6=T6, 7=T7
         const days = ['', 'Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
         return days[dayOfWeek] || '';
+    };
+
+    const getTimeSlotName = (timeSlotId?: number, timeSlot?: { slotName?: string; id?: number }): string => {
+        if (timeSlot?.slotName) {
+            return timeSlot.slotName;
+        }
+        if (timeSlotId) {
+            const slot = timeSlots.find(ts => ts.id === timeSlotId);
+            if (slot?.slotName) {
+                return slot.slotName;
+            }
+            return `Tiết ${timeSlotId}`;
+        }
+        return 'Chưa xác định';
     };
 
     const getRequestTypeText = (requestTypeId: number): string => {
@@ -585,6 +577,43 @@ const ProcessRequest: React.FC = () => {
             case 8: return 'Đổi lịch';
             case 9: return 'Đổi giáo viên';
             default: return 'Không xác định';
+        }
+    };
+    // xóa ngoại lệ
+    const handleDeleteException = async () => {
+        if (!requestData) return;
+        const isException = requestData.requestTypeId >= 5 && requestData.requestTypeId <= 10;
+        if (!isException) {
+            toast.error('Chỉ có thể xóa các yêu cầu ngoại lệ');
+            return;
+        }
+        if (requestData.requestTypeId !== 10 && !requestData.classScheduleId) {
+            toast.error('Không thể xóa ngoại lệ này vì thiếu thông tin lịch học');
+            return;
+        }
+
+        const confirmMessage = requestData.requestTypeId === 10 
+            ? 'Bạn có chắc chắn muốn xóa ngoại lệ thi cuối kỳ này? Lịch sẽ trở về trạng thái ban đầu.'
+            : 'Bạn có chắc chắn muốn xóa ngoại lệ này? Lịch sẽ trở về trạng thái ban đầu.';
+
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            setDeleting(true);
+            const response = await scheduleExceptionService.deleteScheduleException(requestData.id);
+
+            if (response.success) {
+                toast.success('Đã xóa ngoại lệ thành công. Lịch đã trở về trạng thái ban đầu.');
+                navigate('/rooms/requests/list');
+            } else {
+                toast.error(response.message || 'Có lỗi xảy ra khi xóa ngoại lệ');
+            }
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi xóa ngoại lệ');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -1002,7 +1031,7 @@ const ProcessRequest: React.FC = () => {
                                                     variant="body2"
                                                     sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                                 >
-                                                    {getDayName(requestData.classSchedule.dayOfWeek)} - Tiết {requestData.classSchedule.timeSlotId}
+                                                    {getDayName(requestData.classSchedule.dayOfWeek)} - {getTimeSlotName(requestData.classSchedule.timeSlotId, requestData.classSchedule.timeSlot)}
                                                 </Typography>
                                             </Box>
                                         </Box>
@@ -1030,7 +1059,7 @@ const ProcessRequest: React.FC = () => {
                                                     fontWeight="bold"
                                                     sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
                                                 >
-                                                    {getDayName(requestData.movedToDayOfWeek)} - Tiết {requestData.movedToTimeSlotId}
+                                                    {getDayName(requestData.movedToDayOfWeek)} - {getTimeSlotName(requestData.movedToTimeSlotId, requestData.movedToTimeSlot)}
                                                 </Typography>
                                             </Box>
                                             <Typography 
@@ -1402,6 +1431,56 @@ const ProcessRequest: React.FC = () => {
                                     }}
                                 >
                                     {processing ? 'Đang xử lý...' : 'Xử lý yêu cầu'}
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </CardContent>
+                </Card>
+            </Box>
+            )}
+
+            {requestData && 
+             (requestData.RequestStatus?.name === 'Hoàn thành' || requestData.RequestStatus?.name === 'Đã duyệt') &&
+             requestData.requestTypeId >= 5 && 
+             requestData.requestTypeId <= 10 && (
+            <Box sx={{ mt: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Card>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+                        <Alert 
+                            severity="info" 
+                            sx={{ 
+                                mb: { xs: 1.5, sm: 2 },
+                                fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                            }}
+                        >
+                            <Typography 
+                                variant="body2"
+                                sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}
+                            >
+                                <strong>Lưu ý:</strong> Xóa ngoại lệ này sẽ trả lịch học về trạng thái ban đầu. 
+                                {requestData.requestTypeId === 10 
+                                    ? ' (Thi cuối kỳ)'
+                                    : requestData.classScheduleId 
+                                        ? ' Lịch học sẽ trở về phòng và thời gian ban đầu.'
+                                        : ''}
+                            </Typography>
+                        </Alert>
+
+                        <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }} justifyContent="flex-end">
+                            <Grid size={{ xs: 12, sm: 'auto' }}>
+                                <Button
+                                    variant="outlined"
+                                    color="error"
+                                    startIcon={<DeleteIcon />}
+                                    onClick={handleDeleteException}
+                                    disabled={deleting || (requestData.requestTypeId !== 10 && !requestData.classScheduleId)}
+                                    fullWidth={isMobile}
+                                    size={isMobile ? "medium" : "large"}
+                                    sx={{ 
+                                        fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                                    }}
+                                >
+                                    {deleting ? 'Đang xóa...' : 'Xóa ngoại lệ'}
                                 </Button>
                             </Grid>
                         </Grid>

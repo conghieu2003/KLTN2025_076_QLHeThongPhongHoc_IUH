@@ -2,8 +2,9 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { userService } from '../../services/api';
 import { User } from '../../types';
 
+// loại tùy chọn
 export interface OptionItem { id: number; name: string }
-
+// form khởi tạo người dùng
 export interface UserFormInit {
   code: string;
   previewUsername: string;
@@ -19,6 +20,7 @@ export interface UserFormInit {
   };
 }
 
+// slice
 export interface UserState {
   previewCode: string;
   previewUsername: string;
@@ -53,7 +55,7 @@ const initialState: UserState = {
     enrollmentDate: '',
     title: ''
   },
-  // User management state
+  // quản lý người dùng
   users: [],
   usersLoading: false,
   usersError: null,
@@ -61,6 +63,7 @@ const initialState: UserState = {
   error: null
 };
 
+// lấy form khởi tạo người dùng
 export const fetchFormInit = createAsyncThunk(
   'user/fetchFormInit',
   async (role: 'teacher' | 'student', { rejectWithValue }) => {
@@ -76,6 +79,7 @@ export const fetchFormInit = createAsyncThunk(
   }
 );
 
+// lấy danh sách khoa
 export const fetchDepartments = createAsyncThunk(
   'user/fetchDepartments',
   async (_, { rejectWithValue }) => {
@@ -91,6 +95,7 @@ export const fetchDepartments = createAsyncThunk(
   }
 );
 
+// lấy danh sách chuyên ngành
 export const fetchMajors = createAsyncThunk(
   'user/fetchMajors',
   async (params: { departmentId?: number }, { rejectWithValue }) => {
@@ -106,6 +111,7 @@ export const fetchMajors = createAsyncThunk(
   }
 );
 
+// tạo người dùng
 export const createUserThunk = createAsyncThunk(
   'user/create',
   async (payload: any, { rejectWithValue }) => {
@@ -121,6 +127,7 @@ export const createUserThunk = createAsyncThunk(
   }
 );
 
+// lấy danh sách người dùng
 export const fetchUsersThunk = createAsyncThunk(
   'user/fetchUsers',
   async (params: { role?: 'admin' | 'teacher' | 'student' | 'all'; username?: string }, { rejectWithValue }) => {
@@ -136,6 +143,7 @@ export const fetchUsersThunk = createAsyncThunk(
   }
 );
 
+// cập nhật người dùng
 export const updateUserThunk = createAsyncThunk(
   'user/update',
   async (params: { userId: number; userData: any }, { rejectWithValue }) => {
@@ -151,6 +159,7 @@ export const updateUserThunk = createAsyncThunk(
   }
 );
 
+// slice
 const userSlice = createSlice({
   name: 'user',
   initialState,
@@ -194,7 +203,6 @@ const userSlice = createSlice({
       .addCase(fetchMajors.fulfilled, (state, action: PayloadAction<OptionItem[]>) => {
         state.majors = action.payload;
       })
-      // User management cases
       .addCase(fetchUsersThunk.pending, (state) => {
         state.usersLoading = true;
         state.usersError = null;

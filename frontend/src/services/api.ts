@@ -11,7 +11,7 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Interceptor để thêm token vào header
+// thêm token vào header
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
@@ -25,15 +25,13 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor để xử lý lỗi 401 (token hết hạn)
+// xử lý lỗi 401 (token hết hạn)
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
   (error) => {
-    // Chỉ xử lý 401 khi đã có token (tức là user đã đăng nhập trước đó)
     if (error.response && error.response.status === 401 && localStorage.getItem('token')) {
-      // Token hết hạn hoặc không hợp lệ
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('role');
@@ -43,9 +41,8 @@ api.interceptors.response.use(
   }
 );
 
-// Auth Service
+// đăng nhập
 export const authService = {
-  // Đăng nhập với identifier (admin: userId, teacher: teacherCode, student: studentCode, hoặc username) và password
   login: async (identifier: string, password: string): Promise<ApiResponse<any>> => {
     try {
       const response = await api.post('/auth/login', { identifier, password });
@@ -53,7 +50,6 @@ export const authService = {
       if (response.data.success) {
         const { token, user } = response.data.data;
         const role = user.role;
-        // Lưu thông tin vào localStorage
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('role', role);
@@ -464,7 +460,7 @@ export const userService = {
   },
 };
 
-// Schedule Management Service (Gộp tất cả logic sắp xếp phòng)
+// quản lý lịch học
 export const scheduleManagementService = {
   getAvailableTeachers: async (date: string, timeSlotId: number, departmentId?: number): Promise<ApiResponse<any[]>> => {
     try {
@@ -605,7 +601,7 @@ export const classScheduleService = {
   },
 };
 
-// Enhanced Schedule Service with additional methods
+// lịch học
 export const enhancedScheduleService = {
   // Lấy danh sách lịch học theo filter
   getSchedules: async (filter: any = {}): Promise<any> => {

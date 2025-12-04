@@ -544,13 +544,15 @@ const getScheduleExceptions = async (params) => {
 };
 
 // Lấy chi tiết ngoại lệ lịch học
-const getScheduleExceptionById = async (id) => {
+const getScheduleExceptionById = async (id, userId = null) => {
   try {
+    const whereCondition = {
+      id: parseInt(id),
+      requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9, 10] }
+    };
+
     const exception = await prisma.scheduleRequest.findFirst({
-      where: {
-        id: parseInt(id),
-        requestTypeId: { in: [3, 4, 5, 6, 7, 8, 9] } // Lấy tất cả loại ngoại lệ
-      },
+      where: whereCondition,
       include: {
         classSchedule: {
           include: {
@@ -707,7 +709,7 @@ const updateScheduleException = async (id, updateData, userId) => {
                 ]
               }
             ],
-            requestStatusId: 2, // Chỉ kiểm tra exception đã duyệt
+            requestStatusId: 2, 
             id: { not: parseInt(id) } // Loại trừ exception hiện tại
           },
           include: {

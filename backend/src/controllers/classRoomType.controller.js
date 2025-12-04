@@ -19,7 +19,6 @@ class ClassRoomTypeController {
         });
       }
     } catch (error) {
-      console.error('[ClassRoomTypeController.getAllClassRoomTypes] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy danh sách loại phòng/lớp'
@@ -46,7 +45,6 @@ class ClassRoomTypeController {
         });
       }
     } catch (error) {
-      console.error('[ClassRoomTypeController.getClassRoomTypeById] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy thông tin loại phòng/lớp'
@@ -73,7 +71,6 @@ class ClassRoomTypeController {
         });
       }
     } catch (error) {
-      console.error('[ClassRoomTypeController.createClassRoomType] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi tạo loại phòng/lớp'
@@ -101,7 +98,6 @@ class ClassRoomTypeController {
         });
       }
     } catch (error) {
-      console.error('[ClassRoomTypeController.updateClassRoomType] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi cập nhật loại phòng/lớp'
@@ -127,7 +123,6 @@ class ClassRoomTypeController {
         });
       }
     } catch (error) {
-      console.error('[ClassRoomTypeController.deleteClassRoomType] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi xóa loại phòng/lớp'

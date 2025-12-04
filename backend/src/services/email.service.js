@@ -3,8 +3,6 @@ const config = require('../config/env.config');
 
 class EmailService {
     constructor() {
-        // Cấu hình transporter cho email
-        // Ưu tiên sử dụng cấu hình từ env.config, fallback về process.env
         const emailUser = config.email.user !== 'your_email@gmail.com' 
             ? config.email.user 
             : (process.env.EMAIL_USER || process.env.SMTP_USER || '');
@@ -13,19 +11,17 @@ class EmailService {
             ? config.email.pass
             : (process.env.EMAIL_PASSWORD || process.env.SMTP_PASS || '');
 
-        // Sử dụng SMTP config nếu có, nếu không thì dùng service: 'gmail'
         if (config.email.host && config.email.host !== 'smtp.gmail.com') {
             this.transporter = nodemailer.createTransport({
                 host: config.email.host,
                 port: config.email.port,
-                secure: config.email.port === 465, // true for 465, false for other ports
+                secure: config.email.port === 465, 
                 auth: {
                     user: emailUser,
                     pass: emailPass
                 }
             });
         } else {
-            // Sử dụng Gmail service với App Password
             this.transporter = nodemailer.createTransport({
                 service: 'gmail',
                 auth: {
@@ -35,20 +31,13 @@ class EmailService {
             });
         }
 
-        // Verify connection configuration
         this.verifyConnection();
     }
 
     async verifyConnection() {
         try {
             await this.transporter.verify();
-            console.log('✅ Email server is ready to send messages');
         } catch (error) {
-            console.error('❌ Email server configuration error:', error.message);
-            console.error('💡 Hướng dẫn:');
-            console.error('   1. Đảm bảo EMAIL_USER/SMTP_USER và EMAIL_PASSWORD/SMTP_PASS đã được cấu hình trong .env');
-            console.error('   2. Với Gmail, cần sử dụng App Password (không phải mật khẩu thông thường)');
-            console.error('   3. Tạo App Password tại: https://myaccount.google.com/apppasswords');
         }
     }
 
@@ -75,12 +64,8 @@ class EmailService {
             };
 
             const result = await this.transporter.sendMail(mailOptions);
-            console.log('✅ Email sent successfully:', result.messageId);
             return result;
         } catch (error) {
-            console.error('❌ Error sending email:', error.message);
-            
-            // Xử lý các lỗi phổ biến và trả về message rõ ràng hơn
             let errorMessage = 'Lỗi gửi email';
             
             if (error.message.includes('Invalid login') || error.message.includes('BadCredentials')) {
@@ -97,14 +82,14 @@ class EmailService {
         }
     }
 
-    // Method để gửi email thông báo tài khoản mới
+    // gửi email thông báo tài khoản mới
     async sendAccountNotification({ to, username, password, fullName, role }) {
         const subject = 'IUH - Thông tin tài khoản và hướng dẫn đăng nhập hệ thống';
         const content = this.generateEmailTemplate({ to, username, password, fullName, role });
         return this.sendEmail({ to, subject, content });
     }
 
-    // Method để gửi email thủ công từ admin
+    // gửi email thủ công từ admin
     async sendManualEmail({ to, subject, content, fullName, role, username, password }) {
         const emailContent = this.generateEmailTemplate({ 
             to, subject, content, fullName, role, username, password 
@@ -112,14 +97,14 @@ class EmailService {
         return this.sendEmail({ to, subject, content: emailContent });
     }
 
-    // Method để gửi email reset password
+    // gửi email reset password
     async sendPasswordResetEmail({ to, fullName, resetLink }) {
         const subject = 'IUH - Khôi phục mật khẩu';
         const content = this.generatePasswordResetTemplate({ fullName, resetLink });
         return this.sendEmail({ to, subject, content });
     }
 
-    // Template email reset password
+    // template email reset password
     generatePasswordResetTemplate({ fullName, resetLink }) {
         return `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f8f9fa;">
@@ -142,7 +127,7 @@ class EmailService {
                     
                     <div style="background-color: #e3f2fd; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #2196f3;">
                         <h3 style="color: #1976d2; margin-top: 0; margin-bottom: 15px; font-size: 18px;">
-                            🔐 Đặt lại mật khẩu:
+                            Đặt lại mật khẩu:
                         </h3>
                         <p style="color: #555; margin: 10px 0;">
                             Vui lòng click vào nút bên dưới để đặt lại mật khẩu mới:

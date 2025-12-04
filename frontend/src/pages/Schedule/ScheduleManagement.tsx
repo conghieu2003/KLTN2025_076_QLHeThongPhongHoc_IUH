@@ -190,16 +190,13 @@ const ScheduleManagement = () => {
     loadData();
   }, [dispatch]);
 
-  // Kiểm tra phòng available khi chọn ngày/tiết mới cho exception moved/exam/finalExam/roomChange - chỉ lấy phòng của khoa
+  // kiểm tra phòng available khi chọn ngày/tiết mới cho exception 
   useEffect(() => {
     const checkAvailableRooms = async () => {
       const isFinalExam = formData.exceptionType === 'finalExam';
       const isMovedOrExam = formData.exceptionType === 'moved' || formData.exceptionType === 'exam';
-      const isRoomChange = formData.exceptionType === 'roomChange'; // Đổi phòng
+      const isRoomChange = formData.exceptionType === 'roomChange';
       
-      // Thi cuối kỳ: dùng exceptionDate và newTimeSlotId
-      // Moved/Exam: dùng newDate và newTimeSlotId
-      // Đổi phòng: dùng exceptionDate và timeSlotId từ classSchedule
       const targetDate = isFinalExam ? formData.exceptionDate : (isRoomChange ? formData.exceptionDate : formData.newDate);
       
       if ((isMovedOrExam && formData.newDate && formData.newTimeSlotId) ||
@@ -208,13 +205,13 @@ const ScheduleManagement = () => {
         
         setCheckingRooms(true);
         try {
-          // Tính dayOfWeek từ targetDate (1=CN, 2=T2, ..., 7=T7)
+          // tính dayOfWeek từ targetDate
           if (!targetDate) {
             setCheckingRooms(false);
             return;
           }
           
-          // Lấy departmentId và classRoomTypeId từ lớp học đã chọn
+          // lấy departmentId và classRoomTypeId từ lớp học đã chọn
           let departmentId: number | undefined = undefined;
           let classRoomTypeId: string | undefined = undefined;
           let classMaxStudents: number | undefined = undefined;
@@ -225,12 +222,9 @@ const ScheduleManagement = () => {
               return classId === formData.classId;
             });
             departmentId = selectedClass?.departmentId;
-            
-            // Lấy thông tin loại phòng từ schedule đầu tiên có phòng hoặc từ class
+          
             if (selectedClass) {
               classMaxStudents = selectedClass.maxStudents;
-              
-              // Ưu tiên lấy từ classRoomTypeId của class
               if (selectedClass.classRoomTypeId) {
                 classRoomTypeId = String(selectedClass.classRoomTypeId);
               } else if (selectedClass.schedules && Array.isArray(selectedClass.schedules)) {
@@ -243,14 +237,12 @@ const ScheduleManagement = () => {
                 });
                 
                 if (firstScheduleWithRoom) {
-                  // Lấy loại phòng từ schedule
                   classRoomTypeId = firstScheduleWithRoom.classRoomTypeId 
                     ? String(firstScheduleWithRoom.classRoomTypeId)
                     : (firstScheduleWithRoom.classRoomTypeName === 'Thực hành' ? '2' : '1');
                 }
               }
               
-              // Nếu vẫn chưa có, mặc định là lý thuyết
               if (!classRoomTypeId) {
                 classRoomTypeId = '1';
               }
@@ -258,7 +250,6 @@ const ScheduleManagement = () => {
           } else if (formData.classScheduleId) {
             const selectedSchedule = availableSchedules.find(s => s.id === formData.classScheduleId);
             departmentId = selectedSchedule?.departmentId;
-            // Lấy loại phòng từ schedule
             classRoomTypeId = selectedSchedule?.classType === 'practice' ? '2' : '1';
           }
           
@@ -272,14 +263,12 @@ const ScheduleManagement = () => {
             return;
           }
           
-          // Với đổi phòng: lấy timeSlotId từ classSchedule hoặc tìm từ slotName
           let timeSlotIdForRoom = formData.newTimeSlotId;
           if (isRoomChange && formData.classScheduleId) {
             const selectedSchedule = availableSchedules.find(s => s.id === formData.classScheduleId);
             if (selectedSchedule?.timeSlotId) {
               timeSlotIdForRoom = selectedSchedule.timeSlotId;
             } else if (selectedSchedule?.slotName) {
-              // Tìm timeSlotId từ slotName
               const matchingSlot = timeSlots.find(ts => ts.slotName === selectedSchedule.slotName);
               if (matchingSlot) {
                 timeSlotIdForRoom = matchingSlot.id;
@@ -292,30 +281,25 @@ const ScheduleManagement = () => {
             return;
           }
           
-          // Gọi API với departmentId và classRoomTypeId để lọc phòng theo khoa và loại phòng
           const response = await roomService.getAvailableRoomsForException(
             timeSlotIdForRoom,
             dayOfWeek,
             formattedDate,
-            classMaxStudents, // capacity
-            classRoomTypeId, // classRoomTypeId - lý thuyết (1) hoặc thực hành (2)
-            departmentId ? String(departmentId) : undefined // departmentId
+            classMaxStudents,
+            classRoomTypeId,
+            departmentId ? String(departmentId) : undefined
           );
 
           if (response.success && response.data) {
             const data = response.data;
             
-            // Lấy danh sách phòng occupied (convert về number để so sánh)
             const occupiedIds = (data.occupiedRooms || []).map((r: any) => parseInt(String(r.id)));
             
-            // Lấy danh sách tất cả phòng available (normal + freed)
-            // Filter lại để loại bỏ phòng bị occupied
             const allAvailableRooms = [
               ...(data.normalRooms || []),
               ...(data.freedRooms || [])
             ];
             
-            // Chỉ giữ lại phòng không bị occupied (so sánh với số để đảm bảo type matching)
             const availableRooms = allAvailableRooms.filter((room: any) => {
               const roomIdNum = parseInt(String(room.id));
               return !occupiedIds.includes(roomIdNum);
@@ -335,7 +319,6 @@ const ScheduleManagement = () => {
           setCheckingRooms(false);
         }
         } else {
-          // Reset khi không phải moved/exam/finalExam/roomChange hoặc chưa đủ thông tin
           setAvailableRoomsForException([]);
           setOccupiedRoomIds([]);
         }
@@ -344,7 +327,7 @@ const ScheduleManagement = () => {
       checkAvailableRooms();
     }, [formData.exceptionType, formData.newDate, formData.exceptionDate, formData.newTimeSlotId, formData.classScheduleId, formData.classId, availableSchedules, classes, timeSlots]);
 
-  // Filter available schedules
+  // filter available schedules
   const filteredSchedules = useMemo(() => {
     let filtered = availableSchedules;
 
@@ -363,7 +346,7 @@ const ScheduleManagement = () => {
     return filtered;
   }, [availableSchedules, selectedDepartment, selectedClass, selectedTeacher]);
 
-  // Filter exceptions
+  // filter exceptions
   const filteredExceptions = useMemo(() => {
     let filtered = exceptions;
 
@@ -382,14 +365,12 @@ const ScheduleManagement = () => {
     return filtered;
   }, [exceptions, selectedExceptionType, selectedDate]);
 
-  // Filter teachers based on exception type and selected schedule/class
+  //
   const filteredTeachers = useMemo(() => {
-    // Nếu là thi cuối kỳ: lấy tất cả giáo viên
     if (formData.exceptionType === 'finalExam') {
       return teachers;
     }
     
-    // Nếu là đổi giáo viên: chỉ lấy giáo viên của khoa tương ứng với lớp
     if (formData.exceptionType === 'substitute' && formData.classScheduleId) {
       const selectedSchedule = availableSchedules.find(s => s.id === formData.classScheduleId);
       if (selectedSchedule?.departmentId) {
@@ -397,20 +378,18 @@ const ScheduleManagement = () => {
       }
     }
     
-    // Mặc định: lấy tất cả
     return teachers;
   }, [teachers, formData.exceptionType, formData.classScheduleId, availableSchedules]);
 
   const handleOpenExceptionDialog = (schedule?: AvailableSchedule, exception?: ScheduleException) => {
     if (exception) {
       setEditingException(exception);
-      // Sử dụng formatDateForAPI để đảm bảo timezone chính xác
       const exceptionDate = formatDateForAPI(exception.exceptionDate) || dayjs().format('YYYY-MM-DD');
       const newDate = exception.newDate ? formatDateForAPI(exception.newDate) : undefined;
       
       setFormData({
         classScheduleId: exception.classScheduleId || 0,
-        classId: (exception as any).classId || undefined, // Lấy classId nếu có (thi cuối kỳ)
+        classId: (exception as any).classId || undefined,
         exceptionDate: exceptionDate,
         exceptionType: exception.exceptionType,
         newTimeSlotId: exception.newTimeSlotId,
@@ -423,7 +402,6 @@ const ScheduleManagement = () => {
     } else if (schedule) {
       setEditingException(null);
       
-      // Tự động điền schedule ID, ngày mặc định là hôm nay
       const today = TransDateTime(new Date());
       setFormData({
         classScheduleId: schedule.id,
@@ -433,7 +411,6 @@ const ScheduleManagement = () => {
         note: ''
       });
     } else {
-      // Mở dialog tạo mới không có schedule được chọn trước
       setEditingException(null);
       const today = TransDateTime(new Date());
       setFormData({
@@ -462,15 +439,11 @@ const ScheduleManagement = () => {
     });
   };
 
-  const handleSaveException = async () => {
-    // Clear previous messages
+  const handleSaveException = async () => { 
     dispatch(clearError());
-
-    // Validation
     const isFinalExam = formData.exceptionType === 'finalExam';
     
     if (isFinalExam) {
-      // Thi cuối kỳ: cần classId, exceptionDate, newTimeSlotId, newClassRoomId
       if (!formData.classId || formData.classId === 0) {
         toast.error('Vui lòng chọn lớp học');
         return;
@@ -484,7 +457,6 @@ const ScheduleManagement = () => {
         return;
       }
     } else {
-      // Các loại khác: cần classScheduleId
       if (!formData.classScheduleId || formData.classScheduleId === 0) {
         toast.error('Vui lòng chọn lịch học');
         return;
@@ -500,23 +472,18 @@ const ScheduleManagement = () => {
       return;
     }
 
-    // Additional validation for specific exception types
     if (formData.exceptionType === 'moved' || formData.exceptionType === 'exam') {
       if (!formData.newDate || !formData.newTimeSlotId || !formData.newClassRoomId) {
         toast.error('Vui lòng điền đầy đủ thông tin chuyển lịch (ngày mới, tiết mới, phòng mới)');
         return;
       }
       
-        // Kiểm tra phòng đã chọn có bị occupied không
-        // Vì dropdown chỉ hiển thị phòng available, nên chỉ cần kiểm tra occupied
-        // occupiedRoomIds đã được convert về number ở useEffect
         if (occupiedRoomIds.length > 0 && occupiedRoomIds.includes(formData.newClassRoomId)) {
           toast.error('Phòng đã chọn đã có lớp ngoại lệ! Vui lòng chọn phòng khác.');
           return;
         }
       }
       
-      // Kiểm tra phòng cho thi cuối kỳ
       if (isFinalExam && occupiedRoomIds.length > 0 && occupiedRoomIds.includes(formData.newClassRoomId!)) {
         toast.error('Phòng đã chọn đã có lớp ngoại lệ! Vui lòng chọn phòng khác.');
         return;
@@ -528,10 +495,8 @@ const ScheduleManagement = () => {
     }
 
     try {
-      // Chuyển đổi exceptionType thành requestTypeId
       const requestTypeId = getRequestTypeIdFromExceptionType(formData.exceptionType);
       
-      // Đảm bảo exceptionDate và newDate được format đúng với timezone
       const exceptionDate = formData.exceptionDate ? formatDateForAPI(formData.exceptionDate) || formData.exceptionDate : formData.exceptionDate;
       const newDate = formData.newDate ? (formatDateForAPI(formData.newDate) || formData.newDate) : formData.newDate;
       
@@ -542,7 +507,6 @@ const ScheduleManagement = () => {
         ...(newDate && { newDate: newDate })
       };
       
-      // Với thi cuối kỳ, không gửi classScheduleId, chỉ gửi classId
       if (isFinalExam) {
         dataToSend.classScheduleId = undefined;
         dataToSend.classId = formData.classId;
@@ -610,13 +574,6 @@ const ScheduleManagement = () => {
             }}
           >
             Quản lý ngoại lệ lịch học
-          </Typography>
-          <Typography 
-            variant="body1" 
-            color="text.secondary"
-            sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' } }}
-          >
-            Tạo và quản lý các ngoại lệ cho lịch học (hủy lớp, chuyển lịch, thi, thay giảng viên)
           </Typography>
         </Box>
 
@@ -824,9 +781,7 @@ const ScheduleManagement = () => {
           </Grid>
         </Paper>
 
-        {/* Content based on tab */}
         {currentTab === 0 ? (
-          /* Available Schedules */
           <Paper sx={{ boxShadow: 3 }}>
             <Box sx={{ p: { xs: 1, sm: 1.5, md: 2 }, borderBottom: '1px solid #e0e0e0' }}>
               <Typography 
@@ -1026,7 +981,6 @@ const ScheduleManagement = () => {
             </Box>
           </Paper>
         ) : (
-          /* Exceptions List */
           <Paper sx={{ boxShadow: 3 }}>
             <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0' }}>
               <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -1373,7 +1327,6 @@ const ScheduleManagement = () => {
                           setFormData(prev => ({ 
                             ...prev, 
                             classId: classId,
-                            // Reset other fields when changing class
                             newTimeSlotId: undefined,
                             newClassRoomId: undefined
                           }));
@@ -1392,7 +1345,7 @@ const ScheduleManagement = () => {
                             );
                           }
                           
-                          // Lọc lớp có schedule đã có phòng (KHÔNG phân biệt lý thuyết hay thực hành)
+                          // Lọc lớp có schedule đã có phòng 
                           const filteredClasses = classes.filter(cls => {
                             const schedules = cls.schedules || [];
                             if (schedules.length === 0) return false;
