@@ -1,10 +1,11 @@
 const scheduleExceptionService = require('../services/scheduleException.service');
 
+// tạo ngoại lệ lịch học
 const createScheduleException = async (req, res) => {
     try {
         const { 
             classScheduleId,
-            classId, // Thêm classId cho thi cuối kỳ
+            classId,
             exceptionDate, 
             exceptionType, 
             requestTypeId,
@@ -46,12 +47,12 @@ const createScheduleException = async (req, res) => {
     }
 };
 
+// lấy danh sách ngoại lệ lịch học
 const getScheduleExceptions = async (req, res) => {
     try {
         const { page, limit, scheduleId, exceptionType, getAll } = req.query;
         const userId = req.user.id;
 
-        // Nếu getAll=true, lấy tất cả không phân trang
         const result = await scheduleExceptionService.getScheduleExceptions({
             page: getAll === 'true' ? undefined : parseInt(page || 1),
             limit: getAll === 'true' ? undefined : parseInt(limit || 1000),
@@ -75,6 +76,7 @@ const getScheduleExceptions = async (req, res) => {
     }
 };
 
+// lấy chi tiết ngoại lệ lịch học
 const getScheduleExceptionById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -95,14 +97,13 @@ const getScheduleExceptionById = async (req, res) => {
             data: result
         });
     } catch (error) {
-        console.error('Error getting schedule exception by id:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Lỗi khi lấy chi tiết ngoại lệ lịch học'
         });
     }
 };
-
+// cập nhật ngoại lệ lịch học
 const updateScheduleException = async (req, res) => {
     try {
         const { id } = req.params;
@@ -154,6 +155,7 @@ const updateScheduleException = async (req, res) => {
     }
 };
 
+// xóa ngoại lệ lịch học
 const deleteScheduleException = async (req, res) => {
     try {
         const { id } = req.params;
@@ -181,6 +183,7 @@ const deleteScheduleException = async (req, res) => {
     }
 };
 
+// lấy danh sách lịch học có thể tạo ngoại lệ
 const getAvailableSchedules = async (req, res) => {
     try {
         const { page = 1, limit = 10, search } = req.query;

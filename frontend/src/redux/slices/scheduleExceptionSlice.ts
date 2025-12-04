@@ -16,7 +16,6 @@ export interface ScheduleException {
   endTime: string;
   exceptionDate: string;
   exceptionType: 'cancelled' | 'exam' | 'moved' | 'substitute' | 'finalExam';
-  // Thông tin chuyển đến (cho moved/exam/finalExam)
   newTimeSlotId?: number;
   newTimeSlotName?: string;
   newTimeSlotStart?: string;
@@ -25,7 +24,6 @@ export interface ScheduleException {
   newClassRoomName?: string;
   newClassRoomCode?: string;
   newDate?: string;
-  // Thông tin giảng viên thay thế (cho substitute)
   substituteTeacherId?: number;
   substituteTeacherName?: string;
   substituteTeacherCode?: string;
@@ -38,7 +36,7 @@ export interface ScheduleException {
   createdAt: string;
   updatedAt: string;
 }
-
+// lấy danh sách lịch học
 export interface AvailableSchedule {
   id: number;
   className: string;
@@ -63,7 +61,7 @@ export interface AvailableSchedule {
   practiceGroup?: number | null;
   timeSlotId?: number;
 }
-
+// tạo ngoại lệ lịch học
 export interface CreateScheduleExceptionData {
   classScheduleId: number;
   classId?: number; // Cho thi cuối kỳ
@@ -77,6 +75,7 @@ export interface CreateScheduleExceptionData {
   note?: string;
 }
 
+// cập nhật ngoại lệ lịch học
 export interface UpdateScheduleExceptionData {
   exceptionType?: 'cancelled' | 'exam' | 'moved' | 'substitute';
   exceptionDate?: string;
@@ -89,6 +88,7 @@ export interface UpdateScheduleExceptionData {
   requestStatusId?: number;
 }
 
+// lọc ngoại lệ lịch học
 export interface ScheduleExceptionFilters {
   classScheduleId?: number;
   exceptionDate?: string;
@@ -99,6 +99,7 @@ export interface ScheduleExceptionFilters {
   getAll?: boolean;
 }
 
+// lọc danh sách lịch học
 export interface AvailableScheduleFilters {
   departmentId?: number;
   classId?: number;
@@ -107,6 +108,7 @@ export interface AvailableScheduleFilters {
   endDate?: string;
 }
 
+// slice
 interface ScheduleExceptionState {
   exceptions: ScheduleException[];
   availableSchedules: AvailableSchedule[];
@@ -137,7 +139,7 @@ const initialState: ScheduleExceptionState = {
   }
 };
 
-// Async thunks
+// tạo ngoại lệ lịch học
 export const createScheduleException = createAsyncThunk(
   'scheduleException/create',
   async (data: CreateScheduleExceptionData, { rejectWithValue }) => {
@@ -150,6 +152,7 @@ export const createScheduleException = createAsyncThunk(
   }
 );
 
+// lấy danh sách ngoại lệ lịch học
 export const getScheduleExceptions = createAsyncThunk(
   'scheduleException/getAll',
   async (filters: ScheduleExceptionFilters & { getAll?: boolean } = {}, { rejectWithValue }) => {
@@ -171,6 +174,7 @@ export const getScheduleExceptions = createAsyncThunk(
   }
 );
 
+// lấy ngoại lệ lịch học theo id
 export const getScheduleExceptionById = createAsyncThunk(
   'scheduleException/getById',
   async (id: number, { rejectWithValue }) => {
@@ -183,6 +187,7 @@ export const getScheduleExceptionById = createAsyncThunk(
   }
 );
 
+// cập nhật ngoại lệ lịch học
 export const updateScheduleException = createAsyncThunk(
   'scheduleException/update',
   async ({ id, data }: { id: number; data: UpdateScheduleExceptionData }, { rejectWithValue }) => {
@@ -195,6 +200,7 @@ export const updateScheduleException = createAsyncThunk(
   }
 );
 
+// xóa ngoại lệ lịch học
 export const deleteScheduleException = createAsyncThunk(
   'scheduleException/delete',
   async (id: number, { rejectWithValue }) => {
@@ -206,7 +212,7 @@ export const deleteScheduleException = createAsyncThunk(
     }
   }
 );
-
+// lấy danh sách lịch học
 export const getAvailableSchedules = createAsyncThunk(
   'scheduleException/getAvailableSchedules',
   async (filters: AvailableScheduleFilters = {}, { rejectWithValue }) => {
@@ -226,6 +232,7 @@ export const getAvailableSchedules = createAsyncThunk(
   }
 );
 
+// slice
 const scheduleExceptionSlice = createSlice({
   name: 'scheduleException',
   initialState,

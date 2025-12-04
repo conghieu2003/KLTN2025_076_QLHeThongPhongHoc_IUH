@@ -19,7 +19,6 @@ class RequestTypeController {
         });
       }
     } catch (error) {
-      console.error('[RequestTypeController.getScheduleStatuses] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy danh sách trạng thái lịch học'
@@ -45,7 +44,6 @@ class RequestTypeController {
         });
       }
     } catch (error) {
-      console.error('[RequestTypeController.getAllRequestTypes] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy danh sách loại yêu cầu'
@@ -72,7 +70,6 @@ class RequestTypeController {
         });
       }
     } catch (error) {
-      console.error('[RequestTypeController.getRequestTypeById] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy thông tin loại yêu cầu'
@@ -99,7 +96,6 @@ class RequestTypeController {
         });
       }
     } catch (error) {
-      console.error('[RequestTypeController.createRequestType] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi tạo loại yêu cầu'
@@ -127,7 +123,6 @@ class RequestTypeController {
         });
       }
     } catch (error) {
-      console.error('[RequestTypeController.updateRequestType] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi cập nhật loại yêu cầu'
@@ -153,7 +148,6 @@ class RequestTypeController {
         });
       }
     } catch (error) {
-      console.error('[RequestTypeController.deleteRequestType] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi xóa loại yêu cầu'

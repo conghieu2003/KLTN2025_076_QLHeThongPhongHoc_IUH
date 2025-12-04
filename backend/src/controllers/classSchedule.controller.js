@@ -1,10 +1,7 @@
 const classScheduleService = require('../services/classSchedule.service');
 
 class ClassScheduleController {
-  // =====================================================
-  // CLASS SCHEDULE GET - LẤY DANH SÁCH LỊCH HỌC
-  // =====================================================
-  
+  // lấy danh sách lịch học
   async ClassScheduleGet(req, res) {
     try {
       const result = await classScheduleService.ClassScheduleGet();
@@ -22,7 +19,6 @@ class ClassScheduleController {
         });
       }
     } catch (error) {
-      console.error('[ClassScheduleController.ClassScheduleGet] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy danh sách lịch học'
@@ -49,28 +45,15 @@ class ClassScheduleController {
         });
       }
     } catch (error) {
-      console.error('[ClassScheduleController.ClassScheduleGetById] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy thông tin lịch học'
       });
     }
   }
-
-  // =====================================================
-  // CLASS SCHEDULE UPDATE - CẬP NHẬT GÁN PHÒNG
-  // =====================================================
-  
+  // cập nhật gán phòng
   async ClassScheduleUpdate(req, res) {
     try {
-      // Chỉ admin mới được quyền gán phòng
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({
-          success: false,
-          message: 'Chỉ admin mới có quyền gán phòng'
-        });
-      }
-
       const { scheduleId, roomId } = req.body;
       const assignedBy = req.user.id;
 
@@ -96,7 +79,6 @@ class ClassScheduleController {
         });
       }
     } catch (error) {
-      console.error('[ClassScheduleController.ClassScheduleUpdate] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi gán phòng'
@@ -104,17 +86,9 @@ class ClassScheduleController {
     }
   }
 
-  // Hủy gán phòng
+  // hủy gán phòng
   async ClassScheduleUnassign(req, res) {
     try {
-      // Chỉ admin mới được quyền hủy gán phòng
-      if (req.user.role !== 'admin') {
-        return res.status(403).json({
-          success: false,
-          message: 'Chỉ admin mới có quyền hủy gán phòng'
-        });
-      }
-
       const { scheduleId } = req.body;
 
       if (!scheduleId) {
@@ -147,7 +121,7 @@ class ClassScheduleController {
     }
   }
 
-  // Lấy phòng khả dụng cho lịch học
+  // lấy phòng trống cho lịch học
   async getAvailableRoomsForSchedule(req, res) {
     try {
       const { scheduleId } = req.params;
@@ -166,7 +140,6 @@ class ClassScheduleController {
         });
       }
     } catch (error) {
-      console.error('[ClassScheduleController.getAvailableRoomsForSchedule] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy danh sách phòng khả dụng'

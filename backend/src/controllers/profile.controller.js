@@ -12,7 +12,6 @@ const getProfile = async (req, res) => {
       message: 'Lấy thông tin profile thành công'
     });
   } catch (error) {
-    console.error('Error getting profile:', error);
     res.status(500).json({
       success: false,
       message: 'Có lỗi xảy ra khi lấy thông tin profile',
@@ -21,7 +20,7 @@ const getProfile = async (req, res) => {
   }
 };
 
-// Lấy thông tin profile của user khác (admin)
+// Lấy thông tin profile của user
 const getProfileById = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -33,7 +32,6 @@ const getProfileById = async (req, res) => {
       message: 'Lấy thông tin profile thành công'
     });
   } catch (error) {
-    console.error('Error getting profile by ID:', error);
     res.status(500).json({
       success: false,
       message: 'Có lỗi xảy ra khi lấy thông tin profile',
@@ -56,7 +54,6 @@ const updatePersonalProfile = async (req, res) => {
       message: 'Cập nhật thông tin cá nhân thành công'
     });
   } catch (error) {
-    console.error('Error updating personal profile:', error);
     res.status(500).json({
       success: false,
       message: 'Có lỗi xảy ra khi cập nhật thông tin cá nhân',
@@ -79,7 +76,6 @@ const updateFamilyInfo = async (req, res) => {
       message: 'Cập nhật thông tin gia đình thành công'
     });
   } catch (error) {
-    console.error('Error updating family info:', error);
     res.status(500).json({
       success: false,
       message: 'Có lỗi xảy ra khi cập nhật thông tin gia đình',
@@ -102,7 +98,6 @@ const updateAcademicProfile = async (req, res) => {
       message: 'Cập nhật thông tin học vấn thành công'
     });
   } catch (error) {
-    console.error('Error updating academic profile:', error);
     res.status(500).json({
       success: false,
       message: 'Có lỗi xảy ra khi cập nhật thông tin học vấn',

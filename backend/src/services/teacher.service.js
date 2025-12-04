@@ -27,9 +27,9 @@ class TeacherService {
           phone: teacher.user.phone,
           gender: teacher.user.gender,
           departmentId: teacher.departmentId,
-          departmentName: teacher.department?.name || 'Chưa xác định',
+          departmentName: teacher.department?.name || '',
           majorId: teacher.majorId,
-          majorName: teacher.major?.name || 'Chưa xác định',
+          majorName: teacher.major?.name || '',
           createdAt: teacher.createdAt,
           updatedAt: teacher.updatedAt
         }))
@@ -72,9 +72,9 @@ class TeacherService {
           phone: teacher.user.phone,
           gender: teacher.user.gender,
           departmentId: teacher.departmentId,
-          departmentName: teacher.department?.name || 'Chưa xác định',
+          departmentName: teacher.department?.name || '',
           majorId: teacher.majorId,
-          majorName: teacher.major?.name || 'Chưa xác định',
+          majorName: teacher.major?.name || '',
           createdAt: teacher.createdAt,
           updatedAt: teacher.updatedAt
         }
@@ -111,9 +111,9 @@ class TeacherService {
           phone: teacher.user.phone,
           gender: teacher.user.gender,
           departmentId: teacher.departmentId,
-          departmentName: teacher.department?.name || 'Chưa xác định',
+          departmentName: teacher.department?.name || '',
           majorId: teacher.majorId,
-          majorName: teacher.major?.name || 'Chưa xác định'
+          majorName: teacher.major?.name || ''
         }))
       };
     } catch (error) {
@@ -209,9 +209,9 @@ class TeacherService {
           phone: teacher.user.phone,
           gender: teacher.user.gender,
           departmentId: teacher.departmentId,
-          departmentName: teacher.department?.name || 'Chưa xác định',
+          departmentName: teacher.department?.name || '',
           majorId: teacher.majorId,
-          majorName: teacher.major?.name || 'Chưa xác định'
+          majorName: teacher.major?.name || ''
         },
         message: 'Tạo giảng viên thành công'
       };
@@ -314,9 +314,9 @@ class TeacherService {
           phone: teacher.user.phone,
           gender: teacher.user.gender,
           departmentId: teacher.departmentId,
-          departmentName: teacher.department?.name || 'Chưa xác định',
+          departmentName: teacher.department?.name || '',
           majorId: teacher.majorId,
-          majorName: teacher.major?.name || 'Chưa xác định'
+          majorName: teacher.major?.name || ''
         },
         message: 'Cập nhật giảng viên thành công'
       };

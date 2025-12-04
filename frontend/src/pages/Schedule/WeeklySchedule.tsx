@@ -60,32 +60,16 @@ interface WeeklyScheduleItem {
   originalDayOfWeek?: number;
   originalTimeSlot?: string;
 }
-
-const getRequestTypeName = (requestTypeId: number) => {
-  switch (requestTypeId) {
-    case 1: return 'Chờ phân phòng';
-    case 2: return 'Đã phân phòng';
-    case 3: return 'Đang hoạt động';
-    case 4: return 'Đã hủy';
-    case 5: return 'Tạm ngưng';
-    case 6: return 'Thi';
-    case 7: return 'Đổi phòng';
-    case 8: return 'Đổi lịch';
-    case 9: return 'Đổi giáo viên';
-    default: return 'Ngoại lệ';
-  }
-};
-
+// header bảng lịch học
 const ScheduleTableHeader = memo(({ selectedDate, headerRef }: { selectedDate: Dayjs, headerRef: React.RefObject<HTMLTableSectionElement> }) => {
   const currentWeek = useMemo(() => {
-    const dayOfWeek = selectedDate.day(); // 0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7
+    const dayOfWeek = selectedDate.day(); 
     let startOfWeek;
     
-    // Tính ngày bắt đầu tuần (Thứ 2)
-    if (dayOfWeek === 0) { // Chủ nhật
-      startOfWeek = selectedDate.subtract(6, 'day'); // Lùi 6 ngày để đến Thứ 2
+    if (dayOfWeek === 0) { 
+      startOfWeek = selectedDate.subtract(6, 'day'); 
     } else {
-      startOfWeek = selectedDate.subtract(dayOfWeek - 1, 'day'); // Lùi để đến Thứ 2
+      startOfWeek = selectedDate.subtract(dayOfWeek - 1, 'day'); 
     }
     
     const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
@@ -94,7 +78,7 @@ const ScheduleTableHeader = memo(({ selectedDate, headerRef }: { selectedDate: D
     for (let i = 0; i < 7; i++) {
       const day = startOfWeek.add(i, 'day');
       weekDays.push({
-        dayOfWeek: i === 6 ? 1 : i + 2, // 2=Thứ 2, 3=Thứ 3, ..., 7=Thứ 7, 1=Chủ nhật
+        dayOfWeek: i === 6 ? 1 : i + 2, 
         date: day,
         dayName: dayNames[i],
         dayNumber: day.format('DD/MM/YYYY')
@@ -172,6 +156,7 @@ const ScheduleTableHeader = memo(({ selectedDate, headerRef }: { selectedDate: D
 
 ScheduleTableHeader.displayName = 'ScheduleTableHeader';
 
+// body bảng lịch học
 const ScheduleTableBody = memo(({ 
   scheduleGrid, 
   getScheduleColor,
@@ -181,7 +166,6 @@ const ScheduleTableBody = memo(({
   getScheduleColor: (schedule: WeeklyScheduleItem) => string,
   selectedDate: Dayjs
 }) => {
-  // Memoize schedule color function để tránh re-render
   const memoizedGetScheduleColor = useCallback(getScheduleColor, [getScheduleColor]);
   
   return (
@@ -213,7 +197,6 @@ const ScheduleTableBody = memo(({
                 minWidth: { xs: '70px', sm: '100px', md: '150px' },
                 maxWidth: { xs: '80px', sm: 'none', md: 'none' },
                 border: '1px solid #ddd',
-                // Prevent dragging cells on mobile
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
                 MozUserSelect: 'none',
@@ -222,7 +205,6 @@ const ScheduleTableBody = memo(({
               }}
             >
               {daySchedules.map((schedule: WeeklyScheduleItem) => {
-                
                 return (
                 <Card 
                   key={schedule.id}
@@ -233,17 +215,14 @@ const ScheduleTableBody = memo(({
                     border: '1px solid #ddd',
                     position: 'relative',
                     '&:last-child': { mb: 0 },
-                    // Prevent dragging and text selection on mobile
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
                     MozUserSelect: 'none',
                     msUserSelect: 'none',
                     touchAction: 'pan-x pan-y',
                     pointerEvents: 'auto',
-                    // Prevent text selection callout on iOS
                     WebkitTouchCallout: 'none',
                     WebkitTapHighlightColor: 'transparent',
-                    // Prevent dragging
                     cursor: 'default',
                     '@media (max-width: 600px)': {
                       touchAction: 'pan-x pan-y',
@@ -258,26 +237,6 @@ const ScheduleTableBody = memo(({
                   onDrag={(e) => e.preventDefault()}
                   onDragEnd={(e) => e.preventDefault()}
                 >
-                  {/* Exception label - hiển thị cho cả lịch gốc và lịch đã chuyển */}
-                  {schedule.requestTypeId && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        right: 0,
-                        backgroundColor: 'rgba(0,0,0,0.7)',
-                        color: 'white',
-                        fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
-                        padding: { xs: '1px 3px', sm: '2px 4px' },
-                        borderRadius: '0 4px 0 4px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}
-                    >
-                      {getRequestTypeName(schedule.requestTypeId)}
-                    </Box>
-                  )}
-                  
                   <CardContent sx={{ p: { xs: 0.5, sm: 0.75, md: 1 }, '&:last-child': { pb: { xs: 0.5, sm: 0.75, md: 1 } } }}>
                     <Typography 
                       variant="subtitle2" 
@@ -290,16 +249,6 @@ const ScheduleTableBody = memo(({
                     >
                       {schedule.className}
                     </Typography>
-                    {/* <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        display: 'block', 
-                        fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.7rem' },
-                        wordBreak: 'break-word'
-                      }}
-                    >
-                      {schedule.classCode} - {schedule.subjectCode}
-                    </Typography> */}
                     <Typography 
                       variant="caption" 
                       sx={{ 
@@ -387,6 +336,7 @@ const ScheduleTableBody = memo(({
 
 ScheduleTableBody.displayName = 'ScheduleTableBody';
 
+// lịch học
 const WeeklySchedule = memo(() => {
   const dispatch = useDispatch<AppDispatch>();
   const theme = useTheme();
@@ -408,14 +358,14 @@ const WeeklySchedule = memo(() => {
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const navigateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper function để tính weekStartDate
+  // hàm tính weekStartDate
   const getWeekStartDate = (date: Dayjs) => {
     const dayOfWeek = date.day();
     const startOfWeek = dayOfWeek === 0 ? date.subtract(6, 'day') : date.subtract(dayOfWeek - 1, 'day');
     return startOfWeek.format('YYYY-MM-DD');
   };
 
-  // Setup socket listeners
+  // setup socket listeners
   useEffect(() => {
     if (!socketInitialized.current && user?.id) {
       const socket = getSocket() || initSocket(user.id);
@@ -455,7 +405,7 @@ const WeeklySchedule = memo(() => {
   }, [dispatch, user?.id, selectedDate, selectedDepartment, selectedClass, selectedTeacher, isAdmin]); 
 
 
-  // Load initial data
+  // load initial data
   useEffect(() => {
     if (isAdmin) {
       if (departments.length === 0) dispatch(fetchDepartments());
@@ -464,7 +414,7 @@ const WeeklySchedule = memo(() => {
     }
   }, [dispatch, isAdmin, departments.length, classes.length, teachers.length]);
 
-  // Load schedule when filters change
+  // Load khi filt
   useEffect(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -480,7 +430,7 @@ const WeeklySchedule = memo(() => {
     }, 100);
   }, [dispatch, selectedDate, selectedDepartment, selectedClass, selectedTeacher, isAdmin]);
 
-  // Auto tắt navigating sau 3s
+  // auto tắt navigating sau 3s
   useEffect(() => {
     if (navigating) {
       if (navigateTimerRef.current) clearTimeout(navigateTimerRef.current);
@@ -495,7 +445,6 @@ const WeeklySchedule = memo(() => {
     };
   }, [navigating]);
 
-  // Cleanup timers
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -518,8 +467,7 @@ const WeeklySchedule = memo(() => {
     }
     return weeklySchedules;
   };
-
-  // Build schedule grid
+//lịch với giờ
   const getScheduleGrid = () => {
     const filteredSchedules = getFilteredSchedules();
     const shifts = [
@@ -541,7 +489,7 @@ const WeeklySchedule = memo(() => {
   };
 
   const scheduleGrid = getScheduleGrid(); 
-
+// màu theo loại ngoại lệ
   const getRequestTypeColor = (requestTypeId: number): string => {
     switch (requestTypeId) {
       case 5: return '#ff9800';   
@@ -554,6 +502,7 @@ const WeeklySchedule = memo(() => {
     }
   };
 
+  // màu theo loại lịch
   const getScheduleColor = (schedule: WeeklyScheduleItem) => {
     if (schedule.exceptionDate && schedule.requestTypeId) {
       return getRequestTypeColor(schedule.requestTypeId);
@@ -566,31 +515,32 @@ const WeeklySchedule = memo(() => {
     }
   };
 
+  // handle quay về
   const handlePreviousWeek = () => {
     if (!weeklyScheduleLoading && !navigating) {
       setNavigating(true);
       setSelectedDate(prev => prev.subtract(1, 'week'));
     }
   };
-
+  // handle qua tuần
   const handleNextWeek = () => {
     if (!weeklyScheduleLoading && !navigating) {
       setNavigating(true);
       setSelectedDate(prev => prev.add(1, 'week'));
     }
   };
-
+  // handle hiện tuần
   const handleCurrentWeek = () => {
     if (!weeklyScheduleLoading) {
       setSelectedDate(dayjs());
     }
   };
-
+  // handle in
   const handlePrint = () => {
     window.print();
   };
 
-  // Filter classes based on selected department
+  // filter lớp học theo khoa
   const getFilteredClassesForDropdown = () => {
     if (!isAdmin || !selectedDepartment || !classes || classes.length === 0) return [];
     const selectedDept = departments?.find(d => d.id.toString() === selectedDepartment);
@@ -598,7 +548,7 @@ const WeeklySchedule = memo(() => {
     return classes.filter(cls => cls.departmentId === selectedDept.id);
   };
 
-  // Filter teachers based on selected department
+  // filter giảng viên theo khoa
   const getFilteredTeachersForDropdown = () => {
     if (!isAdmin || !selectedDepartment || !teachers || teachers.length === 0) return [];
     return teachers.filter(teacher => 
@@ -609,8 +559,7 @@ const WeeklySchedule = memo(() => {
   const filteredClassesForDropdown = getFilteredClassesForDropdown();
   const filteredTeachersForDropdown = getFilteredTeachersForDropdown();
 
-  // Chỉ hiển thị loading toàn màn hình khi load initial data (departments, classes, teachers)
-  // và chỉ khi là admin và chưa có data nào
+  // chỉ hiển thị loading toàn màn hình khi load
   if (isAdmin && loading && departments.length === 0 && classes.length === 0 && teachers.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -629,7 +578,6 @@ const WeeklySchedule = memo(() => {
         width: '100%',
         maxWidth: '100vw'
       }}>
-        {/* Error Alert */}
         {error && (
           <Alert 
             severity="error" 
@@ -642,7 +590,7 @@ const WeeklySchedule = memo(() => {
           </Alert>
         )}
 
-        {/* Filters Row - Only show for admin */}
+        {/* Filters Row - chỉ hiển thị cho admin */}
         {isAdmin && (
           <Paper sx={{ p: { xs: 1, sm: 1.5, md: 1.5 }, mb: { xs: 1, sm: 1.5, md: 1 }, boxShadow: 2 }}>
             <Grid container spacing={{ xs: 1.5, sm: 2 }}>
@@ -737,7 +685,6 @@ const WeeklySchedule = memo(() => {
           </Paper>
         )}
 
-        {/* Title and Controls Row */}
         <Paper sx={{ p: { xs: 1, sm: 1.5, md: 1.5 }, mb: { xs: 1.5, sm: 2, md: 3 }, boxShadow: 3 }}>
           <Grid 
             container 
@@ -745,7 +692,6 @@ const WeeklySchedule = memo(() => {
             alignItems="center"
             sx={{ flexWrap: { xs: 'wrap', md: 'nowrap' } }}
           >
-            {/* Title */}
             <Grid size={{ xs: 12, md: 'auto' }} sx={{ mb: { xs: 1, md: 0 }, flexShrink: 0 }}>
               <Typography 
                 variant="h6" 
@@ -761,7 +707,6 @@ const WeeklySchedule = memo(() => {
               </Typography>
             </Grid>
             
-            {/* Radio buttons */}
             <Grid size={{ xs: 12, md: 'auto' }} sx={{ mb: { xs: 1, md: 0 }, flexShrink: 0 }}>
               <RadioGroup
                 row
@@ -807,7 +752,6 @@ const WeeklySchedule = memo(() => {
               </RadioGroup>
             </Grid>
               
-            {/* Date and Navigation */}
             <Grid 
               size={{ xs: 12, md: 'auto' }} 
               sx={{ 
@@ -962,7 +906,7 @@ const WeeklySchedule = memo(() => {
           </Grid>
         </Paper>
 
-        {/* Schedule Grid */}
+        {/* bảng lịch học */}
         <Paper sx={{ 
           boxShadow: 3, 
           position: 'relative', 
@@ -970,7 +914,6 @@ const WeeklySchedule = memo(() => {
           width: '100%',
           maxWidth: '100%'
         }}>
-          {/* Loading overlay cho weekly schedule */}
           {(weeklyScheduleLoading || navigating) && (
             <Box
               sx={{
@@ -1013,7 +956,6 @@ const WeeklySchedule = memo(() => {
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x pan-y',
               '-webkit-overflow-scrolling': 'touch',
-              // Force scroll on mobile
               '@media (max-width: 600px)': {
                 overflowX: 'scroll !important',
                 overflowY: 'auto !important',
@@ -1022,11 +964,9 @@ const WeeklySchedule = memo(() => {
                 touchAction: 'pan-x pan-y',
                 width: '100%',
                 display: 'block',
-                // Force scrollbar to be visible
                 scrollbarWidth: 'thin',
                 scrollbarColor: '#888 #f1f1f1'
               },
-              // Desktop specific styles
               '@media (min-width: 960px)': {
                 overflowX: 'auto',
                 overflowY: 'auto',
@@ -1072,7 +1012,7 @@ const WeeklySchedule = memo(() => {
           </TableContainer>
         </Paper>
 
-        {/* Legend */}
+        {/* chú thích */}
         <Paper sx={{ p: { xs: 1.5, sm: 2, md: 2 }, mt: { xs: 2, sm: 2.5, md: 3 }, boxShadow: 1 }}>
           <Typography 
             variant="h6" 
@@ -1085,7 +1025,6 @@ const WeeklySchedule = memo(() => {
             Chú thích:
           </Typography>
           
-          {/* Loại lịch học */}
           <Typography 
             variant="subtitle2" 
             sx={{ 
@@ -1151,7 +1090,6 @@ const WeeklySchedule = memo(() => {
             </Grid>
           </Grid>
 
-          {/* Trạng thái ngoại lệ */}
           <Typography 
             variant="subtitle2" 
             sx={{ 

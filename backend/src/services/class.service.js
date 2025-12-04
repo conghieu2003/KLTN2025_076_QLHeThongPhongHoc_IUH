@@ -216,7 +216,7 @@ class ClassService {
             departmentId: cls.departmentId,
             departmentName: cls.department.name,
             majorId: cls.majorId,
-            majorName: cls.major?.name || 'Chưa xác định',
+            majorName: cls.major?.name || '',
             classRoomTypeId: cls.classRoomTypeId,
             classRoomTypeName: cls.ClassRoomType.name,
             statusId: classStatusId,
@@ -280,7 +280,7 @@ class ClassService {
             departmentId: cls.departmentId,
             departmentName: cls.department.name,
             majorId: cls.majorId,
-            majorName: cls.major?.name || 'Chưa xác định',
+            majorName: cls.major?.name || '',
             classRoomTypeId: cls.classRoomTypeId,
             classRoomTypeName: cls.ClassRoomType.name,
             statusId: classStatusId,
@@ -289,7 +289,6 @@ class ClassService {
         })
       };
     } catch (error) {
-      console.error('[ClassService.getClassesByTeacher] Error:', error);
       return {
         success: false,
         message: `Lỗi lấy danh sách lớp học theo giảng viên: ${error.message}`
@@ -319,7 +318,6 @@ class ClassService {
         description
       } = classData;
 
-      // Kiểm tra mã lớp học đã tồn tại
       const existingClass = await prisma.class.findUnique({
         where: { code }
       });
@@ -331,7 +329,6 @@ class ClassService {
         };
       }
 
-      // Kiểm tra giảng viên có tồn tại
       const teacher = await prisma.teacher.findUnique({
         where: { id: parseInt(teacherId) }
       });
@@ -343,7 +340,6 @@ class ClassService {
         };
       }
 
-      // Kiểm tra khoa có tồn tại
       const department = await prisma.department.findUnique({
         where: { id: parseInt(departmentId) }
       });
@@ -424,7 +420,7 @@ class ClassService {
       };
     }
   }
-  // HELPER METHODS
+  // trả về tên thứ trong tuần
   getDayName(dayOfWeek) {
     const days = {
       1: 'Chủ nhật',
@@ -438,6 +434,7 @@ class ClassService {
     return days[dayOfWeek] || 'Không xác định';
   }
 
+  // trả về tên trạng thái lớp học
   getStatusName(statusId) {
     const statuses = {
       1: 'Chờ phân phòng',

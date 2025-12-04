@@ -19,7 +19,6 @@ class DepartmentController {
         });
       }
     } catch (error) {
-      console.error('[DepartmentController.getAllDepartments] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy danh sách khoa'
@@ -46,7 +45,6 @@ class DepartmentController {
         });
       }
     } catch (error) {
-      console.error('[DepartmentController.getDepartmentById] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi lấy thông tin khoa'
@@ -73,7 +71,6 @@ class DepartmentController {
         });
       }
     } catch (error) {
-      console.error('[DepartmentController.createDepartment] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi tạo khoa'
@@ -101,7 +98,6 @@ class DepartmentController {
         });
       }
     } catch (error) {
-      console.error('[DepartmentController.updateDepartment] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi cập nhật khoa'
@@ -127,7 +123,6 @@ class DepartmentController {
         });
       }
     } catch (error) {
-      console.error('[DepartmentController.deleteDepartment] Error:', error);
       res.status(500).json({
         success: false,
         message: 'Lỗi server khi xóa khoa'
