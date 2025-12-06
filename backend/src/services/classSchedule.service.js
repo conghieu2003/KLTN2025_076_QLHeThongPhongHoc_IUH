@@ -2,10 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class ClassScheduleService {
-  // =====================================================
-  // CLASS SCHEDULE GET - LẤY DANH SÁCH LỊCH HỌC
-  // =====================================================
-  
+  // lấy danh sách lịch học
   async ClassScheduleGet() {
     try {
       const classes = await prisma.class.findMany({
@@ -31,9 +28,8 @@ class ClassScheduleService {
       });
 
       const result = classes.map(cls => {
-        // Xác định trạng thái lớp dựa trên statusId của lịch học
         const hasAssignedSchedule = cls.classSchedules.some(schedule => schedule.statusId === 2);
-        const classStatusId = hasAssignedSchedule ? 2 : 1; // 1: Chờ phân phòng, 2: Đã phân phòng
+        const classStatusId = hasAssignedSchedule ? 2 : 1; 
         
         return {
           id: cls.id,
@@ -170,19 +166,13 @@ class ClassScheduleService {
       };
     }
   }
-
-  // =====================================================
-  // CLASS SCHEDULE UPDATE - CẬP NHẬT GÁN PHÒNG
-  // =====================================================
-  
   // Gán phòng cho lịch học
   async ClassScheduleUpdate(scheduleId, roomId, assignedBy) {
     try {
-      // Kiểm tra nếu scheduleId có dạng "classId-scheduleId"
       let actualScheduleId = scheduleId;
       if (typeof scheduleId === 'string' && scheduleId.includes('-')) {
         const parts = scheduleId.split('-');
-        actualScheduleId = parts[1]; // Lấy phần thứ 2 (scheduleId thực tế)
+        actualScheduleId = parts[1]; 
       }
       
       const schedule = await prisma.classSchedule.findUnique({
@@ -323,7 +313,7 @@ class ClassScheduleService {
         where: { id: parseInt(scheduleId) },
         data: {
           classRoomId: null,
-          statusId: 1, // RequestType ID cho "Chờ phân phòng"
+          statusId: 1, 
           assignedBy: null,
           assignedAt: null
         }
@@ -346,19 +336,13 @@ class ClassScheduleService {
       };
     }
   }
-
-  // =====================================================
-  // LẤY PHÒNG KHẢ DỤNG CHO LỊCH HỌC
-  // =====================================================
-  
   // Lấy danh sách phòng khả dụng cho lịch học
   async getAvailableRoomsForSchedule(scheduleId) {
     try {
-      // Kiểm tra nếu scheduleId có dạng "classId-scheduleId"
       let actualScheduleId = scheduleId;
       if (typeof scheduleId === 'string' && scheduleId.includes('-')) {
         const parts = scheduleId.split('-');
-        actualScheduleId = parts[1]; // Lấy phần thứ 2 (scheduleId thực tế)
+        actualScheduleId = parts[1]; 
       }
       
       const schedule = await prisma.classSchedule.findUnique({
@@ -381,14 +365,13 @@ class ClassScheduleService {
         };
       }
 
-      // Lấy phòng phù hợp với loại phòng và khoa
       const availableRooms = await prisma.classRoom.findMany({
         where: {
           classRoomTypeId: schedule.ClassRoomType.id,
           isAvailable: true,
           capacity: { gte: schedule.class.maxStudents },
           OR: [
-            { departmentId: schedule.class.departmentId }, // Phòng cùng khoa
+            { departmentId: schedule.class.departmentId }, 
             { departmentId: null } // Phòng chung
           ]
         },
@@ -397,18 +380,17 @@ class ClassScheduleService {
           department: true
         },
         orderBy: [
-          { departmentId: 'asc' }, // Phòng cùng khoa trước
+          { departmentId: 'asc' }, 
           { capacity: 'asc' }
         ]
       });
 
-      // Kiểm tra xung đột thời gian
       const conflictingSchedules = await prisma.classSchedule.findMany({
         where: {
           dayOfWeek: schedule.dayOfWeek,
           timeSlotId: schedule.timeSlotId,
           classRoomId: { not: null },
-          statusId: { in: [2, 3] } // Đã phân phòng hoặc đang hoạt động
+          statusId: { in: [2, 3] } 
         }
       });
 
@@ -441,10 +423,7 @@ class ClassScheduleService {
     }
   }
 
-  // =====================================================
-  // HELPER METHODS
-  // =====================================================
-  
+  // hỗ trợ trả về tên thứ trong tuần
   getDayName(dayOfWeek) {
     const days = {
       1: 'Chủ nhật',

@@ -803,7 +803,7 @@ VALUES
 -- THÊM 10 LỚP LÝ THUYẾT (KHÔNG CÓ THỰC HÀNH) - VỚI NGÀY BẮT ĐẦU VÀ KẾT THÚC KHÁC NHAU
 -- =====================================================
 -- Lớp CNTT - Lý thuyết (Học kỳ 1: 01/09/2025 - 15/12/2025)
-('COMP201', N'Cấu trúc dữ liệu và giải thuật', N'Cấu trúc dữ liệu và giải thuật', 'CTDLGT', 4, 1, (SELECT TOP 1 id FROM Department WHERE code = 'CNTT'), (SELECT TOP 1 id FROM Major WHERE code = 'SE'), N'Học kỳ 1', '2025-2026', 45, 15, '2025-09-01', '2025-12-15', 1, N'Môn học cấu trúc dữ liệu và giải thuật'),
+('COMP201', N'Cấu trúc dữ liệu và giải thuật', N'Cấu trúc dữ liệu và giải thuật', 'CTDLGT', 4, 2, (SELECT TOP 1 id FROM Department WHERE code = 'CNTT'), (SELECT TOP 1 id FROM Major WHERE code = 'SE'), N'Học kỳ 1', '2025-2026', 45, 15, '2025-09-01', '2025-12-15', 1, N'Môn học cấu trúc dữ liệu và giải thuật'),
 ('COMP202', N'Lập trình hướng đối tượng', N'Lập trình hướng đối tượng', 'LTHDT', 3, 2, (SELECT TOP 1 id FROM Department WHERE code = 'CNTT'), (SELECT TOP 1 id FROM Major WHERE code = 'SE'), N'Học kỳ 1', '2025-2026', 40, 15, '2025-09-01', '2025-12-15', 1, N'Môn học lập trình hướng đối tượng'),
 ('COMP203', N'Hệ điều hành', N'Hệ điều hành', 'HDH', 3, 1, (SELECT TOP 1 id FROM Department WHERE code = 'CNTT'), (SELECT TOP 1 id FROM Major WHERE code = 'NET'), N'Học kỳ 1', '2025-2026', 35, 15, '2025-09-01', '2025-12-15', 1, N'Môn học hệ điều hành'),
 ('COMP204', N'Trí tuệ nhân tạo', N'Trí tuệ nhân tạo', 'TTNT', 3, 2, (SELECT TOP 1 id FROM Department WHERE code = 'CNTT'), (SELECT TOP 1 id FROM Major WHERE code = 'AI'), N'Học kỳ 1', '2025-2026', 30, 15, '2025-09-01', '2025-12-15', 1, N'Môn học trí tuệ nhân tạo'),
@@ -869,7 +869,7 @@ VALUES
 -- =====================================================
 -- Lớp COMP201 (Cấu trúc dữ liệu và giải thuật): Thứ 3, tiết 4-6
 -- TimeSlot ID: 18 = Tiết 4-6
-(8, 1, NULL, 3, 18, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP201 - Chờ phân phòng'),
+(8, 2, NULL, 3, 17, 1, NULL, 'weekly', 1, 15, 1, NULL, NULL, N'Lịch học lý thuyết COMP201 - Chờ phân phòng'),
 
 -- Lớp COMP202 (Lập trình hướng đối tượng): Thứ 4, tiết 1-3
 -- TimeSlot ID: 17 = Tiết 1-3
@@ -967,7 +967,7 @@ VALUES
 -- SINH VIÊN TRONG 10 LỚP LÝ THUYẾT MỚI (CHỈ LÝ THUYẾT)
 -- =====================================================
 -- Lớp COMP201 (Cấu trúc dữ liệu và giải thuật) - 8 sinh viên CNTT SE
-(8, 1, NULL, 1, '2025-09-01'), -- Ao Công Hiếu
+--(8, 1, NULL, 1, '2025-09-01'), -- Ao Công Hiếu
 --
 (8, 4, NULL, 1, '2025-09-01'), -- Lê Thị Hương
 (8, 7, NULL, 1, '2025-09-01'), -- Vũ Văn Hùng

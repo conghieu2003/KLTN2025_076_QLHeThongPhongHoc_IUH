@@ -43,6 +43,7 @@ export interface AvailableSchedule {
   classCode: string;
   departmentId: number;
   departmentName: string;
+  teacherId?: number; // Thêm teacherId để loại bỏ giảng viên đang yêu cầu đổi lịch
   teacherName: string;
   teacherCode: string;
   roomName: string;

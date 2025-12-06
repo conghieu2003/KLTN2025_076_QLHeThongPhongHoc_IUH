@@ -303,7 +303,7 @@ const ScheduleTableBody = memo(({
                           wordBreak: 'break-word'
                         }}
                       >
-                        Lý do: {schedule.exceptionReason}
+                        {/* Lý do: {schedule.exceptionReason} */}
                       </Typography>
                     )}
                     {schedule.isMovedSchedule && schedule.note && (
@@ -319,7 +319,7 @@ const ScheduleTableBody = memo(({
                           wordBreak: 'break-word'
                         }}
                       >
-                        📍 {schedule.note}
+                        {/* 📍 {schedule.note} */}
                       </Typography>
                     )}
                   </CardContent>
@@ -493,11 +493,11 @@ const WeeklySchedule = memo(() => {
   const getRequestTypeColor = (requestTypeId: number): string => {
     switch (requestTypeId) {
       case 5: return '#ff9800';   
-      case 6: return '#fff3cd'; 
+      case 6: return '#fff3cd'; // Thi giữa kỳ
       case 7: return '#9c27b0'; 
       case 8: return '#2196f3'; 
       case 9: return '#4caf50'; 
-      case 10: return '#ffc107'; 
+      case 10: return '#fff3cd'; // Thi cuối kỳ - cùng màu với thi giữa kỳ
       default: return '#f8f9fa';
     }
   };
