@@ -199,7 +199,7 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-  
+
 const PORT = process.env.PORT || process.env.SOCKET_PORT || 3001;
 
 server.listen(PORT, () => {
