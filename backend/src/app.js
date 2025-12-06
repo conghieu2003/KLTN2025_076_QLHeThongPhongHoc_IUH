@@ -3,16 +3,41 @@ const cors = require('cors');
 const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger.config');
+const config = require('./config/env.config');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      config.app.corsOrigin,
+      'https://kltn-2025-076-ql-he-thong-phong-hoc.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ];
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Origin bị chặn: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-backend-token'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
-// Health check endpoint for Docker
 app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'OK',
@@ -22,7 +47,6 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Root endpoint
 app.get('/', (req, res) => {
     res.json({
         message: 'Classroom Management System Backend API',
@@ -33,7 +57,6 @@ app.get('/', (req, res) => {
     });
 });
 
-// Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
     customCss: '.swagger-ui .topbar { display: none }',
     customSiteTitle: 'Classroom Management System API',
