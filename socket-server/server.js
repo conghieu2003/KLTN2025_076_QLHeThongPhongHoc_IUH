@@ -123,6 +123,19 @@ function emitScheduleExceptionUpdated(data) {
   }
 }
 
+function emitScheduleRequestCreated(data) {
+  if (data.userIds && Array.isArray(data.userIds) && data.userIds.length > 0) {
+    data.userIds.forEach(userId => {
+      io.to(`user:${userId}`).emit('schedule-request-created', {
+        ...data,
+        userIds: undefined
+      });
+    });
+  } else {
+    io.emit('schedule-request-created', data);
+  }
+}
+
 const verifyBackendRequest = (req, res, next) => {
   const backendToken = req.headers['x-backend-token'];
   const expectedToken = process.env.BACKEND_TOKEN || 'backend-secret-token';
@@ -162,6 +175,12 @@ app.post('/api/socket/schedule-exception-updated', verifyBackendRequest, (req, r
   res.json({ success: true, message: 'Schedule exception updated event emitted' });
 });
 
+app.post('/api/socket/schedule-request-created', verifyBackendRequest, (req, res) => {
+  const data = req.body;
+  emitScheduleRequestCreated(data);
+  res.json({ success: true, message: 'Schedule request created event emitted' });
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -196,6 +215,7 @@ module.exports = {
   emitRoomUnassigned,
   emitStatsUpdated,
   emitScheduleUpdated,
-  emitScheduleExceptionUpdated
+  emitScheduleExceptionUpdated,
+  emitScheduleRequestCreated
 };
 
