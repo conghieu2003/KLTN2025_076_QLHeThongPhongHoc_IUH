@@ -445,7 +445,14 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
             where: { id: parseInt(requestId) },
             include: {
                 RequestType: true,
-                classSchedule: true
+                classSchedule: true,
+                newTimeSlot: true,
+                newClassRoom: true,
+                class: {
+                    include: {
+                        teacher: true
+                    }
+                }
             }
         });
 
@@ -467,6 +474,53 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
         
         // Cập nhật substituteTeacherId nếu có (cho yêu cầu đổi giáo viên)
         if (substituteTeacherId) {
+            // Kiểm tra xung đột giảng viên cho thi cuối kỳ
+            const isFinalExam = requestDetails.requestTypeId === 10;
+            if (isFinalExam && requestDetails.exceptionDate && requestDetails.newTimeSlotId) {
+                const exceptionDateObj = new Date(requestDetails.exceptionDate);
+                const exceptionDateStart = new Date(exceptionDateObj);
+                exceptionDateStart.setHours(0, 0, 0, 0);
+                const exceptionDateEnd = new Date(exceptionDateObj);
+                exceptionDateEnd.setHours(23, 59, 59, 999);
+
+                // Kiểm tra xem giảng viên đã được gán cho thi cuối kỳ khác cùng ngày và cùng tiết chưa
+                // Loại trừ yêu cầu hiện tại (có thể đang cập nhật)
+                const existingTeacherAssignment = await prisma.scheduleRequest.findFirst({
+                    where: {
+                        requestTypeId: 10, // Thi cuối kỳ
+                        substituteTeacherId: parseInt(substituteTeacherId),
+                        requestStatusId: { in: [2, 4] }, // Đã duyệt hoặc hoàn thành
+                        exceptionDate: {
+                            gte: exceptionDateStart,
+                            lte: exceptionDateEnd
+                        },
+                        newTimeSlotId: parseInt(requestDetails.newTimeSlotId),
+                        id: { not: parseInt(requestId) } // Loại trừ yêu cầu hiện tại
+                    },
+                    include: {
+                        newTimeSlot: true,
+                        newClassRoom: true,
+                        class: {
+                            include: {
+                                teacher: true
+                            }
+                        }
+                    }
+                });
+
+                if (existingTeacherAssignment) {
+                    const conflictDate = existingTeacherAssignment.exceptionDate 
+                        ? new Date(existingTeacherAssignment.exceptionDate).toLocaleDateString('vi-VN')
+                        : 'ngày không xác định';
+                    const conflictTimeSlot = existingTeacherAssignment.newTimeSlot?.slotName || `tiết ${existingTeacherAssignment.newTimeSlotId}`;
+                    const conflictRoom = existingTeacherAssignment.newClassRoom?.name || 'phòng không xác định';
+                    throw new Error(
+                        `Giảng viên đã được gán cho thi cuối kỳ khác vào ${conflictDate}, ${conflictTimeSlot} tại ${conflictRoom}. ` +
+                        `Không thể gán cùng một giảng viên cho nhiều phòng thi cùng lúc.`
+                    );
+                }
+            }
+            
             scheduleRequestUpdatePayload.substituteTeacherId = parseInt(substituteTeacherId);
         }
         
@@ -521,6 +575,28 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                         },
                     }
                 },
+                class: {
+                    include: {
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                substituteTeacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true
+                            }
+                        }
+                    }
+                },
                 oldClassRoom: {
                     select: {
                         id: true,
@@ -557,13 +633,27 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
             }
         });
 
+        const isMidtermExam = requestDetails.requestTypeId === 6 && requestDetails.exceptionType === 'exam';
+        let finalSelectedRoomId = selectedRoomId;
+        
+        if (status === 2 && isMidtermExam && !selectedRoomId && requestDetails.classSchedule?.classRoomId) {
+            // Tự động lấy phòng đang dạy cho thi giữa kỳ
+            finalSelectedRoomId = requestDetails.classSchedule.classRoomId.toString();
+            await prisma.scheduleRequest.update({
+                where: { id: parseInt(requestId) },
+                data: {
+                    movedToClassRoomId: requestDetails.classSchedule.classRoomId
+                }
+            });
+        }
+
         // If request is approved (status = 2) and we have a selected room, update ClassSchedule
-        if (status === 2 && selectedRoomId && requestDetails.classScheduleId) {
+        if (status === 2 && finalSelectedRoomId && requestDetails.classScheduleId) {
             console.log('Updating ClassSchedule for approved request:', {
                 requestId,
                 requestType: requestDetails.RequestType?.name,
                 classScheduleId: requestDetails.classScheduleId,
-                selectedRoomId
+                selectedRoomId: finalSelectedRoomId
             });
 
             const updateData = {};
@@ -571,35 +661,42 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
             // For room change requests, update classRoomId
             if (requestDetails.RequestType?.name === 'Đổi phòng' ||
                 requestDetails.RequestType?.name === 'Xin phòng mới') {
-                updateData.classRoomId = parseInt(selectedRoomId);
+                updateData.classRoomId = parseInt(finalSelectedRoomId);
                 updateData.statusId = 2;
                 updateData.assignedBy = approverId;
                 updateData.assignedAt = new Date();
-                console.log('Updating classRoomId to:', selectedRoomId);
-                console.log('Updating statusId to 2 (Đã phân phòng)');
             }
-
-            // For schedule change requests, update dayOfWeek and timeSlotId
-            if (requestDetails.RequestType?.name === 'Đổi lịch' || requestDetails.requestTypeId === 8) {
-                if (requestDetails.movedToDayOfWeek) {
-                    updateData.dayOfWeek = requestDetails.movedToDayOfWeek;
-                    console.log('Updating dayOfWeek to:', requestDetails.movedToDayOfWeek);
+            
+            if (isMidtermExam) {
+                const scheduleRequestUpdateData = {
+                    movedToClassRoomId: parseInt(finalSelectedRoomId)
+                };
+                
+                if (requestDetails.movedToDate) {
+                    scheduleRequestUpdateData.movedToDate = new Date(requestDetails.movedToDate);
+                } else if (requestDetails.exceptionDate) {
+                    scheduleRequestUpdateData.movedToDate = new Date(requestDetails.exceptionDate);
                 }
                 if (requestDetails.movedToTimeSlotId) {
-                    updateData.timeSlotId = requestDetails.movedToTimeSlotId;
-                    console.log('Updating timeSlotId to:', requestDetails.movedToTimeSlotId);
+                    scheduleRequestUpdateData.movedToTimeSlotId = requestDetails.movedToTimeSlotId;
+                } else if (requestDetails.newTimeSlotId) {
+                    scheduleRequestUpdateData.movedToTimeSlotId = requestDetails.newTimeSlotId;
                 }
-                // Also update room if selected
-                if (selectedRoomId) {
-                    updateData.classRoomId = parseInt(selectedRoomId);
-                    console.log('Updating classRoomId to:', selectedRoomId);
+                if (scheduleRequestUpdateData.movedToDate) {
+                    const movedDate = new Date(scheduleRequestUpdateData.movedToDate);
+                    scheduleRequestUpdateData.movedToDayOfWeek = movedDate.getDay() === 0 ? 1 : movedDate.getDay() + 1;
                 }
-                if (selectedRoomId) {
-                    updateData.statusId = 2;
-                    updateData.assignedBy = approverId;
-                    updateData.assignedAt = new Date();
-                    console.log('Updating statusId to 2 (Đã phân phòng)');
-                }
+                
+                await prisma.scheduleRequest.update({
+                    where: { id: parseInt(requestId) },
+                    data: scheduleRequestUpdateData
+                });
+                
+            }
+
+            if (requestDetails.RequestType?.name === 'Đổi lịch' || requestDetails.requestTypeId === 8) {
+                // ⭐ KHÔNG cập nhật dayOfWeek và timeSlotId vào classSchedule
+                // Chỉ cập nhật thông tin trong scheduleRequest để tạo ngoại lệ cho 1 ngày
                 
                 // ⭐ QUAN TRỌNG: Cập nhật schedule request để có đầy đủ thông tin cho WeeklySchedule
                 // Cần có movedToDate, movedToDayOfWeek, movedToTimeSlotId, movedToClassRoomId, exceptionType
@@ -631,15 +728,37 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                 }
                 
                 // Cập nhật movedToClassRoomId nếu có phòng được chọn
-                if (selectedRoomId) {
-                    scheduleRequestUpdateData.movedToClassRoomId = parseInt(selectedRoomId);
+                if (finalSelectedRoomId) {
+                    scheduleRequestUpdateData.movedToClassRoomId = parseInt(finalSelectedRoomId);
                 } else if (requestDetails.movedToClassRoomId) {
                     scheduleRequestUpdateData.movedToClassRoomId = requestDetails.movedToClassRoomId;
                 }
                 
-                // Cập nhật exceptionDate nếu chưa có
-                if (!requestDetails.exceptionDate && scheduleRequestUpdateData.movedToDate) {
-                    scheduleRequestUpdateData.exceptionDate = scheduleRequestUpdateData.movedToDate;
+                // Cập nhật exceptionDate nếu chưa có (ngày ngoại lệ - ngày cần đổi)
+                // exceptionDate là ngày gốc của lịch học cần đổi (ví dụ: Thứ 2 tuần này)
+                // movedToDate là ngày chuyển đến (ví dụ: Thứ 3 tuần này)
+                if (!requestDetails.exceptionDate && requestDetails.classSchedule) {
+                    // Tính exceptionDate từ classSchedule.dayOfWeek trong tuần của movedToDate
+                    // hoặc tuần hiện tại nếu không có movedToDate
+                    let targetWeekStart;
+                    if (scheduleRequestUpdateData.movedToDate) {
+                        const movedDate = new Date(scheduleRequestUpdateData.movedToDate);
+                        const dayOfWeek = movedDate.getDay(); // 0=CN, 1=T2, ..., 6=T7
+                        targetWeekStart = new Date(movedDate);
+                        targetWeekStart.setDate(movedDate.getDate() - dayOfWeek); // Chủ nhật đầu tuần
+                    } else {
+                        targetWeekStart = new Date();
+                        targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay()); // Chủ nhật đầu tuần
+                    }
+                    
+                    // Tính ngày của lịch học gốc trong tuần đó
+                    const scheduleDayOffset = requestDetails.classSchedule.dayOfWeek === 1 ? 6 : requestDetails.classSchedule.dayOfWeek - 2;
+                    const exceptionDate = new Date(targetWeekStart);
+                    exceptionDate.setDate(targetWeekStart.getDate() + scheduleDayOffset);
+                    scheduleRequestUpdateData.exceptionDate = exceptionDate;
+                } else if (requestDetails.exceptionDate) {
+                    // Giữ nguyên exceptionDate nếu đã có
+                    scheduleRequestUpdateData.exceptionDate = new Date(requestDetails.exceptionDate);
                 }
                 
                 // Cập nhật schedule request
@@ -648,7 +767,7 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                     data: scheduleRequestUpdateData
                 });
                 
-                console.log('Updated schedule request with moved information:', scheduleRequestUpdateData);
+                console.log('Updated schedule request with moved information (exception only, NOT classSchedule):', scheduleRequestUpdateData);
             }
 
             // Update ClassSchedule if we have changes to make
@@ -760,9 +879,11 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
             }
         }
 
-        // Lấy danh sách users liên quan (admin + teacher + students)
+        // Lấy danh sách users liên quan (admin + teacher + students + substituteTeacher)
         const relatedUserIds = [];
         try {
+          const isFinalExam = scheduleRequest.requestTypeId === 10;
+          
           if (scheduleRequest.classScheduleId) {
             // Lấy classSchedule với teacher
             const classSchedule = await prisma.classSchedule.findUnique({
@@ -806,6 +927,39 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
                 }
               });
             }
+          } else if (isFinalExam && scheduleRequest.classId) {
+            // Xử lý thi cuối kỳ: lấy teacher từ class
+            if (scheduleRequest.class?.teacher?.user?.id) {
+              relatedUserIds.push(scheduleRequest.class.teacher.user.id);
+            }
+
+            // Lấy students của class
+            const classStudents = await prisma.classStudent.findMany({
+              where: {
+                classId: scheduleRequest.classId
+              },
+              include: {
+                student: {
+                  include: {
+                    user: true
+                  }
+                }
+              }
+            });
+
+            classStudents.forEach(cs => {
+              if (cs.student?.user?.id) {
+                relatedUserIds.push(cs.student.user.id);
+              }
+            });
+          }
+
+          // Thêm giảng viên được gán (substituteTeacher) - quan trọng cho thi cuối kỳ
+          if (scheduleRequest.substituteTeacher?.user?.id) {
+            const substituteTeacherUserId = scheduleRequest.substituteTeacher.user.id;
+            if (!relatedUserIds.includes(substituteTeacherUserId)) {
+              relatedUserIds.push(substituteTeacherUserId);
+            }
           }
 
           // Thêm tất cả admin users
@@ -831,25 +985,24 @@ const updateScheduleRequestStatus = async (requestId, status, approverId, note, 
 
         // Emit socket event để cập nhật real-time khi duyệt/từ chối request - chỉ gửi đến users liên quan
         try {
-          if (scheduleRequest.exceptionDate || scheduleRequest.movedToDate) {
-            const dates = [];
-            if (scheduleRequest.exceptionDate) dates.push(new Date(scheduleRequest.exceptionDate));
-            if (scheduleRequest.movedToDate) dates.push(new Date(scheduleRequest.movedToDate));
+          const isFinalExam = scheduleRequest.requestTypeId === 10;
+          const targetDate = scheduleRequest.exceptionDate || scheduleRequest.movedToDate;
+          
+          if (targetDate) {
+            const date = new Date(targetDate);
+            const dayOfWeek = date.getDay();
+            const startOfWeek = new Date(date);
+            startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+            const weekStartDate = startOfWeek.toISOString().split('T')[0];
             
-            for (const date of dates) {
-              const dayOfWeek = date.getDay();
-              const startOfWeek = new Date(date);
-              startOfWeek.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-              const weekStartDate = startOfWeek.toISOString().split('T')[0];
-              
-              await SocketClient.emitScheduleExceptionUpdated({
-                exceptionId: scheduleRequest.id,
-                classScheduleId: scheduleRequest.classScheduleId,
-                weekStartDate: weekStartDate,
-                requestStatusId: scheduleRequest.requestStatusId,
-                userIds: relatedUserIds
-              });
-            }
+            await SocketClient.emitScheduleExceptionUpdated({
+              exceptionId: scheduleRequest.id,
+              classScheduleId: scheduleRequest.classScheduleId,
+              classId: isFinalExam ? scheduleRequest.classId : null, // Thêm classId cho thi cuối kỳ
+              weekStartDate: weekStartDate,
+              requestStatusId: scheduleRequest.requestStatusId,
+              userIds: relatedUserIds
+            });
           }
         } catch (socketError) {
           console.error('[Schedule Request] Lỗi khi emit socket event:', socketError);
@@ -975,15 +1128,12 @@ const getScheduleRequestById = async (requestId) => {
                 },
                 // Include class cho thi cuối kỳ (requestTypeId = 10)
                 class: {
-                    select: {
-                        id: true,
-                        code: true,
-                        className: true,
-                        subjectName: true,
-                        subjectCode: true,
-                        maxStudents: true,
-                        departmentId: true,
-                        classRoomTypeId: true,
+                    include: {
+                        teacher: {
+                            include: {
+                                user: true
+                            }
+                        },
                         ClassRoomType: {
                             select: {
                                 id: true,
@@ -1009,3 +1159,6 @@ module.exports = {
     updateScheduleRequestStatus,
     getScheduleRequestById
 };
+
+
+

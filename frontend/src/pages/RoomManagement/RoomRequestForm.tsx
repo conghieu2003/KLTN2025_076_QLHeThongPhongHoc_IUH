@@ -153,7 +153,7 @@ const createExceptionTypes = (requestTypes: RequestType[]) => {
   };
 
   return requestTypes
-    .filter(rt => rt.id >= 5 && rt.id <= 10)
+    .filter(rt => rt.id >= 5 && rt.id <= 10 && rt.id !== 10) // Bỏ thi cuối kỳ (ID 10) - chỉ admin mới tạo được
     .map(rt => {
       const exceptionType = getExceptionTypeFromRequestType(rt.id);
       const typeInfo = exceptionTypeMap[exceptionType as keyof typeof exceptionTypeMap] || 

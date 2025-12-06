@@ -2,10 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class TeacherService {
-  // =====================================================
-  // LẤY DANH SÁCH GIẢNG VIÊN
-  // =====================================================
-  
+
   async getAllTeachers() {
     try {
       const teachers = await prisma.teacher.findMany({

@@ -38,6 +38,15 @@ interface ProcessRequestData {
             id: number;
             name: string;
         };
+        teacher?: {
+            id: number;
+            teacherCode: string;
+            user?: {
+                id: number;
+                fullName: string;
+                email: string;
+            };
+        };
     };
     requester?: {
         id: number;
@@ -268,11 +277,22 @@ const ProcessRequest: React.FC = () => {
                 return;
             }
 
+            // Lấy teacherId của giảng viên đang yêu cầu đổi lịch để loại bỏ khỏi danh sách
+            let excludeTeacherId: number | undefined = undefined;
+            if (isSubstitute && request.classSchedule?.class?.teacher?.id) {
+                excludeTeacherId = request.classSchedule.class.teacher.id;
+            } else if (isExam && request.classSchedule?.class?.teacher?.id) {
+                excludeTeacherId = request.classSchedule.class.teacher.id;
+            } else if (isFinalExam && request.class?.teacher?.id) {
+                excludeTeacherId = request.class.teacher.id;
+            }
+
             setLoadingTeachers(true);
             const response = await scheduleManagementService.getAvailableTeachers(
                 targetDate,
                 targetTimeSlotId,
-                departmentId
+                departmentId,
+                excludeTeacherId
             );
 
             if (response.success) {
@@ -522,9 +542,16 @@ const ProcessRequest: React.FC = () => {
 
     const handleProcessRequest = async () => {
         const needsRoomSelection = requestData && shouldShowRoomSelection(requestData);
+        const isMidtermExam = requestData?.requestTypeId === 6; 
         
-        if (needsRoomSelection && !selectedRoomId) {
+        if (needsRoomSelection && !selectedRoomId && !isMidtermExam) {
             toast.error('Vui lòng chọn phòng học');
+            return;
+        }
+
+        // Bắt buộc chọn giảng viên cho thi cuối kỳ
+        if (requestData?.requestTypeId === 10 && !selectedTeacherId) {
+            toast.error('Vui lòng chọn giảng viên cho lịch thi cuối kỳ');
             return;
         }
 
@@ -1158,6 +1185,17 @@ const ProcessRequest: React.FC = () => {
                             </Alert>
                         )}
 
+                        {requestData.requestTypeId === 6 && requestData.exceptionType === 'exam' && (
+                            <Alert 
+                                severity="info" 
+                                sx={{ 
+                                    mb: { xs: 1.5, sm: 2 },
+                                    fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' }
+                                }}
+                            >
+                            </Alert>
+                        )}
+
                         <FormControl 
                             fullWidth 
                             size={isMobile ? "small" : "medium"}
@@ -1253,22 +1291,26 @@ const ProcessRequest: React.FC = () => {
                                 fullWidth 
                                 size={isMobile ? "small" : "medium"}
                                 sx={{ mt: { xs: 1.5, sm: 2 } }}
+                                required={requestData.requestTypeId === 10}
                             >
                                 <InputLabel 
                                     sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                                 >
-                                    Chọn giảng viên (tùy chọn)
+                                    {requestData.requestTypeId === 10 ? 'Chọn giảng viên *' : 'Chọn giảng viên (tùy chọn)'}
                                 </InputLabel>
                                 <Select
                                     value={selectedTeacherId}
                                     onChange={(e) => setSelectedTeacherId(e.target.value as number)}
-                                    label="Chọn giảng viên (tùy chọn)"
+                                    label={requestData.requestTypeId === 10 ? 'Chọn giảng viên *' : 'Chọn giảng viên (tùy chọn)'}
                                     sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                                     disabled={loadingTeachers}
+                                    required={requestData.requestTypeId === 10}
                                 >
-                                    <MenuItem value="">
-                                        <em>Không chọn (dùng giảng viên của lớp)</em>
-                                    </MenuItem>
+                                    {requestData.requestTypeId === 6 && (
+                                        <MenuItem value="">
+                                            <em>Không chọn (dùng giảng viên của lớp)</em>
+                                        </MenuItem>
+                                    )}
                                     {loadingTeachers ? (
                                         <MenuItem disabled value="">
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1423,7 +1465,12 @@ const ProcessRequest: React.FC = () => {
                                     variant="contained"
                                     startIcon={<SaveIcon />}
                                     onClick={handleProcessRequest}
-                                    disabled={((requestData && shouldShowRoomSelection(requestData) && !selectedRoomId) || (requestData?.requestTypeId === 9 && !selectedTeacherId)) || processing}
+                                    disabled={
+                                        ((requestData && shouldShowRoomSelection(requestData) && !selectedRoomId) || 
+                                         (requestData?.requestTypeId === 9 && !selectedTeacherId) ||
+                                         (requestData?.requestTypeId === 10 && !selectedTeacherId)) || 
+                                        processing
+                                    }
                                     fullWidth={isMobile}
                                     size={isMobile ? "medium" : "large"}
                                     sx={{ 

@@ -462,11 +462,14 @@ export const userService = {
 
 // quản lý lịch học
 export const scheduleManagementService = {
-  getAvailableTeachers: async (date: string, timeSlotId: number, departmentId?: number): Promise<ApiResponse<any[]>> => {
+  getAvailableTeachers: async (date: string, timeSlotId: number, departmentId?: number, excludeTeacherId?: number): Promise<ApiResponse<any[]>> => {
     try {
       const params: any = { date, timeSlotId: String(timeSlotId) };
       if (departmentId) {
         params.departmentId = String(departmentId);
+      }
+      if (excludeTeacherId) {
+        params.excludeTeacherId = String(excludeTeacherId);
       }
       const response = await api.get('/schedule-management/teachers/available', { params });
       return {

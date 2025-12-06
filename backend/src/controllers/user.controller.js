@@ -1,16 +1,14 @@
 const userService = require('../services/user.service');
 
 class UserController {
+    // lấy danh sách user
     async list(req, res) {
         try {
             const { role, username } = req.body || {};
-
-            // Cross-check: username in body must match requester account
             if (username) {
                 if (!req.user || !req.user.accountId) {
                     return res.status(401).json({ success: false, message: 'Thiếu thông tin xác thực' });
                 }
-                // Only allow if username belongs to the authenticated account
                 if (req.user.username && req.user.username !== username) {
                     return res.status(403).json({ success: false, message: 'Không khớp người yêu cầu' });
                 }
@@ -22,6 +20,7 @@ class UserController {
         }
     }
 
+    // lấy mã tiếp theo
     async nextCode(req, res) {
         try {
             const { role } = req.query;
@@ -35,6 +34,7 @@ class UserController {
         }
     }
 
+    // lấy danh sách khoa
     async departments(req, res) {
         try {
             const data = await userService.getDepartments();
@@ -44,6 +44,7 @@ class UserController {
         }
     }
 
+    // lấy danh sách chuyên ngành
     async majors(req, res) {
         try {
             const { departmentId } = req.query;
@@ -54,6 +55,7 @@ class UserController {
         }
     }
 
+    // tạo user
     async create(req, res) {
         try {
             const userData = req.body;
@@ -67,6 +69,7 @@ class UserController {
         }
     }
 
+    // cập nhật user
     async update(req, res) {
         try {
             const { userId } = req.params;
@@ -81,6 +84,7 @@ class UserController {
         }
     }
 
+    // gửi email
     async sendEmail(req, res) {
         try {
             const { userId, subject, content, includeCredentials } = req.body;

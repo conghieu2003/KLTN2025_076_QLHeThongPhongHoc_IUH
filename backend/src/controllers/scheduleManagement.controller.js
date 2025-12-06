@@ -138,7 +138,7 @@ class ScheduleManagementController {
   // Lấy danh sách giảng viên trống vào thời điểm cụ thể
   async getAvailableTeachers(req, res) {
     try {
-      const { date, timeSlotId, departmentId } = req.query;
+      const { date, timeSlotId, departmentId, excludeTeacherId } = req.query;
       
       if (!date || !timeSlotId) {
         return res.status(400).json({
@@ -150,7 +150,8 @@ class ScheduleManagementController {
       const teachers = await scheduleManagementService.getAvailableTeachers(
         date,
         timeSlotId,
-        departmentId || null
+        departmentId || null,
+        excludeTeacherId || null
       );
       
       return res.status(200).json({

@@ -214,8 +214,8 @@ class EmailService {
                             Để sẵn sàng sử dụng hệ thống, truy cập tại:
                         </p>
                         <div style="background-color: white; padding: 15px; border-radius: 5px; margin: 10px 0; text-align: center;">
-                            <a href="http://localhost:3000" style="color: #1976d2; text-decoration: none; font-weight: 600; font-size: 16px;">
-                                🔗 http://localhost:3000
+                            <a href="https://kltn2025-076-qlhethongphonghoc-iuh.onrender.com" style="color: #1976d2; text-decoration: none; font-weight: 600; font-size: 16px;">
+                                🔗 https://kltn2025-076-qlhethongphonghoc-iuh.onrender.com
                             </a>
                         </div>
                     </div>

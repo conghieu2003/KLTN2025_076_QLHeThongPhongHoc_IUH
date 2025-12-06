@@ -2,10 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 class DepartmentService {
-  // =====================================================
-  // LẤY DANH SÁCH KHOA
-  // =====================================================
-  
+
   async getAllDepartments() {
     try {
       const departments = await prisma.department.findMany({
@@ -196,7 +193,6 @@ class DepartmentService {
   // Xóa khoa
   async deleteDepartment(id) {
     try {
-      // Kiểm tra khoa có tồn tại
       const existingDepartment = await prisma.department.findUnique({
         where: { id: parseInt(id) }
       });

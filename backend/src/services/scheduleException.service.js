@@ -67,20 +67,7 @@ const createScheduleException = async (data) => {
       
       // Với thi cuối kỳ, không kiểm tra khoảng thời gian (có thể thi ngoài thời gian học)
       
-      // Kiểm tra đã có ngoại lệ thi cuối kỳ cho lớp này và ngày này chưa
-      // Chỉ kiểm tra exception đã duyệt (status 2 hoặc 4) để tránh duplicate
-      existingException = await prisma.scheduleRequest.findFirst({
-        where: {
-          classId: parseInt(classId),
-          exceptionDate: new Date(exceptionDate),
-          requestTypeId: 10, // Thi cuối kỳ
-          requestStatusId: { in: [2, 4] } // Chỉ kiểm tra đã duyệt hoặc hoàn thành
-        }
-      });
-
-      if (existingException) {
-        throw new Error('Đã có lịch thi cuối kỳ cho lớp này vào ngày này');
-      }
+      // Cho phép tạo nhiều ngoại lệ thi cuối kỳ cho cùng lớp, cùng ngày, cùng tiết
     } else {
       // Các loại khác: lấy thông tin lịch học
       schedule = await prisma.classSchedule.findFirst({
@@ -234,6 +221,57 @@ const createScheduleException = async (data) => {
       movedToDayOfWeek = movedDate.getDay() === 0 ? 1 : movedDate.getDay() + 1; // 1=CN, 2=T2, ..., 7=T7
     }
 
+    // Kiểm tra xung đột giảng viên cho thi cuối kỳ
+    if (isFinalExam && substituteTeacherId) {
+      const exceptionDateObj = new Date(exceptionDate);
+      const exceptionDateStart = new Date(exceptionDateObj);
+      exceptionDateStart.setHours(0, 0, 0, 0);
+      const exceptionDateEnd = new Date(exceptionDateObj);
+      exceptionDateEnd.setHours(23, 59, 59, 999);
+
+      // Kiểm tra xem giảng viên đã được gán cho thi cuối kỳ khác cùng ngày và cùng tiết chưa
+      const existingTeacherAssignment = await prisma.scheduleRequest.findFirst({
+        where: {
+          requestTypeId: 10, // Thi cuối kỳ
+          substituteTeacherId: parseInt(substituteTeacherId),
+          requestStatusId: { in: [2, 4] }, // Đã duyệt hoặc hoàn thành
+          exceptionDate: {
+            gte: exceptionDateStart,
+            lte: exceptionDateEnd
+          },
+          newTimeSlotId: parseInt(newTimeSlotId)
+        },
+        include: {
+          newTimeSlot: true,
+          newClassRoom: true,
+          class: {
+            include: {
+              teacher: true
+            }
+          }
+        }
+      });
+
+      if (existingTeacherAssignment) {
+        const conflictDate = existingTeacherAssignment.exceptionDate 
+          ? new Date(existingTeacherAssignment.exceptionDate).toLocaleDateString('vi-VN')
+          : 'ngày không xác định';
+        const conflictTimeSlot = existingTeacherAssignment.newTimeSlot?.slotName || `tiết ${existingTeacherAssignment.newTimeSlotId}`;
+        const conflictRoom = existingTeacherAssignment.newClassRoom?.name || 'phòng không xác định';
+        throw new Error(
+          `Giảng viên đã được gán cho thi cuối kỳ khác vào ${conflictDate}, ${conflictTimeSlot} tại ${conflictRoom}. ` +
+          `Không thể gán cùng một giảng viên cho nhiều phòng thi cùng lúc.`
+        );
+      }
+    }
+
+    let finalMovedToClassRoomId = newClassRoomId ? parseInt(newClassRoomId) : null;
+    const isMidtermExam = requestTypeId === 6 && exceptionType === 'exam' && !isFinalExam;
+    
+    if (isMidtermExam && !newClassRoomId && schedule?.classRoomId) {
+      finalMovedToClassRoomId = schedule.classRoomId;
+    }
+
     // Tạo ngoại lệ lịch học
     // Admin tạo ngoại lệ sẽ được tự động duyệt (requestStatusId = 2)
     const newException = await prisma.scheduleRequest.create({
@@ -251,7 +289,7 @@ const createScheduleException = async (data) => {
         movedToDate: newDate ? new Date(newDate) : null,
         movedToDayOfWeek: movedToDayOfWeek, // Thêm movedToDayOfWeek cho moved/exam
         movedToTimeSlotId: newTimeSlotId ? parseInt(newTimeSlotId) : null,
-        movedToClassRoomId: newClassRoomId ? parseInt(newClassRoomId) : null,
+        movedToClassRoomId: finalMovedToClassRoomId, 
         substituteTeacherId: substituteTeacherId || null,
         reason: reason,
         requestStatusId: 2, // Auto-approved for admin (Đã duyệt)
@@ -1149,6 +1187,7 @@ const getAvailableSchedules = async (params) => {
         classCode: schedule.class.code || 'Chưa có mã lớp',
         departmentId: schedule.class.departmentId,
         departmentName: schedule.class.department?.name || 'Chưa xác định',
+        teacherId: schedule.teacherId, // Thêm teacherId để loại bỏ giảng viên đang yêu cầu đổi lịch
         teacherName: schedule.teacher.user.fullName || 'Chưa có tên giảng viên',
         teacherCode: schedule.teacher.teacherCode || 'Chưa có mã giảng viên',
         roomName: schedule.classRoom?.name || 'Chưa phân phòng',
