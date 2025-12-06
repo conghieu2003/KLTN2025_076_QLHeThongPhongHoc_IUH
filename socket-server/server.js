@@ -6,9 +6,10 @@ require('dotenv').config();
 
 const app = express();
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-];
+const frontendUrls = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  : ['http://localhost:3000'];
+const allowedOrigins = [...frontendUrls];
 
 app.use(cors({
   origin: allowedOrigins,
@@ -179,8 +180,8 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
-const PORT = process.env.SOCKET_PORT || 3001;
+  
+const PORT = process.env.PORT || process.env.SOCKET_PORT || 3001;
 
 server.listen(PORT, () => {
   console.log('[Socket Server] Server đang chạy');
