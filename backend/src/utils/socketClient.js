@@ -1,7 +1,7 @@
 const axios = require('axios');
 
-const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3001';
-const BACKEND_TOKEN = process.env.BACKEND_TOKEN || 'backend-secret-token';
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'https://kltn2025-076-qlhethongphonghoc-iuh-socket.onrender.com';
+const BACKEND_TOKEN = process.env.BACKEND_TOKEN || '';
 
 // helper class to emit socket events from backend
 class SocketClient {

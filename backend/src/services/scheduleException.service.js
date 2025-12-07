@@ -1251,7 +1251,7 @@ const getNextClassDate = (today, dayOfWeek, classStartDate, classEndDate) => {
   
   let daysUntilNext = targetDayOfWeek - currentDayOfWeek;
   if (daysUntilNext <= 0) {
-    daysUntilNext += 7; // Next week
+    daysUntilNext += 7; 
   }
   
   const nextDate = new Date(todayDate);

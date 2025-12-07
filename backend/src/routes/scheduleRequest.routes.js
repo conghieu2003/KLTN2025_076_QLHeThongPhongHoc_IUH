@@ -3,25 +3,24 @@ const router = express.Router();
 const scheduleRequestController = require('../controllers/scheduleRequest.controller');
 const { verifyToken } = require('../middleware/auth.middleware');
 
-// Apply authentication middleware to all routes
 router.use(verifyToken);
 
-// Create a new schedule request
+// POST: Tạo yêu cầu lịch học
 router.post('/', scheduleRequestController.createScheduleRequest);
 
-// Get all schedule requests (with optional filters)
+// GET: Lấy danh sách yêu cầu lịch học
 router.get('/', scheduleRequestController.getScheduleRequests);
 
-// Get schedule requests for a specific teacher
+// GET: Lấy yêu cầu lịch học của một giảng viên
 router.get('/teacher/:teacherId', scheduleRequestController.getTeacherSchedules);
 
-// Get a specific schedule request by ID
+// GET: Lấy yêu cầu lịch học theo ID
 router.get('/:requestId', scheduleRequestController.getScheduleRequestById);
 
-// Update schedule request status (approve/reject)
+// PUT: Cập nhật trạng thái yêu cầu lịch học
 router.put('/:requestId/status', scheduleRequestController.updateScheduleRequestStatus);
 
-// Update schedule request room (admin only)
+// PUT: Cập nhật phòng lịch học (chỉ admin)
 router.put('/:requestId/room', scheduleRequestController.updateScheduleRequestRoom);
 
 module.exports = router;

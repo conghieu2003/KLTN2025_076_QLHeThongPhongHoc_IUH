@@ -185,7 +185,6 @@ const StyledDataGrid: React.FC<StyledDataGridProps> = ({
   const mobile = isMobile ?? detectedMobile;
   const tablet = isTablet ?? detectedTablet;
   
-  // Generate minWidth styles for columns
   const getMinWidthStyles = (selector: 'columnHeader' | 'cell') => {
     if (!mobile && !tablet) return {};
     const styles: Record<string, any> = {};
