@@ -163,7 +163,7 @@ class TeacherService {
       const account = await prisma.account.create({
         data: {
           username: teacherCode.toLowerCase(),
-          password: '$2b$10$Yrn9g4GJ7VmaD0atsM.EzurUFzq7D7qr9y4RkPAGYRLfBtMG9sthi', // Default password
+          password: '$2b$10$Yrn9g4GJ7VmaD0atsM.EzurUFzq7D7qr9y4RkPAGYRLfBtMG9sthi', 
           role: 'teacher',
           isActive: true
         }
@@ -177,7 +177,7 @@ class TeacherService {
           email,
           phone,
           gender,
-          dateOfBirth: new Date('1990-01-01') // Default date
+          dateOfBirth: new Date('1990-01-01') 
         }
       });
 
@@ -342,7 +342,7 @@ class TeacherService {
         };
       }
 
-      // Kiểm tra có lớp học nào thuộc giảng viên này không
+      // Kiểm tra có class nào thuộc teacher này không
       const classesCount = await prisma.class.count({
         where: { teacherId: parseInt(id) }
       });
@@ -354,7 +354,7 @@ class TeacherService {
         };
       }
 
-      // Xóa teacher (sẽ cascade xóa user và account)
+      // Xóa teacher 
       await prisma.teacher.delete({
         where: { id: parseInt(id) }
       });

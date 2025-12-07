@@ -4,34 +4,22 @@ const emailService = require('./email.service');
 
 function mapAccountRow(account) {
     const academicProfile = account.user?.academicProfile;
-    
-    // Debug log để kiểm tra dữ liệu
-    console.log('=== DEBUG: Account data ===');
-    console.log('Account ID:', account.id);
-    console.log('User ID:', account.user?.id);
-    console.log('User phone:', account.user?.phone);
-    console.log('User fullName:', account.user?.fullName);
-    console.log('Teacher code:', account.user?.teacher?.teacherCode);
-    console.log('Student code:', account.user?.student?.studentCode);
-    console.log('========================');
-    
     return {
         id: account.user?.id || null,
         accountId: account.id,
         username: account.username,
         fullName: account.user?.fullName || '',
         email: account.user?.email || '',
-        phone: account.user?.phone || null,  // Thêm field phone
+        phone: account.user?.phone || null,  
         role: account.role,
         status: account.isActive ? 'active' : 'inactive',
         teacherCode: account.user?.teacher?.teacherCode || null,
         studentCode: account.user?.student?.studentCode || null,
-        // Academic Profile Information
         campus: academicProfile?.campus || null,
         trainingType: academicProfile?.trainingType || null,
         degreeLevel: academicProfile?.degreeLevel || null,
-        academicYear: academicProfile?.academicYear || null,  // Chỉ có cho student
-        enrollmentDate: academicProfile?.enrollmentDate || null,  // Có cho cả student và teacher
+        academicYear: academicProfile?.academicYear || null, 
+        enrollmentDate: academicProfile?.enrollmentDate || null,
         classCode: academicProfile?.classCode || null,
         title: academicProfile?.title || null,
         createdAt: account.createdAt,
@@ -85,7 +73,6 @@ class UserService {
         // Get next code based on role
         const code = await this.getNextCode(role);
 
-        // Build departments and majors from new catalog tables (id + name)
         const departmentsRows = await prisma.$queryRaw`SELECT id, name FROM Department ORDER BY name ASC`;
         const majorsRows = await prisma.$queryRaw`SELECT id, name FROM Major ORDER BY name ASC`;
 
@@ -96,21 +83,18 @@ class UserService {
             ? majorsRows.map((r) => ({ id: r.id, name: r.name })).filter((r) => r.name)
             : [];
 
-        // For teacher/student, username shown on FE equals login code (numeric, 8 chars)
         const previewUsername = code;
 
-        // Tự động tính toán các giá trị mặc định
         const currentYear = new Date().getFullYear();
         const academicYear = `${currentYear}-${currentYear + 1}`;
-        const enrollmentDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const enrollmentDate = new Date().toISOString().slice(0, 10); 
 
-        // Giá trị mặc định theo role
         const defaultValues = {
             campus: 'Cơ sở 1 Hồ Chí Minh',
             trainingType: 'Chính Quy',
             degreeLevel: role === 'teacher' ? 'Thạc sĩ' : 'Đại Học',
-            academicYear: role === 'student' ? academicYear : null,  // Chỉ student có
-            enrollmentDate: enrollmentDate,  // Cả student và teacher đều có
+            academicYear: role === 'student' ? academicYear : null,  
+            enrollmentDate: enrollmentDate,  
             title: role === 'teacher' ? 'Giảng viên' : null
         };
 
@@ -119,7 +103,7 @@ class UserService {
             previewUsername, 
             departments, 
             majors,
-            defaultValues  // Trả về các giá trị mặc định
+            defaultValues  
         };
     }
     async listUsers(role) {
@@ -156,10 +140,8 @@ class UserService {
             departmentId,
             majorId,
             classCode,
-            // Optional from FE but ignored per policy
             username: _ignoredUsername,
             password: _ignoredPassword,
-            // Deprecated
             department: _ignoredDepartment,
             major: _ignoredMajor,
             classId: _ignoredClassId,
@@ -196,20 +178,13 @@ class UserService {
                     throw new Error('Mã sinh viên đã tồn tại');
                 }
             }
-
-            // Xác định username và password (hash bằng bcrypt)
-            // Always generate login code (8 digits) based on role
             const codeForLogin = await this.getNextCode(role);
-
-            // Generate internal username (not used for teacher/student login)
             const uniqueSuffix = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-            const username = `${role.slice(0, 3)}_${uniqueSuffix}`; // e.g., tea_..., stu_...
+            const username = `${role.slice(0, 3)}_${uniqueSuffix}`; 
 
-            // Fixed default password policy
             const plainPassword = '123456';
             const hashedPassword = await bcryptConfig.hashPassword(plainPassword);
 
-            // Tạo transaction để đảm bảo tính nhất quán
             const result = await prisma.$transaction(async (tx) => {
                 // Tạo account
                 const account = await tx.account.create({
@@ -229,7 +204,7 @@ class UserService {
                         email,
                         phone: phone || null,
                         address: address || null,
-                        avatar: avatar || 'https://via.placeholder.com/150/CCCCCC/666666?text=' + encodeURIComponent(fullName.charAt(0).toUpperCase()),
+                        avatar: avatar || '',
                         gender: gender || null,
                         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null
                     }
@@ -242,12 +217,11 @@ class UserService {
                             userId: user.id,
                             teacherCode: codeForLogin,
                             departmentId: departmentId || null,
-                            majorId: majorId || null,
-                            title: title || 'Giảng viên'
+                            majorId: majorId || null
                         }
                     });
                     
-                    // Tự động gán giá trị mặc định cho teacher (KHÔNG có academicYear)
+                    // Tự động gán giá trị mặc định cho teacher 
                     const enrollmentDate = userData.enrollmentDate ? new Date(userData.enrollmentDate) : new Date();
                     
                     await tx.academicProfile.create({
@@ -310,7 +284,6 @@ class UserService {
                     });
                 } catch (emailError) {
                     console.error('Lỗi gửi email:', emailError);
-                    // Không throw error vì tài khoản đã được tạo thành công
                 }
             }
 
@@ -358,14 +331,12 @@ class UserService {
             let password = null;
 
             if (includeCredentials) {
-                // Lấy thông tin đăng nhập từ database
                 if (role === 'teacher' && user.teacher) {
                     username = user.teacher.teacherCode;
                 } else if (role === 'student' && user.student) {
                     username = user.student.studentCode;
                 }
                 
-                // Mật khẩu mặc định (có thể thay đổi logic này)
                 password = '123456';
             }
 
@@ -429,12 +400,11 @@ class UserService {
                 studentCode: user.student?.studentCode || null,
                 departmentId: user.teacher?.departmentId || user.student?.departmentId || null,
                 majorId: user.teacher?.majorId || user.student?.majorId || null,
-                // Academic Profile Information
                 campus: academicProfile?.campus || null,
                 trainingType: academicProfile?.trainingType || null,
                 degreeLevel: academicProfile?.degreeLevel || null,
-                academicYear: academicProfile?.academicYear || null,  // Chỉ có cho student
-                enrollmentDate: academicProfile?.enrollmentDate || null,  // Có cho cả student và teacher
+                academicYear: academicProfile?.academicYear || null,  
+                enrollmentDate: academicProfile?.enrollmentDate || null,  
                 classCode: academicProfile?.classCode || null,
                 title: academicProfile?.title || null,
                 createdAt: user.createdAt,
@@ -449,7 +419,6 @@ class UserService {
         try {
             const { phone, isActive } = updateData;
             
-            // Cập nhật thông tin user
             if (phone !== undefined) {
                 await prisma.user.update({
                     where: { id: userId },
@@ -457,7 +426,6 @@ class UserService {
                 });
             }
             
-            // Cập nhật trạng thái account
             if (isActive !== undefined) {
                 const user = await prisma.user.findUnique({
                     where: { id: userId },
@@ -472,7 +440,6 @@ class UserService {
                 }
             }
             
-            // Lấy thông tin user đã cập nhật
             return await this.getUserById(userId);
         } catch (error) {
             throw new Error(`Lỗi cập nhật user: ${error.message}`);

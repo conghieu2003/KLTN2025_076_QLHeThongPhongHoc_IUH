@@ -361,10 +361,8 @@ const Dashboard = () => {
                     </Typography>
                   </Grid>
 
-                  {/* Two Column Layout - Personal Info (Left) and Academic Info (Right) */}
                   {userRole === 'student' && (
                     <>
-                      {/* Left Column - Personal Information */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>MSSV:</strong> {studentInfo?.studentCode || ''}
@@ -382,7 +380,7 @@ const Dashboard = () => {
                           <strong>Nơi sinh:</strong> {personalProfile?.placeOfBirth || ''}
                         </Typography>
                       </Grid>
-                      {/* Right Column - Academic Information */}
+                      {/* bên phải thông tin học vấn */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Lớp học:</strong> {academicProfile?.classCode || ''}
@@ -404,7 +402,7 @@ const Dashboard = () => {
                   )}
                   {userRole === 'teacher' && (
                     <>
-                      {/* Left Column - Personal Information */}
+                      {/* bên trái thông tin cá nhân */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Mã GV:</strong> {teacherInfo?.teacherCode || ''}
@@ -422,7 +420,7 @@ const Dashboard = () => {
                           <strong>Nơi sinh:</strong> {personalProfile?.placeOfBirth || ''}
                         </Typography>
                       </Grid>
-                      {/* Right Column - Academic Information */}
+                      {/* bên phải thông tin học vấn */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Khoa:</strong> {teacherInfo?.department?.name || ''}
@@ -441,7 +439,7 @@ const Dashboard = () => {
                   )}
                   {userRole === 'admin' && (
                     <>
-                      {/* Left Column - Personal Information */}
+                      {/* bên trái thông tin cá nhân */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ mb: { xs: 0.75, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Họ tên:</strong> {user.fullName || ''}
@@ -456,7 +454,7 @@ const Dashboard = () => {
                           <strong>Địa chỉ:</strong> {user.address || ''}
                         </Typography>
                       </Grid>
-                      {/* Right Column - Role Information */}
+                      {/* bên phải thông tin vai trò */}
                       <Grid size={{ xs: 6, sm: 6 }}>
                         <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.875rem' } }}>
                           <strong>Trạng thái:</strong> {user.isActive ? 'Hoạt động' : 'Không hoạt động'}
@@ -475,7 +473,7 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Notifications Card */}
+      {/* thông báo mới nhất */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 1.5, sm: 2, md: 3 } }}>
         <Grid size={{ xs: 12 }}>
           <Card 
@@ -488,7 +486,7 @@ const Dashboard = () => {
               transition: 'box-shadow 0.3s'
             }}
             onClick={() => {
-              // TODO: Navigate to notifications page
+
             }}
           >
             <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
@@ -549,7 +547,7 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Weekly Schedule Cards */}
+      {/* lịch học trong tuần */}
       <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: { xs: 1.5, sm: 2, md: 3 } }}>
         <Grid size={{ xs: 6 }}>
           <Card 

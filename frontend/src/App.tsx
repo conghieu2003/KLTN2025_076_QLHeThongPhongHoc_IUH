@@ -26,46 +26,40 @@ const App = () => {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <Routes>
-          {/* @ts-ignore */}
+        <Routes>       
           <Route path="/login" element={<Login />} />
-          {/* @ts-ignore */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          {/* @ts-ignore */}
           <Route path="/reset-password" element={<ResetPassword />} />
-
           <Route path="/" element={
-            // @ts-ignore
             <ProtectedRoute>
-              {/* @ts-ignore */}
               <Layout />
             </ProtectedRoute>
           }>
             {/* Admin Routes */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            {/* @ts-ignore */}
+            
             <Route path="/dashboard" element={<Dashboard />} />
-            {/* @ts-ignore */}
+            
             <Route path="/profile" element={<Profile />} />
-            {/* @ts-ignore */}
+            
             <Route path="/users" element={<UserManagement />} />
-            {/* @ts-ignore */}
+            
             <Route path="/users/create" element={<CreateUser />} />
-            {/* @ts-ignore */}
+            
             <Route path="/rooms" element={<RoomList />} />
-            {/* @ts-ignore */}
+            
             <Route path="/rooms/available" element={<AvailableRooms />} />
-            {/* @ts-ignore */}
+            
             <Route path="/room-requests" element={<RoomRequestForm />} />
-            {/* @ts-ignore */}
+            
             <Route path="/rooms/requests/list" element={<RoomRequestList />} />
-            {/* @ts-ignore */}
+            
             <Route path="/rooms/requests/:requestId/process" element={<ProcessRequest />} />
-            {/* @ts-ignore */}
+            
             <Route path="/rooms/scheduling" element={<RoomScheduling />} />
-            {/* @ts-ignore */}
+            
             <Route path="/schedule/weekly" element={<WeeklySchedule />} />
-            {/* @ts-ignore */}
+            
             <Route path="/schedule/management" element={<ScheduleManagement />} />
           </Route>
         </Routes>

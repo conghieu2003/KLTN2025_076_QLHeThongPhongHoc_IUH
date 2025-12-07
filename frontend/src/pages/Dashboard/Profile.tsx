@@ -13,7 +13,6 @@ const Profile: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
-  // Edit personal profile dialog state
   const [editPersonalDialogOpen, setEditPersonalDialogOpen] = useState(false);
   const [editPersonalFormData, setEditPersonalFormData] = useState({
     address: '',
@@ -24,7 +23,6 @@ const Profile: React.FC = () => {
     bankAccountNumber: ''
   });
 
-  // Edit family info dialog state
   const [editFamilyDialogOpen, setEditFamilyDialogOpen] = useState(false);
   const [editFamilyFormData, setEditFamilyFormData] = useState({
     fatherFullName: '',
@@ -43,7 +41,6 @@ const Profile: React.FC = () => {
     };
   }, [dispatch]);
 
-  // Show toast on success/error
   useEffect(() => {
     if (updateError) {
       toast.error(updateError);
@@ -186,7 +183,7 @@ const Profile: React.FC = () => {
         px: { xs: 1, sm: 2, md: 3 }
       }}
     >
-      {/* Header with basic info and avatar */}
+      {/* header thông tin cá nhân */}
       <Paper 
         elevation={2} 
         sx={{ 
@@ -252,7 +249,7 @@ const Profile: React.FC = () => {
         </Grid>
       </Paper>
 
-      {/* Academic Information Section - Top */}
+      {/* thông tin học vấn */}
       <Box mb={{ xs: 2, sm: 2.5, md: 3 }}>
         <Card elevation={2}>
           <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
@@ -459,7 +456,7 @@ const Profile: React.FC = () => {
       </Box>
 
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-        {/* Personal Information Section */}
+        {/* thông tin cá nhân */}
         <Grid
           size={{
             xs: 12,
@@ -781,7 +778,7 @@ const Profile: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Edit Personal Profile Dialog */}
+      {/* dialog chỉnh sửa thông tin cá nhân */}
       <Dialog 
         open={editPersonalDialogOpen} 
         onClose={handleCloseEditPersonalDialog}
@@ -854,7 +851,7 @@ const Profile: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Edit Family Info Dialog */}
+      {/* dialog chỉnh sửa thông tin gia đình */}
       <Dialog 
         open={editFamilyDialogOpen} 
         onClose={handleCloseEditFamilyDialog}

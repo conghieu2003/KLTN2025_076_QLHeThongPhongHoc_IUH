@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { authService } from '../../services/api';
-import { Box, Grid } from '@mui/material';
+import { Grid } from '@mui/material';
 
-// Interface cho menu item
 interface MenuItem {
   id: string;
   name: string;
@@ -12,7 +11,6 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-// Interface cho menu configuration
 interface MenuConfig {
   [key: string]: MenuItem[];
 }
@@ -21,13 +19,14 @@ interface SidebarProps {
   open?: boolean;
   onClose?: () => void;
   isMobile?: boolean;
+  onNavigationStart?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = false }) => {
-  const userRole = authService.getUserRole() || 'student'; // Default to student if no role
+const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = false, onNavigationStart }) => {
+  const userRole = authService.getUserRole() || 'student'; 
   const location = useLocation();
   
-  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['rooms'])); // Mặc định mở menu rooms
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set(['rooms'])); 
 
   const toggleMenu = (menuKey: string) => {
     const newExpandedMenus = new Set(expandedMenus);
@@ -39,8 +38,10 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
     setExpandedMenus(newExpandedMenus);
   };
 
-  // Close sidebar on mobile when clicking a link
   const handleLinkClick = () => {
+    if (onNavigationStart) {
+      onNavigationStart();
+    }
     if (isMobile && onClose) {
       onClose();
     }
@@ -48,7 +49,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
 
   const isMenuExpanded = (menuKey: string) => expandedMenus.has(menuKey);
 
-  // Cấu hình menu động theo role
   const menuConfig: MenuConfig = {
     admin: [
       {
@@ -141,7 +141,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
     ]
   };
 
-  // Render menu item với children
   const renderMenuItem = (item: MenuItem): JSX.Element => {
     const isActive = location.pathname === item.path;
     const hasChildren = item.children && item.children.length > 0;
@@ -237,7 +236,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
     const currentMenu = menuConfig[userRole as keyof MenuConfig];
     
     if (!currentMenu) {
-      console.log('No menu found for role:', userRole);
       return null;
     }
 
