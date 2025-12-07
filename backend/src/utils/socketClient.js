@@ -3,14 +3,9 @@ const axios = require('axios');
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3001';
 const BACKEND_TOKEN = process.env.BACKEND_TOKEN || 'backend-secret-token';
 
-/**
- * Helper class to emit socket events from backend
- */
+// helper class to emit socket events from backend
 class SocketClient {
-  /**
-   * Emit room assigned event
-   * @param {Object} data - Room assignment data
-   */
+// gửi sự kiện gán phòng
   static async emitRoomAssigned(data) {
     try {
       await axios.post(`${SOCKET_SERVER_URL}/api/socket/room-assigned`, data, {
@@ -21,14 +16,10 @@ class SocketClient {
       });
     } catch (error) {
       console.error('[Socket Client] Lỗi khi gửi sự kiện room-assigned:', error.message);
-      // Don't throw error - socket events are not critical
     }
   }
 
-  /**
-   * Emit room unassigned event
-   * @param {Object} data - Room unassignment data
-   */
+// gửi sự kiện bỏ gán phòng
   static async emitRoomUnassigned(data) {
     try {
       await axios.post(`${SOCKET_SERVER_URL}/api/socket/room-unassigned`, data, {
@@ -42,10 +33,7 @@ class SocketClient {
     }
   }
 
-  /**
-   * Emit stats updated event
-   * @param {Object} stats - Statistics data
-   */
+// gửi sự kiện cập nhật thống kê
   static async emitStatsUpdated(stats) {
     try {
       await axios.post(`${SOCKET_SERVER_URL}/api/socket/stats-updated`, stats, {
@@ -59,10 +47,7 @@ class SocketClient {
     }
   }
 
-  /**
-   * Emit schedule updated event
-   * @param {Object} data - Schedule update data
-   */
+// gửi sự kiện cập nhật lịch học
   static async emitScheduleUpdated(data) {
     try {
       await axios.post(`${SOCKET_SERVER_URL}/api/socket/schedule-updated`, data, {
@@ -76,10 +61,7 @@ class SocketClient {
     }
   }
 
-  /**
-   * Emit schedule exception updated event
-   * @param {Object} data - Schedule exception data
-   */
+// gửi sự kiện cập nhật ngoại lệ lịch học
   static async emitScheduleExceptionUpdated(data) {
     try {
       await axios.post(`${SOCKET_SERVER_URL}/api/socket/schedule-exception-updated`, data, {
@@ -92,11 +74,7 @@ class SocketClient {
       console.error('[Socket Client] Lỗi khi gửi sự kiện schedule-exception-updated:', error.message);
     }
   }
-
-  /**
-   * Emit schedule request created event
-   * @param {Object} data - Schedule request data with userIds
-   */
+// gửi sự kiện tạo yêu cầu lịch học
   static async emitScheduleRequestCreated(data) {
     try {
       await axios.post(`${SOCKET_SERVER_URL}/api/socket/schedule-request-created`, data, {

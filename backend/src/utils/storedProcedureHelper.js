@@ -1,19 +1,10 @@
 const prisma = require('../config/db.config');
 
-/**
- * Helper class để gọi stored procedures từ Prisma
- */
+// helper class để gọi stored procedures từ Prisma
 class StoredProcedureHelper {
-  /**
-   * Gọi stored procedure với OUTPUT parameters
-   * @param {string} procedureName - Tên stored procedure
-   * @param {Object} inputs - Object chứa input parameters
-   * @param {Object} outputs - Object chứa output parameters với type
-   * @returns {Promise<Object>} - Object chứa output values
-   */
+// gửi stored procedure với OUTPUT parameters
   static async executeWithOutputs(procedureName, inputs = {}, outputs = {}) {
     try {
-      // Xây dựng SQL query để gọi stored procedure
       const declareOutputs = Object.keys(outputs)
         .map(key => `DECLARE @${key} ${outputs[key]};`)
         .join('\n');
@@ -55,12 +46,7 @@ class StoredProcedureHelper {
     }
   }
 
-  /**
-   * Gọi stored procedure trả về result set
-   * @param {string} procedureName - Tên stored procedure
-   * @param {Object} inputs - Object chứa input parameters
-   * @returns {Promise<Array>} - Array of records
-   */
+// gửi stored procedure trả về result set
   static async executeQuery(procedureName, inputs = {}) {
     try {
       const inputParams = Object.keys(inputs)
@@ -77,20 +63,16 @@ class StoredProcedureHelper {
     }
   }
 
-  /**
-   * Format giá trị cho SQL
-   */
+// format giá trị cho SQL
   static formatValue(value) {
     if (value === null || value === undefined) {
       return 'NULL';
     }
     if (typeof value === 'string') {
-      // Escape single quotes
       const escaped = value.replace(/'/g, "''");
       return `N'${escaped}'`;
     }
     if (value instanceof Date) {
-      // Format date for SQL Server
       const year = value.getFullYear();
       const month = String(value.getMonth() + 1).padStart(2, '0');
       const day = String(value.getDate()).padStart(2, '0');
@@ -102,9 +84,7 @@ class StoredProcedureHelper {
     return value;
   }
 
-  /**
-   * Gán phòng cho lịch học
-   */
+// gán phòng cho lịch học
   static async assignRoomToSchedule(scheduleId, roomId, assignedBy) {
     const outputs = {
       success: 'BIT',
@@ -127,9 +107,7 @@ class StoredProcedureHelper {
     };
   }
 
-  /**
-   * Lấy phòng khả dụng cho lịch học
-   */
+// lấy phòng khả dụng cho lịch học
   static async getAvailableRoomsForSchedule(scheduleId, specificDate = null) {
     const inputs = {
       scheduleId: scheduleId
@@ -142,9 +120,7 @@ class StoredProcedureHelper {
     return await this.executeQuery('sp_GetAvailableRoomsForSchedule', inputs);
   }
 
-  /**
-   * Lấy lịch học theo time slot và ngày
-   */
+// lấy lịch học theo time slot và ngày
   static async getSchedulesByTimeSlotAndDate(timeSlotId, dayOfWeek, specificDate = null) {
     const inputs = {
       timeSlotId: timeSlotId,
@@ -158,9 +134,7 @@ class StoredProcedureHelper {
     return await this.executeQuery('sp_GetSchedulesByTimeSlotAndDate', inputs);
   }
 
-  /**
-   * Validate exception change
-   */
+// validate exception change
   static async validateExceptionChange(data) {
     const outputs = {
       isValid: 'BIT',
@@ -191,9 +165,7 @@ class StoredProcedureHelper {
     };
   }
 
-  /**
-   * Tạo hoặc cập nhật ngoại lệ
-   */
+// tạo hoặc cập nhật ngoại lệ
   static async createOrUpdateException(data) {
     const outputs = {
       success: 'BIT',
@@ -230,9 +202,7 @@ class StoredProcedureHelper {
     };
   }
 
-  /**
-   * Kiểm tra conflict phòng học
-   */
+// kiểm tra conflict phòng học
   static async checkRoomConflict(classRoomId, targetDate, targetTimeSlotId, excludeScheduleRequestId = null, excludeClassScheduleId = null) {
     const outputs = {
       hasConflict: 'BIT',
@@ -259,9 +229,7 @@ class StoredProcedureHelper {
     };
   }
 
-  /**
-   * Kiểm tra conflict giảng viên
-   */
+// kiểm tra conflict giảng viên
   static async checkTeacherConflict(teacherId, targetDate, targetTimeSlotId, excludeScheduleRequestId = null, excludeClassScheduleId = null) {
     const outputs = {
       hasConflict: 'BIT',
@@ -288,9 +256,7 @@ class StoredProcedureHelper {
     };
   }
 
-  /**
-   * Lấy conflicts cho schedule
-   */
+// lấy conflicts cho schedule
   static async getConflictsForSchedule(targetDate, targetTimeSlotId, classRoomId = null, teacherId = null) {
     const inputs = {
       targetDate: targetDate,

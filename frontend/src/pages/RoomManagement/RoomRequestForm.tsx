@@ -181,7 +181,6 @@ const RoomRequestForm = () => {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<ScheduleRequest | null>(null);
 
-  // API data state
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [requestTypes, setRequestTypes] = useState<RequestType[]>([]);
@@ -194,7 +193,7 @@ const RoomRequestForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State cho phòng available
+  // State cho phòng trống
   const [availableRoomsForException, setAvailableRoomsForException] = useState<any[]>([]);
   const [occupiedRoomIds, setOccupiedRoomIds] = useState<number[]>([]);
   const [checkingRooms, setCheckingRooms] = useState(false);
@@ -215,7 +214,6 @@ const RoomRequestForm = () => {
 
   const socketInitialized = useRef(false);
 
-  // Setup socket listeners
   useEffect(() => {
     if (!socketInitialized.current && user?.id) {
       const socket = getSocket() || initSocket(user.id);
@@ -223,13 +221,11 @@ const RoomRequestForm = () => {
 
       const handleScheduleExceptionUpdated = (data: any) => {
         console.log('[RoomRequestForm] Nhận event schedule-exception-updated:', data);
-        // Reload danh sách yêu cầu của giảng viên
         loadMyRequests();
       };
 
       const handleScheduleUpdated = (data: any) => {
         console.log('[RoomRequestForm] Nhận event schedule-updated:', data);
-        // Reload danh sách lịch học
         loadAvailableSchedules();
       };
 
@@ -244,10 +240,8 @@ const RoomRequestForm = () => {
     }
   }, [user?.id]);
 
-  // Load data on component mount
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -262,7 +256,6 @@ const RoomRequestForm = () => {
 
       if (timeSlotsRes.success) setTimeSlots(timeSlotsRes.data || []);
       if (teachersRes.success) {
-        // Map dữ liệu để đảm bảo có name và fullName
         const mappedTeachers = (teachersRes.data || []).map((teacher: any) => ({
           id: teacher.id,
           name: teacher.name || teacher.fullName || '',
@@ -282,11 +275,8 @@ const RoomRequestForm = () => {
       } else {
         setClasses([]);
       }
-
-      // Load lịch học của giảng viên
-      await loadAvailableSchedules();
+     await loadAvailableSchedules();
       
-      // Load yêu cầu của giảng viên
       await loadMyRequests();
     } catch (error) {
       console.error('Error loading data:', error);
@@ -302,7 +292,6 @@ const RoomRequestForm = () => {
     try {
       const response = await roomService.getTeacherSchedules(user.id);
       if (response.success) {
-        // Transform data to match AvailableSchedule interface
         const schedules = response.data.map((schedule: any) => ({
           id: schedule.id,
           classId: schedule.class.id,
@@ -362,16 +351,13 @@ const RoomRequestForm = () => {
     return days[dayOfWeek] || '';
   };
 
-  // Kiểm tra phòng available - CHỈ cho "moved" (đổi lịch), không check cho roomChange, exam và finalExam (admin sẽ chọn)
   useEffect(() => {
     const checkAvailableRooms = async () => {
       const isMoved = formData.exceptionType === 'moved';
       
-      // CHỈ check phòng cho "moved" (đổi lịch), vì roomChange, exam và finalExam admin sẽ chọn phòng
       if (isMoved && formData.newDate && formData.newTimeSlotId) {
         setCheckingRooms(true);
         try {
-          // Lấy departmentId từ lớp học đã chọn
           let departmentId: number | undefined = undefined;
           
           if (formData.classScheduleId) {
@@ -389,14 +375,13 @@ const RoomRequestForm = () => {
             return;
           }
           
-          // Gọi API với departmentId để lọc phòng theo khoa
           const response = await roomService.getAvailableRoomsForException(
             formData.newTimeSlotId,
             dayOfWeek,
             formattedDate,
-            undefined, // capacity
-            undefined, // classRoomTypeId
-            departmentId ? String(departmentId) : undefined // departmentId
+            undefined, 
+            undefined,
+            departmentId ? String(departmentId) : undefined 
           );
 
           if (response.success && response.data) {
@@ -425,7 +410,6 @@ const RoomRequestForm = () => {
           setCheckingRooms(false);
         }
       } else {
-        // Không check phòng cho exam và finalExam
         setAvailableRoomsForException([]);
         setOccupiedRoomIds([]);
       }
@@ -464,14 +448,11 @@ const RoomRequestForm = () => {
     return filtered;
   }, [myRequests, selectedExceptionType, selectedDate]);
 
-  // Filter teachers based on exception type and selected schedule/class
   const filteredTeachers = useMemo(() => {
-    // Nếu là thi cuối kỳ: lấy tất cả giáo viên
     if (formData.exceptionType === 'finalExam') {
       return teachers;
     }
     
-    // Nếu là đổi giáo viên: chỉ lấy giáo viên của khoa tương ứng với lớp
     if (formData.exceptionType === 'substitute' && formData.classScheduleId) {
       const selectedSchedule = availableSchedules.find(s => s.id === formData.classScheduleId);
       if (selectedSchedule?.departmentId) {
@@ -479,7 +460,6 @@ const RoomRequestForm = () => {
       }
     }
     
-    // Mặc định: lấy tất cả
     return teachers;
   }, [teachers, formData.exceptionType, formData.classScheduleId, availableSchedules]);
 
@@ -573,7 +553,6 @@ const RoomRequestForm = () => {
         toast.error('Vui lòng chọn tiết thi');
         return;
       }
-      // KHÔNG yêu cầu newClassRoomId - admin sẽ chọn phòng khi duyệt
     } else {
       if (!formData.classScheduleId || formData.classScheduleId === 0) {
         toast.error('Vui lòng chọn lịch học');
@@ -590,30 +569,22 @@ const RoomRequestForm = () => {
       return;
     }
 
-    // ⭐ Giảng viên không cần chọn phòng cho "moved" (đổi lịch) và "exam" (thi giữa kỳ) - admin sẽ chọn khi duyệt
-    // Chỉ yêu cầu ngày và tiết cho "moved" và "exam"
     if (formData.exceptionType === 'moved') {
       if (!formData.newDate || !formData.newTimeSlotId) {
         toast.error('Vui lòng chọn đầy đủ: ngày chuyển đến và tiết chuyển đến');
         return;
       }
-      // Không yêu cầu newClassRoomId - admin sẽ chọn phòng khi duyệt
     } else if (formData.exceptionType === 'exam') {
-      // Thi giữa kỳ: Chỉ cần ngày và tiết, không cần phòng (admin sẽ chọn)
       if (!formData.newDate || !formData.newTimeSlotId) {
         toast.error('Vui lòng chọn ngày và tiết thi');
         return;
       }
     } else if (formData.exceptionType === 'roomChange') {
-      // Đổi phòng: Chỉ cần ngày ngoại lệ, không cần phòng mới (admin sẽ chọn)
       if (!formData.exceptionDate) {
         toast.error('Vui lòng chọn ngày ngoại lệ');
         return;
       }
     }
-
-    // Không yêu cầu giảng viên thay thế cho "substitute" (đổi giáo viên) - admin sẽ sắp xếp
-    // Không yêu cầu cho "finalExam" (admin sẽ sắp xếp)
 
     try {
       const requestTypeId = getRequestTypeIdFromExceptionType(formData.exceptionType || 'cancelled');
@@ -626,54 +597,44 @@ const RoomRequestForm = () => {
         exceptionDate: exceptionDate
       };
       
-      // ⭐ QUAN TRỌNG: Map newDate -> movedToDate cho đổi lịch (moved) và thi giữa kỳ (exam)
       if (formData.exceptionType === 'moved' || formData.exceptionType === 'exam') {
         if (newDate) {
           dataToSend.movedToDate = newDate;
-          // Tính movedToDayOfWeek từ newDate
           const dateObj = parseDateFromAPI(newDate) || new Date(newDate);
           const dayOfWeek = dateObj.getDay();
           dataToSend.movedToDayOfWeek = dayOfWeek === 0 ? 1 : dayOfWeek + 1; // 1=CN, 2=T2, ..., 7=T7
         }
-        // Map newTimeSlotId -> movedToTimeSlotId cho đổi lịch và thi giữa kỳ
         if (formData.newTimeSlotId) {
           dataToSend.movedToTimeSlotId = formData.newTimeSlotId;
         }
-        // Không gửi newDate và newTimeSlotId nữa, đã map sang movedToDate và movedToTimeSlotId
         dataToSend.newDate = undefined;
         dataToSend.newTimeSlotId = undefined;
       } else if (newDate) {
-        // Các loại khác vẫn dùng newDate
         dataToSend.newDate = newDate;
       }
       
       if (isFinalExam) {
         dataToSend.classScheduleId = undefined;
         dataToSend.classId = formData.classId;
-        // Không gửi newClassRoomId và substituteTeacherId - admin sẽ sắp xếp
         dataToSend.newClassRoomId = undefined;
         dataToSend.substituteTeacherId = undefined;
       } else {
         dataToSend.classId = undefined;
       }
       
-      // Với roomChange và exam: không gửi newClassRoomId - admin sẽ sắp xếp
       if (formData.exceptionType === 'roomChange' || formData.exceptionType === 'exam') {
         dataToSend.newClassRoomId = undefined;
       }
       
-      // Với finalExam và substitute: không gửi substituteTeacherId - admin sẽ sắp xếp
       if (formData.exceptionType === 'finalExam' || formData.exceptionType === 'substitute') {
         dataToSend.substituteTeacherId = undefined;
       }
-      
-      // ⭐ QUAN TRỌNG: Không gửi movedToClassRoomId cho giảng viên - admin sẽ chọn khi duyệt
+
       if (formData.exceptionType === 'moved' || formData.exceptionType === 'exam') {
         dataToSend.movedToClassRoomId = undefined;
       }
 
       if (editingRequest) {
-        // Không cho phép edit request đã tạo (chỉ admin mới edit được)
         toast.warning('Không thể chỉnh sửa yêu cầu đã gửi. Vui lòng liên hệ admin.');
         return;
       } else {
@@ -695,7 +656,6 @@ const RoomRequestForm = () => {
   const handleDeleteRequest = async (id: number) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa yêu cầu này?')) {
       try {
-        // Chỉ cho phép xóa request đang pending
         const request = myRequests.find(r => r.id === id);
         if (request && request.requestStatusId !== 1) {
           toast.warning('Chỉ có thể xóa yêu cầu đang chờ duyệt');

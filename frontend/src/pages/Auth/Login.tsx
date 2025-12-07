@@ -34,17 +34,14 @@ const Login: React.FC = () => {
   const [showForgotPassword, setShowForgotPassword] = useState<boolean>(false);
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState<boolean>(false);
   
-  // State để track lỗi validation
   const [loginErrors, setLoginErrors] = useState<{
     username?: string;
     password?: string;
   }>({});
   
-  // Refs để focus vào trường bị lỗi
   const usernameRef = useRef<any>(null);
   const passwordRef = useRef<any>(null);
 
-  // Rive animations - fallback to simple divs if animations fail to load
   const { RiveComponent: LoginAnimation, rive: loginRive } = useRive({
     src: '/animations/login-animation.riv',
     stateMachines: 'LoginFlow',
@@ -64,7 +61,6 @@ const Login: React.FC = () => {
     } else if (loginData.username.startsWith('20') || loginData.username.startsWith('ST')) {
       setSelectedRole('student');
     } else {
-      // Mặc định là student nếu không nhận diện được
       setSelectedRole('student');
     }
   }, [loginData.username]);
@@ -76,7 +72,6 @@ const Login: React.FC = () => {
         if (input) {
           input.style.color = '#ffffff';
           input.style.webkitTextFillColor = '#ffffff';
-          // Prevent zoom on mobile when focusing
           if (isMobile) {
             input.style.fontSize = '16px';
           }
@@ -84,7 +79,6 @@ const Login: React.FC = () => {
       });
     };
 
-    // Prevent zoom on mobile when input is focused
     const preventZoom = () => {
       const viewport = document.querySelector('meta[name="viewport"]') as HTMLMetaElement;
       if (viewport && isMobile) {
@@ -105,7 +99,6 @@ const Login: React.FC = () => {
     };
 
     const handleFocusOut = () => {
-      // Optionally restore zoom capability after blur
     };
   
     styleInputs();
@@ -121,7 +114,6 @@ const Login: React.FC = () => {
       observer.observe(container, { childList: true, subtree: true });
     });
 
-    // Add event listeners to prevent zoom
     document.addEventListener('focusin', handleFocusIn);
     document.addEventListener('focusout', handleFocusOut);
     
@@ -137,7 +129,6 @@ const Login: React.FC = () => {
   const handleLogin = async (e?: React.FormEvent, passwordValue?: string): Promise<void> => {
     if (e) e.preventDefault();
     
-    // Reset errors
     setLoginErrors({});
     dispatch(clearErrors());
     
@@ -154,7 +145,6 @@ const Login: React.FC = () => {
       password: currentPassword.trim()
     };
     
-    // Kiểm tra dữ liệu nhập và focus vào trường bị lỗi
     if (!updatedLoginData.username) {
       setLoginErrors({ username: 'Vui lòng nhập tên đăng nhập' });
       setTimeout(() => {
@@ -181,7 +171,6 @@ const Login: React.FC = () => {
         password: updatedLoginData.password 
       })).unwrap();
       
-      // Trigger success animation
       if (loginRive) {
         loginRive.play('Success');
       }
@@ -192,12 +181,10 @@ const Login: React.FC = () => {
       let errorMessage = 'Đăng nhập thất bại';
       let focusField: 'username' | 'password' | null = null;
       
-      // Trigger error animation
       if (loginRive) {
         loginRive.play('Error');
       }
       
-      // Xử lý lỗi từ Redux
       if (error && typeof error === 'string') {
         if (error.includes('không chính xác')) {
           errorMessage = 'Mật khẩu không chính xác';
@@ -218,7 +205,6 @@ const Login: React.FC = () => {
       
       toast.error(errorMessage);
       
-      // Focus vào trường bị lỗi
       if (focusField === 'username') {
         setTimeout(() => {
           if (usernameRef.current && usernameRef.current.instance) {
@@ -264,7 +250,6 @@ const Login: React.FC = () => {
     }
   };
 
-  // Responsive values
   const headerIconSize = isMobile ? '56px' : isTablet ? '70px' : '80px';
   const headerIconFontSize = isMobile ? '22px' : isTablet ? '28px' : '32px';
   const titleFontSize = isMobile ? '18px' : isTablet ? '24px' : '28px';
@@ -462,11 +447,9 @@ const Login: React.FC = () => {
                 margin: 0
               }}
             >
-              Đăng nhập để tiếp tục
             </Box>
           </Box>
 
-          {/* Role Selection */}
           <Box
             sx={{ 
               display: 'flex', 

@@ -93,20 +93,15 @@ const AvailableRooms: React.FC = () => {
   useEffect(() => {
     loadMasterData();
   }, []);
-
-  // Setup socket listeners để reload khi có thay đổi exception
   useEffect(() => {
     if (!socketInitialized.current && user?.id) {
       const socket = getSocket() || initSocket(user.id);
       socketInitialized.current = true;
 
       const reloadRooms = async () => {
-        // Chỉ reload nếu đã có kết quả tìm kiếm và có đủ thông tin filter
         if (hasSearched && filters.dayOfWeek && filters.timeSlotId && filters.selectedDate) {
           try {
             setSearching(true);
-
-            // Step 1: Get rooms filtered by department and type
             let rooms: any[] = [];
             
             if (filters.departmentId || filters.classRoomTypeId) {
@@ -125,13 +120,11 @@ const AvailableRooms: React.FC = () => {
               }
             }
 
-            // Step 2: Filter by minimum capacity
             if (filters.minCapacity) {
               const minCap = parseInt(filters.minCapacity);
               rooms = rooms.filter(room => room.capacity >= minCap);
             }
 
-            // Step 3: Get schedule data với exception info
             const availableRoomsResponse = await roomService.getAvailableRoomsForException(
               parseInt(filters.timeSlotId),
               parseInt(filters.dayOfWeek),
@@ -188,7 +181,6 @@ const AvailableRooms: React.FC = () => {
               });
             }
 
-            // Step 4: Add metadata to all rooms
             const selectedTimeSlot = timeSlots.find(s => s.id.toString() === filters.timeSlotId);
             
             const roomStatusMap = new Map();
@@ -304,16 +296,12 @@ const AvailableRooms: React.FC = () => {
   const handleSearch = async () => {
     try {
       setSearching(true);
-      setHasSearched(true);
-
-      // Validate: Must have both day and time slot
+      setHasSearched(true); 
       if (!filters.dayOfWeek || !filters.timeSlotId) {
         toast.warning('Vui lòng chọn Thứ và Tiết học để kiểm tra tình trạng phòng');
         setSearching(false);
         return;
       }
-
-      // Step 1: Get rooms filtered by department and type
       let rooms: any[] = [];
       
       if (filters.departmentId || filters.classRoomTypeId) {
@@ -326,27 +314,22 @@ const AvailableRooms: React.FC = () => {
           rooms = roomsResponse.data;
         }
       } else {
-        // Get all rooms if no department/type filter
         const allRoomsResponse = await roomService.getAllRooms();
         if (allRoomsResponse.success) {
           rooms = allRoomsResponse.data;
         }
       }
-
-      // Step 2: Filter by minimum capacity
       if (filters.minCapacity) {
         const minCap = parseInt(filters.minCapacity);
         rooms = rooms.filter(room => room.capacity >= minCap);
       }
 
-      // Step 3: Get schedule data với exception info - Sử dụng API mới
       if (!filters.selectedDate) {
         toast.warning('Vui lòng chọn ngày cụ thể để kiểm tra tình trạng phòng');
         setSearching(false);
         return;
       }
 
-      // Sử dụng API getAvailableRoomsForException để lấy thông tin đầy đủ
       const availableRoomsResponse = await roomService.getAvailableRoomsForException(
         parseInt(filters.timeSlotId),
         parseInt(filters.dayOfWeek),
@@ -365,14 +348,12 @@ const AvailableRooms: React.FC = () => {
       if (availableRoomsResponse.success) {
         const data = availableRoomsResponse.data;
         
-        // Kết hợp tất cả rooms (normal + freed + occupied)
         allRoomsWithStatus = [
           ...(data.normalRooms || []),
           ...(data.freedRooms || []),
           ...(data.occupiedRooms || [])
         ];
 
-        // Lấy thông tin schedule để hiển thị
         const schedulesResponse = await roomService.getSchedulesByTimeSlotAndDate(
           parseInt(filters.timeSlotId),
           parseInt(filters.dayOfWeek),
@@ -383,11 +364,9 @@ const AvailableRooms: React.FC = () => {
           scheduleData = schedulesResponse.data;
         }
 
-        // Xử lý occupied rooms (bao gồm cả moved exceptions)
         allRoomsWithStatus.forEach((roomWithStatus: any) => {
           if (roomWithStatus.status === 'occupied') {
             occupiedRoomIds.push(roomWithStatus.id.toString());
-            // Nếu có moved exception, lưu thông tin
             if (roomWithStatus.isOccupiedByMovedException) {
               movedToRoomsInfo.push({
                 roomId: roomWithStatus.id,
@@ -398,7 +377,6 @@ const AvailableRooms: React.FC = () => {
               });
             }
           }
-          // Nếu có freed exception, lưu thông tin
           if (roomWithStatus.isFreedByException && roomWithStatus.exceptionInfo) {
             freedRoomsInfo.push({
               roomId: roomWithStatus.id,
@@ -407,19 +385,16 @@ const AvailableRooms: React.FC = () => {
           }
         });
 
-        // Log các phòng bị giải phóng do ngoại lệ
         if (freedRoomsInfo.length > 0) {
           toast.info(
-            `🎉 Phát hiện ${freedRoomsInfo.length} phòng trống do ngoại lệ lịch học (nghỉ/thi/dời lịch)`,
+            ` Phát hiện ${freedRoomsInfo.length} phòng trống do ngoại lệ lịch học`,
             { autoClose: 5000 }
           );
         }
       }
 
-      // Step 4: Add metadata to all rooms
       const selectedTimeSlot = timeSlots.find(s => s.id.toString() === filters.timeSlotId);
       
-      // Tạo map để tra cứu nhanh từ allRoomsWithStatus
       const roomStatusMap = new Map();
       allRoomsWithStatus.forEach((roomWithStatus: any) => {
         roomStatusMap.set(roomWithStatus.id.toString(), roomWithStatus);
@@ -434,23 +409,17 @@ const AvailableRooms: React.FC = () => {
           s.classRoomId?.toString() === roomIdStr && !s.hasException
         );
         
-        // Kiểm tra xem phòng này có đang được đổi lịch đến không (QUAN TRỌNG)
         const movedToInfo = movedToRoomsInfo.find((m: any) => m.roomId.toString() === roomIdStr);
         
-        // Kiểm tra từ roomStatus trực tiếp (backend đã đánh dấu)
         const isOccupiedByMovedException = roomStatus?.isOccupiedByMovedException || !!movedToInfo;
         
-        // Kiểm tra xem phòng này có phải freed room không
         const freedInfo = freedRoomsInfo.find((f: any) => f.roomId.toString() === roomIdStr);
         
-        // Ưu tiên: Nếu có moved exception → occupied, ngược lại nếu có freed → available
         const finalOccupancyStatus = (isOccupiedByMovedException || isOccupied) ? 'Đã có lớp' : 'Còn trống';
-        const isFreedByException = !!freedInfo && !isOccupiedByMovedException; // Chỉ freed nếu không bị occupied bởi moved
+        const isFreedByException = !!freedInfo && !isOccupiedByMovedException;
         
-        // Lấy thông tin lớp từ moved exception nếu có
         let movedClassName = null;
         if (isOccupiedByMovedException) {
-          // Tìm trong scheduleData xem có exception moved đến phòng này không
           const movedSchedule = scheduleData.find((s: any) => 
             (s.movedToClassRoomId?.toString() === roomIdStr || s.newClassRoomId?.toString() === roomIdStr) &&
             (s.exceptionType === 'moved' || s.hasException)
@@ -471,10 +440,8 @@ const AvailableRooms: React.FC = () => {
           scheduleInfo: scheduleInfo || null,
           className: scheduleInfo?.class?.className || movedClassName || null,
           teacherName: scheduleInfo?.teacher?.user?.fullName || null,
-          // Thêm thông tin về ngoại lệ
           isFreedByException,
           exceptionInfo: freedInfo && !isOccupiedByMovedException ? freedInfo : null,
-          // Thêm thông tin về moved exception (QUAN TRỌNG)
           isOccupiedByMovedException,
           movedToExceptionInfo: movedToInfo || (isOccupiedByMovedException ? { className: movedClassName || 'Đổi lịch' } : null)
         };
@@ -668,7 +635,6 @@ const AvailableRooms: React.FC = () => {
         const isFreed = row.isFreedByException;
         const isOccupiedByMoved = row.isOccupiedByMovedException;
         
-        // Nếu phòng bị occupied bởi moved exception
         if (isOccupiedByMoved) {
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
@@ -680,7 +646,7 @@ const AvailableRooms: React.FC = () => {
                 sx={{ fontWeight: 'medium' }}
               />
               <Chip
-                label={`🚫 ${row.movedToExceptionInfo?.className || 'Đổi lịch'}`}
+                label={`${row.movedToExceptionInfo?.className || 'Đổi lịch'}`}
                 size="small"
                 color="warning"
                 variant="outlined"
@@ -690,7 +656,6 @@ const AvailableRooms: React.FC = () => {
           );
         }
         
-        // Nếu phòng bị freed do exception
         if (isFreed) {
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
@@ -797,7 +762,6 @@ const AvailableRooms: React.FC = () => {
           </Typography>
 
           <Grid container spacing={{ xs: 1.5, sm: 2 }}>
-            {/* Row 1: Department and Room Type (Mobile: 2 columns, Desktop: same) */}
             <Grid size={{ xs: 6, md: 6, lg: 4 }}>
               <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                 <InputLabel shrink sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, whiteSpace: 'normal', lineHeight: 1.2 }}>Khoa</InputLabel>
@@ -854,7 +818,6 @@ const AvailableRooms: React.FC = () => {
               </FormControl>
             </Grid>
 
-            {/* Row 2: Date and Minimum Capacity (Mobile: 2 columns, Desktop: same) */}
             <Grid size={{ xs: 6, md: 6, lg: 4 }}>
               <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="vi">
                 <DatePicker
@@ -930,7 +893,6 @@ const AvailableRooms: React.FC = () => {
               />
             </Grid>
 
-            {/* Row 3: Day of Week and Time Slot (Mobile: 2 columns, Desktop: same) */}
             <Grid size={{ xs: 6, md: 6, lg: 4 }}>
               {filters.selectedDate ? (
                 <TextField
@@ -1079,7 +1041,7 @@ const AvailableRooms: React.FC = () => {
               </>
             ) : (
               <>
-                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Ngày/Thứ</strong> và <strong>Tiết học</strong> để xem tình trạng phòng
+                <strong>Lưu ý:</strong> Vui lòng chọn <strong>Ngày</strong> và <strong>Tiết học</strong> để xem tình trạng phòng
               </>
             )}
           </Alert>

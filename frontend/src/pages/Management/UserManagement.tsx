@@ -1,58 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  Box,
-  Typography,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Switch,
-  FormControlLabel,
-  CircularProgress,
-  Alert,
-  Tooltip,
-  Paper,
-  Stack,
-  InputAdornment,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  GridColDef,
-  GridFilterModel,
-  GridSortModel,
-  GridToolbar,
-  GridActionsCellItem,
-  GridRowParams,
-  useGridApiRef
-} from '@mui/x-data-grid';
+import { Box, Typography, Button, Card, CardContent, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Select, MenuItem, Switch, FormControlLabel, CircularProgress, Alert, Tooltip, Paper, Stack, InputAdornment, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { GridColDef, GridFilterModel, GridSortModel, GridActionsCellItem, GridRowParams, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
-import {
-  Add as AddIcon,
-  Edit as EditIcon,
-  Email as EmailIcon,
-  Refresh as RefreshIcon,
-  Person as PersonIcon,
-  School as SchoolIcon,
-  PersonAdd as PersonAddIcon,
-  TrendingUp as TrendingUpIcon,
-  FileDownload as FileDownloadIcon,
-  Search as SearchIcon,
-  Clear as ClearIcon,
-} from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Email as EmailIcon, Refresh as RefreshIcon, Person as PersonIcon, School as SchoolIcon, PersonAdd as PersonAddIcon, TrendingUp as TrendingUpIcon, FileDownload as FileDownloadIcon, Search as SearchIcon, Clear as ClearIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { User } from '../../types';
 import { fetchUsersThunk, updateUserThunk } from '../../redux/slices/userSlice';
@@ -1057,7 +1009,7 @@ const UserManagement = () => {
             onSortModelChange={setSortModel}
             loading={usersLoading || isFiltering}
             slots={{
-              toolbar: isMobile ? undefined : GridToolbar,
+              toolbar: isMobile ? undefined : undefined,
             }}
             slotProps={{
               toolbar: {

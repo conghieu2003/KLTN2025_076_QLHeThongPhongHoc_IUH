@@ -5,7 +5,7 @@ import { Room } from '../../types';
 import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Container, Chip, Paper, Grid, useTheme, useMediaQuery } from '@mui/material';
 import { GridColDef, GridToolbar, useGridApiRef } from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
-import { Refresh as RefreshIcon, MeetingRoom as RoomIcon, School as TheoryIcon, Science as LabIcon, Groups as SeminarIcon, Computer as OnlineIcon, Business as PracticeIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, MeetingRoom as RoomIcon, School as TheoryIcon, Science as LabIcon, Computer as OnlineIcon } from '@mui/icons-material';
 
 interface ExtendedRoom extends Room {
   location?: string;
@@ -32,80 +32,76 @@ const RoomList = () => {
   };
 
   const getTypeText = (type: string) => {
-    switch (type) {
-      case 'theory': return 'Lý thuyết';
-      case 'lecture': return 'Lý thuyết'; 
-      case 'lab': return 'Thực hành';
+    if (!type) return 'Chưa xác định';
+    const typeLower = type.toLowerCase();
+    switch (typeLower) {
+      case 'lý thuyết': return 'Lý thuyết';
+      case 'thực hành': return 'Thực hành';
+      case 'online': return 'Trực tuyến';
+      case 'theory':
+      case 'lecture': return 'Lý thuyết';
+      case 'lab':
       case 'practice': return 'Thực hành';
       case 'seminar': return 'Hội thảo';
-      case 'online': return 'Trực tuyến';
       default: return type;
     }
   };
 
   const getTypeColor = (type: string) => {
-    switch (type) {
+    if (!type) return 'default';
+    const typeLower = type.toLowerCase();
+    switch (typeLower) {
+      case 'lý thuyết':
       case 'theory':
       case 'lecture': return 'primary';
-      case 'lab': return 'secondary';
-      case 'practice': return 'info';
-      case 'seminar': return 'warning';
+      case 'thực hành':
+      case 'lab':
+      case 'practice': return 'secondary';
       case 'online': return 'success';
       default: return 'default';
     }
   };
 
   const getTypeIcon = (type: string) => {
-    switch (type) {
+    if (!type) return <RoomIcon />;
+    const typeLower = type.toLowerCase();
+    switch (typeLower) {
+      case 'lý thuyết':
       case 'theory':
       case 'lecture': return <TheoryIcon />;
-      case 'lab': return <LabIcon />;
-      case 'practice': return <PracticeIcon />;
-      case 'seminar': return <SeminarIcon />;
+      case 'thực hành':
+      case 'lab':
+      case 'practice': return <LabIcon />;
       case 'online': return <OnlineIcon />;
       default: return <RoomIcon />;
     }
   };
 
-  // Tính thống kê phòng theo loại
   const roomStats = useMemo(() => {
     const stats = {
       total: rooms.length,
       theory: 0,
-      lab: 0,
       practice: 0,
-      seminar: 0,
       online: 0,
       other: 0
     };
 
     rooms.forEach(room => {
-      switch (room.type) {
-        case 'theory':
-        case 'lecture':
-          stats.theory++;
-          break;
-        case 'lab':
-          stats.lab++;
-          break;
-        case 'practice':
-          stats.practice++;
-          break;
-        case 'seminar':
-          stats.seminar++;
-          break;
-        case 'online':
-          stats.online++;
-          break;
-        default:
-          stats.other++;
+      const roomType = room.type?.toLowerCase() || '';
+      if (roomType === 'lý thuyết') {
+        stats.theory++;
+      } else if (roomType === 'thực hành') {
+        stats.practice++;
+      } else if (roomType === 'online') {
+        stats.online++;
+      } else {
+        stats.other++;
       }
     });
 
     return stats;
   }, [rooms]);
 
-  // DataGrid columns configuration với flex layout
   const columns: GridColDef[] = [
     {
       field: 'roomNumber',
@@ -498,45 +494,7 @@ const RoomList = () => {
                       lineHeight: 1.1
                     }}
                   >
-                    {roomStats.lab + roomStats.practice}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 4, sm: 4, md: 2 }}>
-          <Card sx={{ height: { xs: 55, sm: 65, md: 75 } }}>
-            <CardContent sx={{ p: { xs: 0.75, sm: 0.875, md: 1 }, '&:last-child': { pb: { xs: 0.75, sm: 0.875, md: 1 } } }}>
-              <Grid container direction="column" alignItems="center" justifyContent="center" sx={{ height: '100%', textAlign: 'center' }} spacing={0.25}>
-                <Grid size={{ xs: 12 }}>
-                  <SeminarIcon sx={{ fontSize: { xs: 14, sm: 16, md: 18 }, color: 'warning.main' }} />
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Typography 
-                    color="textSecondary" 
-                    variant="body2" 
-                    sx={{ 
-                      fontSize: { xs: '0.5rem', sm: '0.55rem', md: '0.6rem' },
-                      lineHeight: 1.1
-                    }}
-                  >
-                    Hội thảo
-                  </Typography>
-                </Grid>
-                <Grid size={{ xs: 12 }}>
-                  <Typography 
-                    variant="h6" 
-                    component="div" 
-                    color="warning.main" 
-                    sx={{ 
-                      fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }, 
-                      fontWeight: 'bold',
-                      lineHeight: 1.1
-                    }}
-                  >
-                    {roomStats.seminar}
+                    {roomStats.practice}
                   </Typography>
                 </Grid>
               </Grid>

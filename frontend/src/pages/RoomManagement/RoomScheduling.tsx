@@ -42,29 +42,23 @@ const RoomScheduling: React.FC = () => {
     }
   };
   const handleAutoAssign = async (row: any) => {
-    if (isAutoAssigning) return; // Tránh gọi nhiều lần
+    if (isAutoAssigning) return; 
     
     setIsAutoAssigning(true);
     try {
-      // Lấy scheduleId từ row
       const scheduleId = row.scheduleId || row.id;
       if (!scheduleId) {
         toast.error('Không tìm thấy thông tin lịch học');
         setIsAutoAssigning(false);
         return;
       }
-
-      // Kiểm tra trạng thái - chỉ gán cho lịch chờ phân phòng
       if (row.status !== 1) {
         toast.warning('Lịch học này không ở trạng thái chờ phân phòng');
         setIsAutoAssigning(false);
         return;
       }
-
-      // Lấy danh sách phòng trống trong khung giờ đó
       const roomsResponse = await scheduleManagementService.getAvailableRoomsForSchedule(scheduleId.toString());
       
-      // Kiểm tra response structure - có thể là array trực tiếp hoặc object với data property
       let availableRooms: any[] = [];
       if (Array.isArray(roomsResponse)) {
         availableRooms = roomsResponse;
@@ -74,8 +68,6 @@ const RoomScheduling: React.FC = () => {
         availableRooms = roomsResponse.data;
       }
       
-      // Backend đã filter conflict rồi, nhưng vẫn filter lại để chắc chắn
-      // Lọc chỉ lấy phòng trống (isAvailable !== false)
       const trulyAvailableRooms = availableRooms.filter((room: any) => {
         return room.isAvailable !== false;
       });
@@ -85,14 +77,10 @@ const RoomScheduling: React.FC = () => {
         setIsAutoAssigning(false);
         return;
       }
-
-      // Ưu tiên phòng cùng khoa (isSameDepartment === true)
       const sameDepartmentRooms = trulyAvailableRooms.filter((room: any) => room.isSameDepartment === true);
       const selectedRoom = sameDepartmentRooms.length > 0 
-        ? sameDepartmentRooms[0]  // Ưu tiên phòng cùng khoa
-        : trulyAvailableRooms[0]; // Nếu không có, chọn phòng chung
-
-      // Gán phòng cho lịch học
+        ? sameDepartmentRooms[0]  
+        : trulyAvailableRooms[0]; 
       await scheduleManagementService.assignRoomToSchedule(
         scheduleId.toString(), 
         selectedRoom.id.toString()
@@ -100,7 +88,6 @@ const RoomScheduling: React.FC = () => {
       
       toast.success('Sắp xếp phòng thành công');
       
-      // Làm mới dữ liệu sau khi gán
       dispatch(loadAllData());
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Lỗi tự động gán phòng';
@@ -141,7 +128,6 @@ const RoomScheduling: React.FC = () => {
     }
   };
 
-  //lọc lớp học dựa trên các bộ lọc đã chọn
   const filteredClasses = useMemo(() => {
     return classes.filter(cls => {
       const department = departments.find(d => d.name === cls.departmentName);
@@ -162,7 +148,6 @@ const RoomScheduling: React.FC = () => {
     });
   }, [classes, departments, teachers, selectedDepartment, selectedClass, selectedTeacher, selectedStatus]);
 
-  //lọc lớp học dựa trên khoa đã chọn
   const filteredClassesForDropdown = useMemo(() => {
     if (!selectedDepartment) return classes;
     
@@ -172,7 +157,6 @@ const RoomScheduling: React.FC = () => {
     return classes.filter(cls => cls.departmentName === selectedDept.name);
   }, [classes, departments, selectedDepartment]);
 
-  //lọc giảng viên dựa trên khoa đã chọn
   const filteredTeachersForDropdown = useMemo(() => {
     if (!selectedDepartment) return teachers;
     
@@ -181,7 +165,6 @@ const RoomScheduling: React.FC = () => {
     );
   }, [teachers, selectedDepartment]);
 
-  //chuyển đổi lịch học thành dữ liệu cho DataGrid
   const scheduleRows = useMemo(() => {
     const rows: any[] = [];
     
@@ -942,8 +925,7 @@ const RoomScheduling: React.FC = () => {
                   value={selectedDepartment}
                   label="Khoa"
                   onChange={(e) => {
-                    dispatch(setSelectedDepartment(e.target.value));
-                    // Reset các filter khác khi thay đổi khoa
+                    dispatch(setSelectedDepartment(e.target.value));  
                     dispatch(setSelectedClass(''));
                     dispatch(setSelectedTeacher(''));
                   }}

@@ -1099,7 +1099,7 @@ const WeeklySchedule = memo(() => {
               fontSize: { xs: '0.75rem', sm: '0.875rem', md: '1rem' }
             }}
           >
-            Trạng thái ngoại lệ:
+            Trạng thái phòng học:
           </Typography>
           <Grid container spacing={{ xs: 1, sm: 1.5, md: 2 }}>
             <Grid size={{ xs: 6, sm: 4, md: 3 }}>

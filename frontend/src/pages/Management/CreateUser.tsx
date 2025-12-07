@@ -4,17 +4,7 @@ import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
 import { fetchFormInit, fetchMajors, createUserThunk } from '../../redux/slices/userSlice';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  TextField, 
-  MenuItem, 
-  Grid, 
-  useTheme, 
-  useMediaQuery,
-  Paper 
-} from '@mui/material';
+import { Box, Typography, Button, TextField, MenuItem, Grid, useTheme, useMediaQuery, Paper } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -76,7 +66,6 @@ const CreateUser = () => {
         dispatch(fetchFormInit(form.role));
     }, [dispatch, form.role]);
 
-    // Khi chọn khoa, tự động load danh sách chuyên ngành theo khoa
     useEffect(() => {
         if (form.departmentId) {
             dispatch(fetchMajors({ departmentId: form.departmentId }));
@@ -84,7 +73,6 @@ const CreateUser = () => {
         } else {
             setForm((p) => ({ ...p, majorId: undefined }));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [form.departmentId]);
 
 	const handleSubmit = async (): Promise<void> => {
@@ -96,14 +84,12 @@ const CreateUser = () => {
         return;
       }
 
-			// Validate email format
 			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 			if (!emailRegex.test(form.email)) {
 				toast.error('Email không đúng định dạng');
         return;
       }
 
-			// Validate phone format (optional but if provided should be valid)
 			if (form.phone && !/^[0-9+\-\s()]+$/.test(form.phone)) {
 				toast.error('Số điện thoại không đúng định dạng');
         return;
@@ -155,7 +141,7 @@ const CreateUser = () => {
           Tạo người dùng
         </Typography>
 				
-        {/* Group: Personal info (top) */}
+        {/* Group: Personal info  */}
 				<Paper sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, mb: { xs: 2, sm: 2.5, md: 3 }, boxShadow: 1 }}>
 					<Typography 
             variant={isMobile ? 'body1' : 'subtitle1'} 
@@ -273,14 +259,14 @@ const CreateUser = () => {
 								}}
 								format="DD/MM/YYYY"
 								disableFuture
-								maxDate={dayjs().subtract(16, 'year')} // Tối thiểu 16 tuổi
-								minDate={dayjs().subtract(100, 'year')} // Tối đa 100 tuổi
+								maxDate={dayjs().subtract(16, 'year')} 
+								minDate={dayjs().subtract(100, 'year')} 
 							/>
 						</Grid>
 					</Grid>
 				</Paper>
 
-				{/* Group: Account & Role (bottom) */}
+				{/* Group: Account & Role ) */}
 				<Paper sx={{ p: { xs: 1.5, sm: 2, md: 2.5 }, mb: { xs: 2, sm: 2.5, md: 3 }, boxShadow: 1 }}>
 					<Typography 
             variant={isMobile ? 'body1' : 'subtitle1'} 

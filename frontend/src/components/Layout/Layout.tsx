@@ -20,12 +20,13 @@ const Layout: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // < 600px
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md')); // >= 960px
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm')); 
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md')); 
   
   const [searchText, setSearchText] = useState<string>('');
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState<boolean>(false);
   const [passwordFormData, setPasswordFormData] = useState({
     oldPassword: '',
@@ -46,7 +47,6 @@ const Layout: React.FC = () => {
   const currentUser: User | null = authService.getCurrentUser();
   const socketInitialized = useRef(false);
 
-  // Xử lý click outside
   useEffect(() => {
     if (!showUserMenu && !(isMobile && sidebarOpen)) {
       return;
@@ -92,20 +92,25 @@ const Layout: React.FC = () => {
     }
   }, [isDesktop, isMobile]);
 
-  // Initialize socket for all authenticated users (admin, teacher, student)
   useEffect(() => {
     if (currentUser?.id && !socketInitialized.current) {
       initSocket(currentUser.id);
       socketInitialized.current = true;
     }
 
-    // Cleanup on unmount or logout
     return () => {
       if (!currentUser) {
         socketInitialized.current = false;
       }
     };
   }, [currentUser?.id, currentUser?.role]);
+
+  const handleNavigationStart = () => {
+    setIsNavigating(true);
+    setTimeout(() => {
+      setIsNavigating(false);
+    }, 500);
+  };
 
   const handleMenuItemClick = (action: string): void => {
     setShowUserMenu(false);
@@ -235,12 +240,11 @@ const Layout: React.FC = () => {
         boxSizing: 'border-box'
       }}
     >
-      {/* Backdrop/Overlay for mobile sidebar */}
       {isMobile && (
         <Box
           sx={{
             position: 'fixed',
-            top: { xs: '56px', sm: '56px' }, // Start below header
+            top: { xs: '56px', sm: '56px' },
             left: 0,
             right: 0,
             bottom: 0,
@@ -253,7 +257,6 @@ const Layout: React.FC = () => {
             willChange: 'opacity'
           }}
           onClick={(e) => {
-            // Don't close if clicking on toggle button
             if (toggleButtonRef.current && toggleButtonRef.current.contains(e.target as Node)) {
               return;
             }
@@ -262,7 +265,6 @@ const Layout: React.FC = () => {
             setSidebarOpen(false);
           }}
           onTouchEnd={(e) => {
-            // Don't close if clicking on toggle button
             if (toggleButtonRef.current && toggleButtonRef.current.contains(e.target as Node)) {
               return;
             }
@@ -273,7 +275,6 @@ const Layout: React.FC = () => {
         />
       )}
 
-      {/* Header - Fixed at top */}
       <Box
         sx={{
           height: { xs: '56px', sm: '56px', md: '50px' },
@@ -298,7 +299,6 @@ const Layout: React.FC = () => {
         }}
       >
         <Grid container spacing={{ xs: 1, sm: 1.5, md: 2.5 }} alignItems="center" sx={{ flex: 1 }}>
-          {/* Hamburger Menu Button for Mobile */}
           {isMobile && (
             <Grid size={{ xs: 'auto' }}>
               <IconButton
@@ -642,6 +642,7 @@ const Layout: React.FC = () => {
               open={true}
               onClose={() => setSidebarOpen(false)}
               isMobile={false}
+              onNavigationStart={handleNavigationStart}
             />
           </Box>
         )}
@@ -653,6 +654,7 @@ const Layout: React.FC = () => {
               open={sidebarOpen}
               onClose={() => setSidebarOpen(false)}
               isMobile={true}
+              onNavigationStart={handleNavigationStart}
             />
           </Box>
         )}
@@ -672,9 +674,35 @@ const Layout: React.FC = () => {
             minHeight: { xs: 'calc(100vh - 56px)', sm: 'calc(100vh - 56px)', md: 'calc(100vh - 50px)' },
             display: 'flex',
             flexDirection: 'column',
-            marginLeft: { xs: 0, sm: 0, md: '250px' }
+            marginLeft: { xs: 0, sm: 0, md: '250px' },
+            position: 'relative'
           }}
         >
+          {/* Loading Overlay */}
+          {isNavigating && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 9999,
+                backdropFilter: 'blur(2px)'
+              }}
+            >
+              <Stack spacing={2} alignItems="center">
+                <CircularProgress size={60} thickness={4} />
+                <Typography variant="body1" color="text.secondary">
+                  Đang tải...
+                </Typography>
+              </Stack>
+            </Box>
+          )}
           <Outlet />
         </Grid>
       </Grid>

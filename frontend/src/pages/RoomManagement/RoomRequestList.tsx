@@ -5,172 +5,11 @@ import { RootState } from '../../redux/store';
 import { toast } from 'react-toastify';
 import { roomService } from '../../services/api';
 import { getSocket, initSocket } from '../../utils/socket';
-import {
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  Button,
-  IconButton,
-  Tooltip,
-  Card,
-  CardContent,
-  Container,
-  Chip,
-  Paper,
-  Stack,
-  Grid,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import {
-  GridColDef,
-  GridToolbar,
-  useGridApiRef
-} from '@mui/x-data-grid';
+import { Typography, Box, CircularProgress, Alert, Button, IconButton, Tooltip, Card, CardContent, Container, Chip, Paper, Stack, Grid, useTheme, useMediaQuery } from '@mui/material';
+import { GridColDef, GridToolbar,useGridApiRef} from '@mui/x-data-grid';
 import StyledDataGrid from '../../components/DataGrid/StyledDataGrid';
-import {
-  Refresh as RefreshIcon,
-  Visibility as ViewIcon,
-  CheckCircle as ApproveIcon,
-  Cancel as RejectIcon,
-  Pending as PendingIcon,
-  Schedule as ScheduleIcon,
-  Person as PersonIcon,
-  Room as RoomIcon,
-  Class as ClassIcon
-} from '@mui/icons-material';
+import {Refresh as RefreshIcon, Visibility as ViewIcon, CheckCircle as ApproveIcon, Cancel as RejectIcon, Pending as PendingIcon, Schedule as ScheduleIcon, Person as PersonIcon, Room as RoomIcon, Class as ClassIcon} from '@mui/icons-material';
 
-// Sample data for room requests - dựa trên table ScheduleRequest
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// const sampleRoomRequests: RoomRequest[] = [
-//   {
-//     id: 1,
-//     requestType: 'schedule_change',
-//     classScheduleId: 1,
-//     requesterId: 1,
-//     requestDate: '2024-01-15',
-//     timeSlotId: 1,
-//     changeType: 'time_change',
-//     oldTimeSlotId: 1,
-//     newTimeSlotId: 2,
-//     reason: 'Yêu cầu đổi từ tiết 1-3 lên tiết 4-6 để tránh giờ cao điểm',
-//     status: 'pending',
-//     createdAt: '2024-01-10T08:30:00Z',
-//     updatedAt: '2024-01-10T08:30:00Z',
-//     // Computed fields for display
-//     teacherName: 'Nguyễn Văn Giáo',
-//     teacherCode: '10000000',
-//     className: 'Lập trình cơ bản',
-//     subjectCode: 'NMLT',
-//     currentRoom: 'LT101 - Phòng lý thuyết 101',
-//     requestedRoom: 'LT101 - Phòng lý thuyết 101',
-//     timeSlot: 'Tiết 1-3 → Tiết 4-6',
-//     dayOfWeek: 'Thứ 3',
-//     priority: 'high'
-//   },
-//   {
-//     id: 2,
-//     requestType: 'room_request',
-//     classRoomId: 3,
-//     requesterId: 2,
-//     requestDate: '2024-01-20',
-//     timeSlotId: 3,
-//     reason: 'Xin phòng thực hành có thiết bị mới hơn cho lớp CSDL',
-//     status: 'approved',
-//     approvedBy: 10,
-//     approvedAt: '2024-01-21T10:00:00Z',
-//     createdAt: '2024-01-12T10:15:00Z',
-//     updatedAt: '2024-01-21T10:00:00Z',
-//     // Computed fields for display
-//     teacherName: 'Trần Thị Dạy',
-//     teacherCode: '10000001',
-//     className: 'Cơ sở dữ liệu',
-//     subjectCode: 'CSDL',
-//     currentRoom: 'TH102 - Phòng thực hành 102',
-//     requestedRoom: 'TH201 - Phòng thực hành 201',
-//     timeSlot: 'Tiết 7-9 (13:00-15:30)',
-//     dayOfWeek: 'Thứ 4',
-//     priority: 'medium'
-//   },
-//   {
-//     id: 3,
-//     requestType: 'schedule_change',
-//     classScheduleId: 3,
-//     requesterId: 3,
-//     requestDate: '2024-01-18',
-//     timeSlotId: 1,
-//     changeType: 'room_change',
-//     oldClassRoomId: 7,
-//     newClassRoomId: 10,
-//     reason: 'Đổi phòng từ LT301 sang LT401 do vấn đề âm thanh',
-//     status: 'rejected',
-//     approvedBy: 10,
-//     approvedAt: '2024-01-19T14:30:00Z',
-//     note: 'Phòng LT401 đã được đặt trước',
-//     createdAt: '2024-01-08T14:20:00Z',
-//     updatedAt: '2024-01-19T14:30:00Z',
-//     // Computed fields for display
-//     teacherName: 'Lê Thị Minh',
-//     teacherCode: '10000002',
-//     className: 'Cấu trúc dữ liệu và giải thuật',
-//     subjectCode: 'CTDL',
-//     currentRoom: 'LT301 - Phòng lý thuyết 301',
-//     requestedRoom: 'LT401 - Phòng lý thuyết 401',
-//     timeSlot: 'Tiết 1-3 (07:00-09:30)',
-//     dayOfWeek: 'Thứ 2',
-//     priority: 'low'
-//   },
-//   {
-//     id: 4,
-//     requestType: 'room_request',
-//     classRoomId: 1,
-//     requesterId: 4,
-//     requestDate: '2024-01-25',
-//     timeSlotId: 2,
-//     reason: 'Xin chuyển từ online sang offline để tương tác tốt hơn',
-//     status: 'pending',
-//     createdAt: '2024-01-14T09:45:00Z',
-//     updatedAt: '2024-01-14T09:45:00Z',
-//     // Computed fields for display
-//     teacherName: 'Phạm Văn Học',
-//     teacherCode: '10000003',
-//     className: 'Lập trình Web',
-//     subjectCode: 'LTW',
-//     currentRoom: 'ONLINE - Lớp trực tuyến',
-//     requestedRoom: 'LT101 - Phòng lý thuyết 101',
-//     timeSlot: 'Tiết 4-6 (09:45-12:15)',
-//     dayOfWeek: 'Thứ 6',
-//     priority: 'high'
-//   },
-//   {
-//     id: 5,
-//     requestType: 'schedule_change',
-//     classScheduleId: 5,
-//     requesterId: 5,
-//     requestDate: '2024-01-22',
-//     timeSlotId: 3,
-//     changeType: 'room_change',
-//     oldClassRoomId: 8,
-//     newClassRoomId: 9,
-//     reason: 'Đổi phòng do TH301 đang bảo trì thiết bị',
-//     status: 'approved',
-//     approvedBy: 10,
-//     approvedAt: '2024-01-23T09:15:00Z',
-//     createdAt: '2024-01-11T16:30:00Z',
-//     updatedAt: '2024-01-23T09:15:00Z',
-//     // Computed fields for display
-//     teacherName: 'Hoàng Thị Giảng',
-//     teacherCode: '10000004',
-//     className: 'Lập trình hướng đối tượng',
-//     subjectCode: 'OOP',
-//     currentRoom: 'TH301 - Phòng thực hành 301',
-//     requestedRoom: 'TH302 - Phòng thực hành 302',
-//     timeSlot: 'Tiết 7-9 (13:00-15:30)',
-//     dayOfWeek: 'Thứ 4',
-//     priority: 'high'
-//   }
-// ];
 
 interface RoomRequest {
   id: number;
@@ -238,7 +77,6 @@ interface RoomRequest {
     subjectCode: string;
     maxStudents: number;
   };
-  // Computed fields for display
   teacherName?: string;
   teacherCode?: string;
   className?: string;
@@ -264,22 +102,18 @@ const RoomRequestList = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const dataGridRef = useGridApiRef();
 
-  // Setup socket listeners for real-time updates
   useEffect(() => {
     if (!socketInitialized.current && user?.id) {
       const socket = getSocket() || initSocket(user.id);
       socketInitialized.current = true;
 
       const reloadRequests = () => {
-        console.log('🔄 Reloading requests due to socket event');
         setRefreshKey(prev => prev + 1);
       };
 
       const setupListeners = () => {
         if (!socket) return;
-        // Listen for new schedule requests created by teachers
         socket.on('schedule-request-created', reloadRequests);
-        // Listen for schedule request updates (approved/rejected)
         socket.on('schedule-exception-updated', reloadRequests);
       };
 
@@ -331,12 +165,10 @@ const RoomRequestList = () => {
   };
 
   const handleViewRequest = (requestId: number) => {
-    // Điều hướng tới trang xử lý chi tiết yêu cầu
     navigate(`/rooms/requests/${requestId}/process`);
   };
 
   const handleApproveRequest = async (requestId: number) => {
-    // Chuyển sang page xử lý yêu cầu để admin chấp nhận và phân phòng
     navigate(`/rooms/requests/${requestId}/process`);
   };
 
@@ -373,26 +205,6 @@ const RoomRequestList = () => {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending': return 'Chờ duyệt';
-      case 'approved': return 'Đã duyệt';
-      case 'rejected': return 'Từ chối';
-      default: return status;
-    }
-  };
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getRequestTypeText = (type: string) => {
-    switch (type) {
-      case 'room_request': return 'Xin phòng';
-      case 'schedule_change': return 'Đổi lịch';
-      case 'exception': return 'Ngoại lệ';
-      default: return type;
-    }
-  };
-
   const getRequestTypeColor = (type: string) => {
     switch (type) {
       case 'room_request': return 'primary';
@@ -402,18 +214,15 @@ const RoomRequestList = () => {
     }
   };
 
-
-  // Calculate statistics
+// tính toán thống kê
   const stats = useMemo(() => {
     const total = requests.length;
-    // Sử dụng RequestStatus.name thay vì status
     const pending = requests.filter(r => {
       const statusName = r.RequestStatus?.name?.toLowerCase() || '';
       return statusName.includes('chờ') || statusName.includes('pending') || statusName === 'chờ xử lý';
     }).length;
     const approved = requests.filter(r => {
       const statusName = r.RequestStatus?.name?.toLowerCase() || '';
-      // Bao gồm cả "Hoàn thành" và "Đã duyệt"
       return statusName.includes('đã duyệt') || statusName.includes('approved') || 
              statusName.includes('hoàn thành') || statusName.includes('completed') ||
              statusName === 'đã duyệt' || statusName === 'hoàn thành';
@@ -422,7 +231,6 @@ const RoomRequestList = () => {
       const statusName = r.RequestStatus?.name?.toLowerCase() || '';
       return statusName.includes('từ chối') || statusName.includes('rejected') || statusName === 'từ chối';
     }).length;
-    // Sử dụng RequestType.name thay vì requestType
     const roomRequests = requests.filter(r => {
       const typeName = r.RequestType?.name?.toLowerCase() || '';
       return typeName.includes('xin phòng') || typeName.includes('room_request') || typeName === 'xin phòng';
@@ -435,7 +243,6 @@ const RoomRequestList = () => {
     return { total, pending, approved, rejected, roomRequests, scheduleChanges };
   }, [requests]);
 
-  // DataGrid columns với flex layout - tối ưu cho admin xử lý yêu cầu
   const columns: GridColDef[] = [
     {
       field: 'id',
@@ -571,7 +378,6 @@ const RoomRequestList = () => {
       align: 'left',
       disableColumnMenu: isMobile,
       renderCell: (params) => {
-        // Kiểm tra cả classSchedule.class và class trực tiếp (cho ngoại lệ thi cuối kỳ)
         const className = params.value?.class?.className || params.row.class?.className || '';
         return (
           <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, minWidth: 0, width: '100%' }}>
