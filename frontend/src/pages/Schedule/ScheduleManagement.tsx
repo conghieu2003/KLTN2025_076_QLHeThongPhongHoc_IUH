@@ -1629,7 +1629,8 @@ const ScheduleManagement = () => {
                         >
                           {timeSlots.map(slot => (
                             <MenuItem key={slot.id} value={slot.id}>
-                              {slot.slotName} ({formatTimeFromAPI(slot.startTime)}-{formatTimeFromAPI(slot.endTime)})
+                              {slot.slotName} 
+                              
                             </MenuItem>
                           ))}
                         </Select>
