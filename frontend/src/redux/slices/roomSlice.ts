@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
+import { roomService } from '../../services/api';
 
 export interface Room {
   id: string;
@@ -39,28 +40,15 @@ export const fetchRoomsThunk = createAsyncThunk(
   'room/fetchRooms',
   async (_, { rejectWithValue }) => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || '';
-      const response = await fetch(`${API_URL}/rooms`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Không thể tải danh sách phòng học');
-      }
-
-      const result = await response.json();
+      const result = await roomService.getAllRooms();
       if (result.success) {
         return result.data;
       } else {
         throw new Error(result.message || 'Không thể tải danh sách phòng học');
       }
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể tải danh sách phòng học';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -76,25 +64,15 @@ export const createRoomRequestThunk = createAsyncThunk(
     requestedTime?: string;
   }, { rejectWithValue }) => {
     try {
-      const API_URL = process.env.REACT_APP_API_URL || '';
-      const response = await fetch(`${API_URL}/rooms/requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      const result = await response.json();
-      
+      const result = await roomService.createRoomRequest(requestData);
       if (result.success) {
         return result.data;
       } else {
         throw new Error(result.message || 'Có lỗi xảy ra khi gửi yêu cầu!');
       }
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi gửi yêu cầu!';
+      return rejectWithValue(errorMessage);
     }
   }
 );
