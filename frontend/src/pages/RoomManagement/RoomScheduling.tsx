@@ -364,7 +364,7 @@ const RoomScheduling: React.FC = () => {
             color="text.secondary"
             sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem', md: '0.75rem' } }}
           >
-            {params.row.startTime} - {params.row.endTime}
+            {/* {params.row.startTime} - {params.row.endTime} */}
           </Typography>
         </Box>
       )
