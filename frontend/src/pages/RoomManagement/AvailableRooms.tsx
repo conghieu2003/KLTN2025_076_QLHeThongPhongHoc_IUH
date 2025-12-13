@@ -965,13 +965,13 @@ const AvailableRooms: React.FC = () => {
                       return <Box component="em" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>Tất cả</Box>;
                     }
                     const slot = timeSlots.find(s => s.id.toString() === selected.toString());
-                    return slot ? `${slot.slotName} (${formatTimeFromAPI(slot.startTime)} - ${formatTimeFromAPI(slot.endTime)}) - ${getShiftName(slot.shift)}` : selected;
+                    return slot ? `${slot.slotName} - ${getShiftName(slot.shift)}` : selected;
                   }}
                 >
                   <MenuItem value="" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>Tất cả</MenuItem>
                   {timeSlots.map((slot) => (
                     <MenuItem key={slot.id} value={slot.id} sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                      {slot.slotName} ({formatTimeFromAPI(slot.startTime)} - {formatTimeFromAPI(slot.endTime)}) - {getShiftName(slot.shift)}
+                      {slot.slotName} - {getShiftName(slot.shift)}
                     </MenuItem>
                   ))}
                 </Select>
