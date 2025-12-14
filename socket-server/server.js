@@ -136,6 +136,32 @@ function emitScheduleRequestCreated(data) {
   }
 }
 
+function emitRoomIssueCreated(data) {
+  if (data.userIds && Array.isArray(data.userIds) && data.userIds.length > 0) {
+    data.userIds.forEach(userId => {
+      io.to(`user:${userId}`).emit('room-issue-created', {
+        ...data,
+        userIds: undefined
+      });
+    });
+  } else {
+    io.emit('room-issue-created', data);
+  }
+}
+
+function emitRoomIssueUpdated(data) {
+  if (data.userIds && Array.isArray(data.userIds) && data.userIds.length > 0) {
+    data.userIds.forEach(userId => {
+      io.to(`user:${userId}`).emit('room-issue-updated', {
+        ...data,
+        userIds: undefined
+      });
+    });
+  } else {
+    io.emit('room-issue-updated', data);
+  }
+}
+
 const verifyBackendRequest = (req, res, next) => {
   const backendToken = req.headers['x-backend-token'];
   const expectedToken = process.env.BACKEND_TOKEN || 'backend-secret-token';
@@ -181,6 +207,18 @@ app.post('/api/socket/schedule-request-created', verifyBackendRequest, (req, res
   res.json({ success: true, message: 'Schedule request created event emitted' });
 });
 
+app.post('/api/socket/room-issue-created', verifyBackendRequest, (req, res) => {
+  const data = req.body;
+  emitRoomIssueCreated(data);
+  res.json({ success: true, message: 'Room issue created event emitted' });
+});
+
+app.post('/api/socket/room-issue-updated', verifyBackendRequest, (req, res) => {
+  const data = req.body;
+  emitRoomIssueUpdated(data);
+  res.json({ success: true, message: 'Room issue updated event emitted' });
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -216,6 +254,8 @@ module.exports = {
   emitStatsUpdated,
   emitScheduleUpdated,
   emitScheduleExceptionUpdated,
-  emitScheduleRequestCreated
+  emitScheduleRequestCreated,
+  emitRoomIssueCreated,
+  emitRoomIssueUpdated
 };
 

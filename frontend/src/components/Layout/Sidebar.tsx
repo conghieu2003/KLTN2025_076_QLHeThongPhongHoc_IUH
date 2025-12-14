@@ -64,6 +64,26 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
         icon: 'fas fa-users'
       },
       {
+        id: 'equipment',
+        name: 'Quản lý thiết bị',
+        path: '/equipment',
+        icon: 'fas fa-tools',
+        children:[
+          {
+            id: 'equipment',
+            name: 'Quản lý thiết bị',
+            path: '/equipment/list',
+            icon: 'fas fa-tools',
+          },
+          {
+            id: 'room-issues',
+            name: 'Vấn đề phòng học',
+            path: '/equipment/room-issues',
+            icon: 'fas fa-exclamation-circle'
+          }
+        ]
+      },
+      {
         id: 'rooms',
         name: 'Quản lý phòng học',
         path: '/rooms',
@@ -73,7 +93,6 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
           { id: 'available-rooms', name: 'Danh sách phòng học', path: '/rooms/available', icon: 'fas fa-search' },
           { id: 'request-list', name: 'Danh sách yêu cầu', path: '/rooms/requests/list', icon: 'fas fa-clipboard-list' },
           { id: 'room-scheduling', name: 'Sắp xếp phòng học', path: '/rooms/scheduling', icon: 'fas fa-calendar-check' },
-          
         ]
       },
       {
@@ -85,7 +104,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
           { id: 'weekly-schedule', name: 'Lịch học theo tuần', path: '/schedule/weekly', icon: 'fas fa-calendar-week' },
           { id: 'schedule-management', name: 'Quản lý ngoại lệ lịch học', path: '/schedule/management', icon: 'fas fa-exclamation-triangle' }
         ]
-      }
+      },
+     
     ],
     teacher: [
       {
@@ -110,6 +130,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
         icon: 'fas fa-exchange-alt'
       },
       {
+        id: 'teacher-classes',
+        name: 'Quản lý lớp/phòng dạy',
+        path: '/teacher/classes',
+        icon: 'fas fa-chalkboard-teacher'
+      },
+      {
         id: 'profile',
         name: 'Thông tin cá nhân',
         path: '/profile',
@@ -131,6 +157,42 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
         children: [
           { id: 'weekly-schedule', name: 'Lịch học theo tuần', path: '/schedule/weekly', icon: 'fas fa-calendar-week' }
         ]
+      },
+      {
+        id: 'profile',
+        name: 'Thông tin cá nhân',
+        path: '/profile',
+        icon: 'fas fa-user'
+      }
+    ],
+    maintenance: [
+      {
+        id: 'dashboard',
+        name: 'Trang chủ',
+        path: '/dashboard',
+        icon: 'fas fa-home'
+      },
+      {
+        id: 'rooms',
+        name: 'Quản lý phòng học',
+        path: '/rooms',
+        icon: 'fas fa-door-open',
+        children: [
+          { id: 'all', name: 'Hệ thống phòng học', path: '/rooms', icon: 'fas fa-building' },
+          { id: 'available-rooms', name: 'Danh sách phòng học', path: '/rooms/available', icon: 'fas fa-search' }
+        ]
+      },
+      {
+        id: 'equipment',
+        name: 'Quản lý thiết bị',
+        path: '/equipment/list',
+        icon: 'fas fa-tools'
+      },
+      {
+        id: 'room-issues',
+        name: 'Vấn đề phòng học',
+        path: '/equipment/room-issues',
+        icon: 'fas fa-exclamation-triangle'
       },
       {
         id: 'profile',
@@ -271,16 +333,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open = true, onClose, isMobile = fals
           md: '50px'
         },
         bottom: 0,
-        left: isMobile ? (open ? 0 : '-100%') : 0,
+        left: isMobile ? (open ? 0 : '-100%') : (open ? 0 : '-100%'),
         zIndex: isMobile ? 1250 : 1200,
-        transform: isMobile 
-          ? (open ? 'translateX(0)' : 'translateX(-100%)') 
-          : 'translateX(0)',
-        transition: isMobile 
-          ? 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease-in-out' 
-          : 'none',
-        opacity: isMobile ? (open ? 1 : 0) : 1,
-        visibility: isMobile && !open ? 'hidden' : 'visible',
+        transform: open ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease-in-out',
+        opacity: open ? 1 : 0,
+        visibility: open ? 'visible' : 'hidden',
         willChange: isMobile ? 'transform, opacity' : 'auto'
       }}
     >

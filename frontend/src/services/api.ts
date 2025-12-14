@@ -252,6 +252,11 @@ export const roomService = {
     return response.data;
   },
 
+  getRoomDetails: async (roomId: string): Promise<any> => {
+    const response = await api.get(`/rooms/${roomId}/details`);
+    return response.data;
+  },
+
   createRoom: async (roomData: any): Promise<any> => {
     const response = await api.post('/rooms', roomData);
     return response.data;
@@ -361,7 +366,7 @@ export const roomService = {
     }
   },
 
-  // API mới: Lấy phòng available cho ngoại lệ (bao gồm phòng trống do ngoại lệ khác)
+  //Lấy phòng available cho ngoại lệ (bao gồm phòng trống do ngoại lệ khác)
   getAvailableRoomsForException: async (
     timeSlotId: number, 
     dayOfWeek: number, 
@@ -387,6 +392,108 @@ export const roomService = {
       console.error('Error getting available rooms for exception:', error);
       return { success: false, data: { normalRooms: [], freedRooms: [], occupiedRooms: [], totalAvailable: 0 } };
     }
+  },
+};
+
+// Equipment Service
+export const equipmentService = {
+  getAllEquipment: async (): Promise<any> => {
+    const response = await api.get('/equipment');
+    return response.data;
+  },
+
+  getEquipmentById: async (equipmentId: string): Promise<any> => {
+    const response = await api.get(`/equipment/${equipmentId}`);
+    return response.data;
+  },
+
+  createEquipment: async (equipmentData: any): Promise<any> => {
+    const response = await api.post('/equipment', equipmentData);
+    return response.data;
+  },
+
+  updateEquipment: async (equipmentId: string, equipmentData: any): Promise<any> => {
+    const response = await api.put(`/equipment/${equipmentId}`, equipmentData);
+    return response.data;
+  },
+
+  deleteEquipment: async (equipmentId: string): Promise<any> => {
+    const response = await api.delete(`/equipment/${equipmentId}`);
+    return response.data;
+  },
+
+  getRoomEquipment: async (roomId: string): Promise<any> => {
+    const response = await api.get(`/equipment/room/${roomId}`);
+    return response.data;
+  },
+
+  addRoomEquipment: async (roomId: string, equipmentData: any): Promise<any> => {
+    const response = await api.post(`/equipment/room/${roomId}`, equipmentData);
+    return response.data;
+  },
+
+  updateRoomEquipment: async (roomEquipmentId: string, equipmentData: any): Promise<any> => {
+    const response = await api.put(`/equipment/room-equipment/${roomEquipmentId}`, equipmentData);
+    return response.data;
+  },
+
+  removeRoomEquipment: async (roomEquipmentId: string): Promise<any> => {
+    const response = await api.delete(`/equipment/room-equipment/${roomEquipmentId}`);
+    return response.data;
+  },
+};
+
+// Room Issue Service
+export const roomIssueService = {
+  getAllRoomIssues: async (filters?: {
+    classRoomId?: string;
+    status?: string;
+    severity?: string;
+    issueType?: string;
+  }): Promise<any> => {
+    const params = new URLSearchParams();
+    if (filters?.classRoomId) params.append('classRoomId', filters.classRoomId);
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.severity) params.append('severity', filters.severity);
+    if (filters?.issueType) params.append('issueType', filters.issueType);
+
+    const response = await api.get(`/room-issues?${params.toString()}`);
+    return response.data;
+  },
+
+  getRoomIssueById: async (issueId: string): Promise<any> => {
+    const response = await api.get(`/room-issues/${issueId}`);
+    return response.data;
+  },
+
+  createRoomIssue: async (issueData: any): Promise<any> => {
+    const response = await api.post('/room-issues', issueData);
+    return response.data;
+  },
+
+  updateRoomIssue: async (issueId: string, issueData: any): Promise<any> => {
+    const response = await api.put(`/room-issues/${issueId}`, issueData);
+    return response.data;
+  },
+
+  acceptRoomIssue: async (issueId: string, assignedBy: string): Promise<any> => {
+    const response = await api.post(`/room-issues/${issueId}/accept`, { assignedBy });
+    return response.data;
+  },
+
+  assignRoomIssue: async (issueId: string, maintenanceUserId: string, assignedBy: string): Promise<any> => {
+    const response = await api.post(`/room-issues/${issueId}/assign`, { maintenanceUserId, assignedBy });
+    return response.data;
+  },
+
+  getMaintenanceUsers: async (): Promise<any> => {
+    const response = await api.get('/room-issues/maintenance-users');
+    return response.data;
+  },
+
+  deleteRoomIssue: async (issueId: string): Promise<any> => {
+    const response = await api.delete(`/room-issues/${issueId}`);
+    return response.data;
   },
 };
 

@@ -25,7 +25,7 @@ const Layout: React.FC = () => {
   
   const [searchText, setSearchText] = useState<string>('');
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(isDesktop);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState<boolean>(false);
   const [passwordFormData, setPasswordFormData] = useState({
@@ -85,12 +85,12 @@ const Layout: React.FC = () => {
   }, [isMobile, sidebarOpen, showUserMenu]);
 
   useEffect(() => {
-    if (isDesktop) {
+    // Chỉ set mặc định khi component mount lần đầu
+    if (isDesktop && sidebarOpen === false && !isMobile) {
+      // Desktop: mở sidebar mặc định
       setSidebarOpen(true);
-    } else if (isMobile) {
-      setSidebarOpen(false);
     }
-  }, [isDesktop, isMobile]);
+  }, [isDesktop]);
 
   useEffect(() => {
     if (currentUser?.id && !socketInitialized.current) {
@@ -240,21 +240,23 @@ const Layout: React.FC = () => {
         boxSizing: 'border-box'
       }}
     >
-      {isMobile && (
+      {/* Backdrop - chỉ hiển thị khi sidebar mở trên mobile hoặc khi sidebar đóng trên desktop */}
+      {((isMobile && sidebarOpen) || (!isMobile && !sidebarOpen)) && (
         <Box
           sx={{
             position: 'fixed',
-            top: { xs: '56px', sm: '56px' },
+            top: { xs: '56px', sm: '56px', md: '50px' },
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backgroundColor: isMobile ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
             zIndex: 1250,
-            opacity: sidebarOpen ? 1 : 0,
-            visibility: sidebarOpen ? 'visible' : 'hidden',
-            transition: 'opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s ease-in-out',
-            pointerEvents: sidebarOpen ? 'auto' : 'none',
-            willChange: 'opacity'
+            opacity: isMobile && sidebarOpen ? 1 : 0,
+            visibility: (isMobile && sidebarOpen) ? 'visible' : 'hidden',
+            transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.3s ease-in-out',
+            pointerEvents: (isMobile && sidebarOpen) ? 'auto' : 'none',
+            willChange: 'opacity',
+            display: { md: 'none' } // Ẩn backdrop trên desktop
           }}
           onClick={(e) => {
             if (toggleButtonRef.current && toggleButtonRef.current.contains(e.target as Node)) {
@@ -262,7 +264,9 @@ const Layout: React.FC = () => {
             }
             e.preventDefault();
             e.stopPropagation();
-            setSidebarOpen(false);
+            if (isMobile) {
+              setSidebarOpen(false);
+            }
           }}
           onTouchEnd={(e) => {
             if (toggleButtonRef.current && toggleButtonRef.current.contains(e.target as Node)) {
@@ -270,7 +274,9 @@ const Layout: React.FC = () => {
             }
             e.preventDefault();
             e.stopPropagation();
-            setSidebarOpen(false);
+            if (isMobile) {
+              setSidebarOpen(false);
+            }
           }}
         />
       )}
@@ -299,33 +305,31 @@ const Layout: React.FC = () => {
         }}
       >
         <Grid container spacing={{ xs: 1, sm: 1.5, md: 2.5 }} alignItems="center" sx={{ flex: 1 }}>
-          {isMobile && (
-            <Grid size={{ xs: 'auto' }}>
-              <IconButton
-                ref={toggleButtonRef}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleSidebar(e);
-                }}
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleSidebar(e);
-                }}
-                sx={{
-                  padding: '8px',
-                  position: 'relative',
-                  zIndex: 1101,
-                  touchAction: 'manipulation',
-                  userSelect: 'none',
-                  WebkitTapHighlightColor: 'transparent'
-                }}
-              >
-                {sidebarOpen ? <CloseIcon /> : <MenuIcon />}
-              </IconButton>
-            </Grid>
-          )}
+          <Grid size={{ xs: 'auto' }}>
+            <IconButton
+              ref={toggleButtonRef}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSidebar(e);
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSidebar(e);
+              }}
+              sx={{
+                padding: '8px',
+                position: 'relative',
+                zIndex: 1101,
+                touchAction: 'manipulation',
+                userSelect: 'none',
+                WebkitTapHighlightColor: 'transparent'
+              }}
+            >
+              {sidebarOpen ? <CloseIcon /> : <MenuIcon />}
+            </IconButton>
+          </Grid>
           
           {/* Logo */}
           <Grid size={{ xs: 'auto' }}>
@@ -635,29 +639,15 @@ const Layout: React.FC = () => {
           marginTop: { xs: '56px', sm: '56px', md: '50px' }
         }}
       >
-        {/* Sidebar - Hidden on mobile (fixed overlay), shown on desktop */}
-        {!isMobile && (
-          <Box ref={sidebarRef}>
-            <Sidebar 
-              open={true}
-              onClose={() => setSidebarOpen(false)}
-              isMobile={false}
-              onNavigationStart={handleNavigationStart}
-            />
-          </Box>
-        )}
-
-        {/* Sidebar for mobile - Fixed overlay */}
-        {isMobile && (
-          <Box ref={sidebarRef}>
-            <Sidebar 
-              open={sidebarOpen}
-              onClose={() => setSidebarOpen(false)}
-              isMobile={true}
-              onNavigationStart={handleNavigationStart}
-            />
-          </Box>
-        )}
+        {/* Sidebar - Desktop: có thể đóng/mở, Mobile: fixed overlay */}
+        <Box ref={sidebarRef}>
+          <Sidebar 
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            isMobile={isMobile}
+            onNavigationStart={handleNavigationStart}
+          />
+        </Box>
 
         {/* Main Content */}
         <Grid
@@ -674,7 +664,8 @@ const Layout: React.FC = () => {
             minHeight: { xs: 'calc(100vh - 56px)', sm: 'calc(100vh - 56px)', md: 'calc(100vh - 50px)' },
             display: 'flex',
             flexDirection: 'column',
-            marginLeft: { xs: 0, sm: 0, md: '250px' },
+            marginLeft: { xs: 0, sm: 0, md: sidebarOpen ? '250px' : 0 },
+            transition: 'margin-left 0.3s ease',
             position: 'relative'
           }}
         >
