@@ -20,6 +20,9 @@ import ProcessRequest from './pages/RoomManagement/ProcessRequest';
 import WeeklySchedule from './pages/Schedule/WeeklySchedule';
 import ScheduleManagement from './pages/Schedule/ScheduleManagement';
 import Profile from './pages/Dashboard/Profile';
+import EquipmentList from './pages/EquipmentManagement/EquipmentList';
+import RoomIssueList from './pages/RoomManagement/RoomIssueList';
+import TeacherClassManagement from './pages/RoomManagement/TeacherClassManagement';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 
 const App = () => {
@@ -61,6 +64,14 @@ const App = () => {
             <Route path="/schedule/weekly" element={<WeeklySchedule />} />
             
             <Route path="/schedule/management" element={<ScheduleManagement />} />
+            
+            <Route path="/equipment" element={<EquipmentList />} />
+            
+            <Route path="/equipment/list" element={<EquipmentList />} />
+            
+            <Route path="/equipment/room-issues" element={<RoomIssueList />} />
+            
+            <Route path="/teacher/classes" element={<TeacherClassManagement />} />
           </Route>
         </Routes>
         <ToastContainer

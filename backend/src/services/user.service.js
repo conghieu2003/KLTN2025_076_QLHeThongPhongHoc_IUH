@@ -15,6 +15,7 @@ function mapAccountRow(account) {
         status: account.isActive ? 'active' : 'inactive',
         teacherCode: account.user?.teacher?.teacherCode || null,
         studentCode: account.user?.student?.studentCode || null,
+        maintenanceCode: account.user?.maintenance?.maintenanceCode || null,
         campus: academicProfile?.campus || null,
         trainingType: academicProfile?.trainingType || null,
         degreeLevel: academicProfile?.degreeLevel || null,
@@ -43,11 +44,12 @@ class UserService {
     }
     async getNextCode(role) {
         const isTeacher = role === 'teacher';
-        const prefix = isTeacher ? '10' : '20';
+        const isMaintenance = role === 'maintenance';
+        const prefix = isTeacher ? '10' : (isMaintenance ? '30' : '20');
 
         // Query max numeric 8-digit code with proper prefix, ignore non-numeric legacy codes (e.g., TC001)
-        const tableName = isTeacher ? 'Teacher' : 'Student';
-        const columnName = isTeacher ? 'teacherCode' : 'studentCode';
+        const tableName = isTeacher ? 'Teacher' : (isMaintenance ? 'Maintenance' : 'Student');
+        const columnName = isTeacher ? 'teacherCode' : (isMaintenance ? 'maintenanceCode' : 'studentCode');
         const rows = await prisma.$queryRawUnsafe(
             `SELECT MAX(CAST(${columnName} AS BIGINT)) AS maxCode
              FROM ${tableName}
@@ -61,7 +63,7 @@ class UserService {
             const maxCode = Number(rows[0].maxCode);
             nextNumber = maxCode + 1;
         } else {
-            // Start base: 10000000 or 20000000
+            // Start base: 10000000, 20000000, or 30000000
             nextNumber = Number(prefix + '000000');
         }
 
@@ -115,6 +117,7 @@ class UserService {
                     include: {
                         teacher: true,
                         student: true,
+                        Maintenance: true,
                         academicProfile: true
                     }
                 }
@@ -210,7 +213,7 @@ class UserService {
                     }
                 });
 
-                // Tạo thêm bản ghi teacher hoặc student
+                // Tạo thêm bản ghi teacher, student hoặc maintenance
                 if (role === 'teacher') {
                     await tx.teacher.create({
                         data: {
@@ -265,6 +268,15 @@ class UserService {
                             title: null
                         }
                     });
+                } else if (role === 'maintenance') {
+                    await tx.maintenance.create({
+                        data: {
+                            userId: user.id,
+                            maintenanceCode: codeForLogin,
+                            departmentId: departmentId || null,
+                            specialization: userData.specialization || null
+                        }
+                    });
                 }
 
                 return { account, user };
@@ -297,7 +309,8 @@ class UserService {
                     email,
                     role,
                     teacherCode: role === 'teacher' ? codeForLogin : null,
-                    studentCode: role === 'student' ? codeForLogin : null
+                    studentCode: role === 'student' ? codeForLogin : null,
+                    maintenanceCode: role === 'maintenance' ? codeForLogin : null
                 }
             };
         } catch (error) {
@@ -373,6 +386,7 @@ class UserService {
                     account: true,
                     teacher: true,
                     student: true,
+                    maintenance: true,
                     academicProfile: true
                 }
             });
@@ -398,7 +412,8 @@ class UserService {
                 status: user.account?.isActive ? 'active' : 'inactive',
                 teacherCode: user.teacher?.teacherCode || null,
                 studentCode: user.student?.studentCode || null,
-                departmentId: user.teacher?.departmentId || user.student?.departmentId || null,
+                maintenanceCode: user.maintenance?.maintenanceCode || null,
+                departmentId: user.teacher?.departmentId || user.student?.departmentId || user.maintenance?.departmentId || null,
                 majorId: user.teacher?.majorId || user.student?.majorId || null,
                 campus: academicProfile?.campus || null,
                 trainingType: academicProfile?.trainingType || null,

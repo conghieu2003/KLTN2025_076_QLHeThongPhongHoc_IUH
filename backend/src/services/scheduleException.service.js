@@ -69,11 +69,10 @@ const createScheduleException = async (data) => {
       
       // Cho phép tạo nhiều ngoại lệ thi cuối kỳ cho cùng lớp, cùng ngày, cùng tiết
     } else {
-      // Các loại khác: lấy thông tin lịch học
       schedule = await prisma.classSchedule.findFirst({
         where: {
           id: classScheduleId,
-          statusId: 2 // active status
+          statusId: 2 
         },
         include: {
           class: true,

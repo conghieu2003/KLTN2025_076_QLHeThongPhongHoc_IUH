@@ -88,6 +88,130 @@ class RoomService {
     }
   }
 
+  // Lấy thông tin chi tiết phòng học bao gồm equipment và issues
+  async getRoomDetails(roomId) {
+    try {
+      const room = await prisma.classRoom.findUnique({
+        where: { id: parseInt(roomId) },
+        include: {
+          ClassRoomType: true,
+          department: true
+        }
+      });
+      
+      if (!room) {
+        throw new Error('Không tìm thấy phòng học');
+      }
+
+      // Lấy thiết bị của phòng
+      const equipment = await prisma.$queryRaw`
+        SELECT 
+          cre.id,
+          cre.classRoomId,
+          cre.equipmentId,
+          cre.quantity,
+          cre.isWorking,
+          cre.lastMaintenanceDate,
+          cre.nextMaintenanceDate,
+          cre.note,
+          e.code AS equipmentCode,
+          e.name AS equipmentName,
+          e.category AS equipmentCategory,
+          e.description AS equipmentDescription
+        FROM ClassRoomEquipment cre
+        INNER JOIN Equipment e ON cre.equipmentId = e.id
+        WHERE cre.classRoomId = ${parseInt(roomId)}
+        ORDER BY e.category, e.name
+      `;
+
+      // Lấy vấn đề phòng học (chỉ lấy các vấn đề chưa giải quyết hoặc đang xử lý)
+      const issues = await prisma.$queryRaw`
+        SELECT 
+          ri.id,
+          ri.classRoomId,
+          ri.reportedBy,
+          ri.issueType,
+          ri.title,
+          ri.description,
+          ri.severity,
+          ri.startDate,
+          ri.endDate,
+          ri.status,
+          ri.affectedEquipmentId,
+          ri.autoCreateException,
+          ri.exceptionCreated,
+          ri.resolvedBy,
+          ri.resolvedAt,
+          ri.resolutionNote,
+          ri.createdAt,
+          ri.updatedAt,
+          cr.code AS roomCode,
+          cr.name AS roomName,
+          u.fullName AS reporterName,
+          u.email AS reporterEmail,
+          ru.fullName AS resolverName,
+          e.name AS equipmentName,
+          e.code AS equipmentCode
+        FROM RoomIssue ri
+        INNER JOIN ClassRoom cr ON ri.classRoomId = cr.id
+        INNER JOIN [User] u ON ri.reportedBy = u.id
+        LEFT JOIN [User] ru ON ri.resolvedBy = ru.id
+        LEFT JOIN Equipment e ON ri.affectedEquipmentId = e.id
+        WHERE ri.classRoomId = ${parseInt(roomId)}
+          AND ri.status IN ('open', 'in_progress')
+        ORDER BY ri.severity DESC, ri.createdAt DESC
+      `;
+
+      return {
+        room: this.processRoomData(room),
+        equipment: equipment.map(eq => ({
+          id: eq.id.toString(),
+          classRoomId: eq.classRoomId.toString(),
+          equipmentId: eq.equipmentId.toString(),
+          quantity: eq.quantity,
+          isWorking: eq.isWorking,
+          lastMaintenanceDate: eq.lastMaintenanceDate,
+          nextMaintenanceDate: eq.nextMaintenanceDate,
+          note: eq.note,
+          equipment: {
+            id: eq.equipmentId.toString(),
+            code: eq.equipmentCode,
+            name: eq.equipmentName,
+            category: eq.equipmentCategory,
+            description: eq.equipmentDescription
+          }
+        })),
+        issues: issues.map(issue => ({
+          id: issue.id.toString(),
+          classRoomId: issue.classRoomId.toString(),
+          reportedBy: issue.reportedBy.toString(),
+          issueType: issue.issueType,
+          title: issue.title,
+          description: issue.description,
+          severity: issue.severity,
+          startDate: issue.startDate,
+          endDate: issue.endDate,
+          status: issue.status,
+          affectedEquipmentId: issue.affectedEquipmentId ? issue.affectedEquipmentId.toString() : null,
+          autoCreateException: issue.autoCreateException,
+          exceptionCreated: issue.exceptionCreated,
+          resolvedBy: issue.resolvedBy ? issue.resolvedBy.toString() : null,
+          resolvedAt: issue.resolvedAt,
+          resolutionNote: issue.resolutionNote,
+          createdAt: issue.createdAt,
+          updatedAt: issue.updatedAt,
+          reporterName: issue.reporterName,
+          reporterEmail: issue.reporterEmail,
+          resolverName: issue.resolverName,
+          equipmentName: issue.equipmentName,
+          equipmentCode: issue.equipmentCode
+        }))
+      };
+    } catch (error) {
+      throw new Error(`Lỗi lấy thông tin chi tiết phòng học: ${error.message}`);
+    }
+  }
+
   async createRoom(roomData) {
     try {
       const room = await prisma.classRoom.create({

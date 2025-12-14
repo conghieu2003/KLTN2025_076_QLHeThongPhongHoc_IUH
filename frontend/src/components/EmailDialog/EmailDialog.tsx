@@ -104,6 +104,7 @@ IUH - Trường Đại học Công nghiệp TP.HCM`
       case 'teacher': return 'Giảng viên';
       case 'student': return 'Sinh viên';
       case 'admin': return 'Quản trị viên';
+      case 'maintenance': return 'Kỹ thuật viên';
       default: return role;
     }
   };
@@ -113,6 +114,7 @@ IUH - Trường Đại học Công nghiệp TP.HCM`
       case 'teacher': return 'primary';
       case 'student': return 'secondary';
       case 'admin': return 'error';
+      case 'maintenance': return 'info';
       default: return 'default';
     }
   };

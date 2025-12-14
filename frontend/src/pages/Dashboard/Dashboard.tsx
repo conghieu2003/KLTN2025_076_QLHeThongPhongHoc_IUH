@@ -207,6 +207,14 @@ const Dashboard = () => {
           icon: <WarningIcon />,
           color: '#1976d2',
           bgColor: '#e3f2fd'
+        },
+        {
+          id: 'room-issues',
+          title: 'Vấn đề phòng học',
+          path: '/equipment/room-issues',
+          icon: <WarningIcon />,
+          color: '#d32f2f',
+          bgColor: '#ffebee'
         }
       );
     } else if (userRole === 'teacher') {

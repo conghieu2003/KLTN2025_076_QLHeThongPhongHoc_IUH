@@ -71,6 +71,24 @@ class RoomController {
     }
   }
 
+  // API lấy thông tin chi tiết phòng học (bao gồm equipment và issues)
+  async getRoomDetails(req, res) {
+    try {
+      const { roomId } = req.params;
+      const details = await roomService.getRoomDetails(roomId);
+      return res.status(200).json({
+        success: true,
+        data: details
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Lỗi server',
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  }
+
   // API tạo phòng mới
   async createRoom(req, res) {
     try {

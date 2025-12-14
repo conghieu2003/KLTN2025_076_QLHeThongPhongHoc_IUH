@@ -53,6 +53,11 @@ const verifyToken = async (req, res, next) => {
 
 const authorize = (roles = []) => {
     return (req, res, next) => {
+        // Admin có quyền truy cập tất cả
+        if (req.user.role === 'admin') {
+            return next();
+        }
+        
         if (!roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,

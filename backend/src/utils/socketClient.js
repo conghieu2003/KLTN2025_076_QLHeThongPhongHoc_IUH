@@ -87,6 +87,34 @@ class SocketClient {
       console.error('[Socket Client] Lỗi khi gửi sự kiện schedule-request-created:', error.message);
     }
   }
+
+// gửi sự kiện tạo vấn đề phòng học
+  static async emitRoomIssueCreated(data) {
+    try {
+      await axios.post(`${SOCKET_SERVER_URL}/api/socket/room-issue-created`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-backend-token': BACKEND_TOKEN
+        }
+      });
+    } catch (error) {
+      console.error('[Socket Client] Lỗi khi gửi sự kiện room-issue-created:', error.message);
+    }
+  }
+
+// gửi sự kiện cập nhật vấn đề phòng học
+  static async emitRoomIssueUpdated(data) {
+    try {
+      await axios.post(`${SOCKET_SERVER_URL}/api/socket/room-issue-updated`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-backend-token': BACKEND_TOKEN
+        }
+      });
+    } catch (error) {
+      console.error('[Socket Client] Lỗi khi gửi sự kiện room-issue-updated:', error.message);
+    }
+  }
 }
 
 module.exports = SocketClient;

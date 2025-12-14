@@ -145,7 +145,7 @@ class AuthService {
                 const studentRecord = await prisma.student.findUnique({
                     where: { studentCode: identifier },
                     include: {
-                        user: { include: { account: true, teacher: true, student: true } }
+                        user: { include: { account: true, teacher: true, student: true, Maintenance: true } }
                     }
                 });
                 if (studentRecord?.user?.account && studentRecord.user.account.role === 'student') {
@@ -154,11 +154,23 @@ class AuthService {
             }
 
             if (!account) {
+                const maintenanceRecord = await prisma.maintenance.findUnique({
+                    where: { maintenanceCode: identifier },
+                    include: {
+                        User: { include: { account: true, teacher: true, student: true, Maintenance: true } }
+                    }
+                });
+                if (maintenanceRecord?.User?.account && maintenanceRecord.User.account.role === 'maintenance') {
+                    account = { ...maintenanceRecord.User.account, user: maintenanceRecord.User };
+                }
+            }
+
+            if (!account) {
                 const userIdAsInt = Number(identifier);
                 if (!Number.isNaN(userIdAsInt)) {
                     const adminUser = await prisma.user.findUnique({
                         where: { id: userIdAsInt },
-                        include: { account: true, teacher: true, student: true }
+                        include: { account: true, teacher: true, student: true, Maintenance: true }
                     });
                     if (adminUser && adminUser.account && adminUser.account.role === 'admin') {
                         account = { ...adminUser.account, user: adminUser };
@@ -170,7 +182,7 @@ class AuthService {
                 const acc = await prisma.account.findUnique({
                     where: { username: identifier },
                     include: {
-                        user: { include: { teacher: true, student: true } }
+                        user: { include: { teacher: true, student: true, Maintenance: true } }
                     }
                 });
                 if (acc) account = acc;
@@ -211,7 +223,8 @@ class AuthService {
                         email: account.user.email,
                         role: account.role,
                         teacherCode: account.user.teacher?.teacherCode,
-                        studentCode: account.user.student?.studentCode
+                        studentCode: account.user.student?.studentCode,
+                        maintenanceCode: account.user.maintenance?.maintenanceCode
                     }
                 }
             };
@@ -355,6 +368,47 @@ class AuthService {
                     }
                 } catch (err) {
                     console.error('Error searching teacher:', err);
+                    console.error('Error details:', err.message, err.stack);
+                }
+            }
+
+            if (!user) {
+                try {
+                    let maintenanceRecord = await prisma.maintenance.findUnique({
+                        where: { maintenanceCode: trimmedIdentifier },
+                        include: {
+                            user: { 
+                                include: { 
+                                    account: true 
+                                } 
+                            }
+                        }
+                    });
+                    
+                    if (!maintenanceRecord && trimmedIdentifier) {
+                        maintenanceRecord = await prisma.maintenance.findFirst({
+                            where: {
+                                maintenanceCode: {
+                                    equals: trimmedIdentifier,
+                                    mode: 'insensitive'
+                                }
+                            },
+                            include: {
+                                user: { 
+                                    include: { 
+                                        account: true 
+                                    } 
+                                }
+                            }
+                        });
+                    }
+                    
+                    if (maintenanceRecord?.user) {
+                        user = maintenanceRecord.user;
+                        console.log('Found maintenance user:', user.id, user.email, user.fullName);
+                    }
+                } catch (err) {
+                    console.error('Error searching maintenance:', err);
                     console.error('Error details:', err.message, err.stack);
                 }
             }

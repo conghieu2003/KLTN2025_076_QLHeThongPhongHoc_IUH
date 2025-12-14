@@ -16,9 +16,10 @@ router.get('/available-for-exception', roomController.getAvailableRoomsForExcept
 
 router.use(verifyToken);
 
-router.get('/:roomId', authorize(['admin', 'teacher', 'student']), roomController.getRoomById);
-router.post('/', authorize(['admin']), roomController.createRoom);
-router.put('/:roomId', authorize(['admin']), roomController.updateRoom);
+router.get('/:roomId', authorize(['admin', 'teacher', 'student', 'maintenance']), roomController.getRoomById);
+router.get('/:roomId/details', authorize(['admin', 'teacher', 'student', 'maintenance']), roomController.getRoomDetails);
+router.post('/', authorize(['admin', 'maintenance']), roomController.createRoom);
+router.put('/:roomId', authorize(['admin', 'maintenance']), roomController.updateRoom);
 router.delete('/:roomId', authorize(['admin']), roomController.deleteRoom);
 
 module.exports = router;
